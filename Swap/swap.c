@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include "commons/collections/list.h"
 #include <stdbool.h>
+#include "commons/string.h"
+#include <string.h>
 
 struct bloqueDeMemoria{
 	int PID;
@@ -19,6 +21,7 @@ int nombreSwap;
 int tamanioDePagina;
 int cantidadDePaginas;
 int retardoCompactacion;
+char nombre_swap[50];
 t_list* listaSwap;
 
 int main(){
@@ -69,46 +72,75 @@ int agregarProceso(bloqueSwap* unBloque,t_list* unaLista){
 	return 0;
 }
 
-bool compactarArchivo(t_list* unaLista){
+void destructorBloqueSwap(bloqueSwap* self){
+	free(self->PID);
+	free(self->cantDePaginas);
+	free(self->ocupado);
+	free(self->paginaInicial);
+	free(self->tamanioDelBloque);
+	free(self);
+}
+
+int compactarArchivo(t_list* unaLista){
 	int i,acum;
-	bloqueSwap bloqueLleno;
-	bloqueSwap bloqueLlenoSiguiente;
-	bloqueSwap bloqueVacioCompacto;
+	bloqueSwap* bloqueLleno=malloc(sizeof(bloqueSwap));
+	bloqueSwap* bloqueLlenoSiguiente=malloc(sizeof(bloqueSwap));
+	bloqueSwap* bloqueVacioCompacto=malloc(sizeof(bloqueSwap));
 
 	int bloqueVacioAEliminar(bloqueSwap unBloque){
-		return(unBloque.ocupado==0);
+		return (unBloque.ocupado==0);
 	};
-	void destructorBloqueSwap(bloqueSwap* self){
-		free(self->PID);
-		free(self->cantDePaginas);
-		free(self->ocupado);
-		free(self->paginaInicial);
-		free(self->tamanioDelBloque);
-		free(self);
-	}
+
 
 
 	for(i=0;unaLista->elements_count<=i;i++){
-		{	list_remove_and_destroy_by_condition(unaLista,bloqueVacioAEliminar,destructorBloqueSwap);
+		{	list_remove_and_destroy_by_condition(unaLista,(void*)bloqueVacioAEliminar,(void*)destructorBloqueSwap);
 		}
-		bloqueLleno=list_get(unaLista,0);
-		bloqueLleno.paginaInicial=0;
-		acum=bloqueLleno.cantDePaginas;
+		bloqueLleno=(bloqueSwap*)list_get(unaLista,0);
+		bloqueLleno->paginaInicial=0;
+		acum=bloqueLleno->cantDePaginas;
 	for(i=0;unaLista->elements_count>i;i++){
-		bloqueLleno=list_get(unaLista,i);
-		bloqueLlenoSiguiente=list_get(unaLista,i+1);
-		bloqueLlenoSiguiente.paginaInicial=bloqueLleno.cantDePaginas+1;
-		acum+=bloqueLlenoSiguiente.cantDePaginas;
+		bloqueLleno=(bloqueSwap*)list_get(unaLista,i);
+		bloqueLlenoSiguiente=(bloqueSwap*)list_get(unaLista,i+1);
+		bloqueLlenoSiguiente->paginaInicial=bloqueLleno->cantDePaginas+1;
+		acum+=bloqueLlenoSiguiente->cantDePaginas;
 	}
 		if(cantidadDePaginas-acum!=0){
-		bloqueVacioCompacto.cantDePaginas=cantidadDePaginas-acum;
-		bloqueVacioCompacto.ocupado=0;
-		bloqueVacioCompacto.PID=0;
-		bloqueVacioCompacto.paginaInicial=acum+1;
+		bloqueVacioCompacto->cantDePaginas=cantidadDePaginas-acum;
+		bloqueVacioCompacto->ocupado=0;
+		bloqueVacioCompacto->PID=0;
+		bloqueVacioCompacto->paginaInicial=acum+1;
 
-		list_add(unaLista,bloqueVacioCompacto);}
+		list_add(unaLista,bloqueVacioCompacto);
 		return 0;
 	}
+}
+
+int eliminarProceso(t_list* unaLista,bloqueSwap unProceso){
+	bloqueSwap* procesoAEliminar=malloc(sizeof(bloqueSwap));
+	bool buscarPorPid(bloqueSwap unProceso,bloqueSwap otroProceso){
+		return (unProceso.PID==otroProceso.PID);
+	}
+	list_remove_and_destroy_by_condition(unaLista,(void*)buscarPorPid,destructorBloqueSwap);
+	return 1;
+}
+
+int crearArchivoDeSwap(){
+	char primerParteCadena[50]="dd if=dev/zero of=";
+	char* tamanioPagina;
+	tamanioPagina=string_itoa(tamanioDePagina);
+	char* cadCantidadDePaginas;
+	cadCantidadDePaginas=string_itoa(cantidadDePaginas);
+	char segundaParteCadena[5]="bs=";
+	char terceraParteCadena[10]="count=";
+	char* cadenaTotal;
+	cadenaTotal=strcat(primerParteCadena,nombre_swap);
+	cadenaTotal=strcat(cadenaTotal,segundaParteCadena);
+	cadenaTotal=strcat(cadenaTotal,tamanioPagina);
+	cadenaTotal=strcat(cadenaTotal,terceraParteCadena);
+	cadenaTotal=strcat(cadenaTotal,cadCantidadDePaginas);
+	system(cadenaTotal);
+	return 1;
 }
 
 
