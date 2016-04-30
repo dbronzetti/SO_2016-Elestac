@@ -2,9 +2,6 @@
 #include <stdlib.h>
 #include "commons/collections/list.h"
 
-#include <arpa/inet.h>
-#include <sys/socket.h>
-
 typedef struct {
 	int port;
 	char ip_swap[15]; /* 15 = because the format xxx.xxx.xxx.xxx*/
