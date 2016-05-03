@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include "commons/string.h"
 #include <string.h>
+#include <sys/mman.h>
 
 struct bloqueDeMemoria{
 	int PID;
@@ -39,9 +40,16 @@ return 1;
 }
 
 int agregarProceso(bloqueSwap* unBloque,t_list* unaLista){
+	/*<----------------------------------------------abroElArchivo----------------------------------------------------->*/
+	FILE *archivoSwap;
+	int descriptorSwap;
+	void* archivoMapeado;
+	archivoSwap=fopen(nombre_swap,"a+");
+	descriptorSwap=fileno(archivoSwap);
+	lseek(descriptorSwap,0,SEEK_SET);
+	archivoMapeado=mmap(0,(tamanioDePagina*cantidadDePaginas),PROT_READ,PROT_WRITE,(void*)descriptorSwap,MAP_SHARED,MAP_FIXED,tamanioDePagina*unBloque->paginaInicial);
 	bloqueSwap* elementoEncontrado;
 	elementoEncontrado=(bloqueSwap*)malloc(sizeof(bloqueSwap));
-
 	bloqueSwap* nuevoBloqueVacio;
 	nuevoBloqueVacio=(bloqueSwap*)malloc(sizeof(bloqueSwap));
 	void destructorBloqueSwap(bloqueSwap* self){
@@ -66,9 +74,11 @@ int agregarProceso(bloqueSwap* unBloque,t_list* unaLista){
 	nuevoBloqueVacio->PID=0;
 	nuevoBloqueVacio->ocupado=0;
 	nuevoBloqueVacio->tamanioDelBloque=elementoEncontrado->tamanioDelBloque-unBloque->tamanioDelBloque;
+	memset(archivoMapeado,"1",tamanioDePagina*unBloque->cantDePaginas);
 	list_remove_and_destroy_by_condition(unaLista,(void*)posibleBloqueAEliminar,(void*)destructorBloqueSwap);
 	list_add(unaLista,(void*)nuevoBloqueVacio);
 	list_add(unaLista,(void*)unBloque);
+	munmap(archivoMapeado);
 	return 0;
 }
 
@@ -121,18 +131,18 @@ int eliminarProceso(t_list* unaLista,bloqueSwap unProceso){
 	bool buscarPorPid(bloqueSwap unProceso,bloqueSwap otroProceso){
 		return (unProceso.PID==otroProceso.PID);
 	}
-	list_remove_and_destroy_by_condition(unaLista,(void*)buscarPorPid,destructorBloqueSwap);
+	list_remove_and_destroy_by_condition(unaLista,(void*)buscarPorPid,(void*)destructorBloqueSwap);
 	return 1;
 }
 
-int crearArchivoDeSwap(){
+void crearArchivoDeSwap(){
 	char primerParteCadena[50]="dd if=dev/zero of=";
 	char* tamanioPagina;
 	tamanioPagina=string_itoa(tamanioDePagina);
 	char* cadCantidadDePaginas;
 	cadCantidadDePaginas=string_itoa(cantidadDePaginas);
-	char segundaParteCadena[5]="bs=";
-	char terceraParteCadena[10]="count=";
+	char segundaParteCadena[5]=" bs=";
+	char terceraParteCadena[10]=" count=";
 	char* cadenaTotal;
 	cadenaTotal=strcat(primerParteCadena,nombre_swap);
 	cadenaTotal=strcat(cadenaTotal,segundaParteCadena);
@@ -140,7 +150,11 @@ int crearArchivoDeSwap(){
 	cadenaTotal=strcat(cadenaTotal,terceraParteCadena);
 	cadenaTotal=strcat(cadenaTotal,cadCantidadDePaginas);
 	system(cadenaTotal);
-	return 1;
-}
+	}
+
+
+
+
+
 
 
