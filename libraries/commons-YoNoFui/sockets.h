@@ -18,6 +18,9 @@ typedef enum{
 typedef struct{
 	enum_processes process;
 	void* message;
+	int id;
+	int numSocket;
+	int estado;
 } t_MessagePackage;
 
 int openServerConnection(int newSocketServerPort, int *socketServer);
