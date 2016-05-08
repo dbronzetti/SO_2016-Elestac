@@ -8,13 +8,6 @@
 
 #include <string.h>
 
-typedef struct enviarCPU{
-int head;
-int pid;
-char path[250];
-int pc;
-int cantInstruc;
-}t_contexto;
 
 typedef struct datosRespuesta{
 	int operacion;
