@@ -3,6 +3,8 @@
 	<name>nucleo</name>
 	<comment></comment>
 	<projects>
+		<project>commons</project>
+		<project>commons-YoNoFui</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
