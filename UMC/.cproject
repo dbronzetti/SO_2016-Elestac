@@ -56,7 +56,9 @@
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug.1846437321" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug"/>
 							<tool id="cdt.managedbuild.tool.gnu.assembler.exe.debug.1485099418" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.debug">
-								<option id="gnu.both.asm.option.include.paths.349673621" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath"/>
+								<option id="gnu.both.asm.option.include.paths.349673621" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="/home/utnso/Documentos/Projects/SO_2016/Github/YoNoFui/libraries/commons-YoNoFui"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.896116091" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>

@@ -72,27 +72,240 @@ int acceptClientConnection(int *socketServer, int *socketClient){
 	return exitcode;
 }
 
-int sendClientAcceptation(int *socketClient, fd_set *readSocketSet){
+int sendClientHandShake(int *socketClient, enum_processes process){
 	int exitcode = EXIT_SUCCESS; //Normal completition
-	char *package = "Server has accepted your connection";
+	int bufferSize = 0;
+	int messageLen = 0;
+	int payloadSize = 0;
+	char *processString;
 
-	t_MessagePackage *messageACK = malloc(sizeof(t_MessagePackage));
-	messageACK->process = ACCEPTED;
-	messageACK->message= (void*) &package;
+	t_MessageGenericHandshake *messageACK = malloc(sizeof(t_MessageGenericHandshake));
+	messageACK->process = process;
 
-	send (*socketClient, messageACK, sizeof(t_MessagePackage),0);// TODO 2) aca debe ir la segunda parte del handshake
+	switch (process){
+		case CONSOLA:{
+			processString = "CONSOLA";
+			break;
+		}
+		case NUCLEO:{
+			processString = "NUCLEO";
+			break;
+		}
+		case UMC:{
+			processString = "UMC";
+			break;
+		}
+		case SWAP:{
+			processString = "SWAP";
+			break;
+		}
+		case CPU:{
+			processString = "CPU";
+			break;
+		}
+		default:{
+			perror("Process not recognized");//TODO => Agregar logs con librerias
+			printf("Invalid process '%d' tried to send a message\n",(int) process);
+			return exitcode = EXIT_FAILURE;
+		}
+	}
 
-	//Add the new client socket to the set after the successful handshake
-	FD_SET(*socketClient, readSocketSet);
+	messageACK->message = malloc(sizeof(char[60]));
+	sprintf(messageACK->message, "The process '%s' is trying to connect you!\0", processString);
+	messageLen = strlen(messageACK->message);
+
+	payloadSize = sizeof(messageACK->process) + sizeof(messageLen) + messageLen + 1; // process + length message + message + 1 (+1 because of '\0')
+	bufferSize = sizeof(bufferSize) + payloadSize ;//+1 because of '\0'
+	char *buffer = malloc(bufferSize);
+	serializeHandShake(messageACK, buffer, bufferSize);
+
+	send(*socketClient, (void*) buffer, bufferSize,0);
+
+	free(buffer);
+	free(messageACK->message);
+	free(messageACK);
 
 	return exitcode;
 }
 
-int receiveMessage(int *socketClient, t_MessagePackage *messageRcv){
+int sendClientAcceptation(int *socketClient, fd_set *readSocketSet){
+	int exitcode = EXIT_SUCCESS; //Normal completition
+	int bufferSize = 0;
+	int messageLen = 0;
+	int payloadSize = 0;
 
-	int receivedBytes = recv(*socketClient, messageRcv, sizeof(t_MessagePackage), 0);
+	t_MessageGenericHandshake *messageACK = malloc(sizeof(t_MessageGenericHandshake));
+	messageACK->process = ACCEPTED;
+	messageACK->message = "The server has accepted your connection!\0"; //ALWAYS put \0 for finishing the string
+	messageLen = strlen(messageACK->message);
+
+	payloadSize = sizeof(messageACK->process) + sizeof(messageLen) + messageLen + 1; // process + length message + message + 1 (+1 because of '\0')
+	bufferSize = sizeof(bufferSize) + payloadSize ;//+1 because of '\0'
+	char *buffer = malloc(bufferSize);
+	serializeHandShake(messageACK, buffer, bufferSize);
+
+	send(*socketClient, (void*) buffer, bufferSize,0);
+
+	//Add the new client socket to the set after the successful handshake
+	FD_SET(*socketClient, readSocketSet);
+
+	free(buffer);
+	free(messageACK);
+	return exitcode;
+}
+
+int receiveMessage(int *socketClient, char *messageRcv, int bufferSize){
+
+	int receivedBytes = recv(*socketClient, (void*) messageRcv, bufferSize, 0);
 
 	return receivedBytes;
 }
+
+void serializeHandShake(t_MessageGenericHandshake *value, char *buffer, int valueSize){
+    int offset = 0;
+
+    //0)valueSize
+	memcpy(buffer, &valueSize, sizeof(valueSize));
+	offset += sizeof(valueSize);
+
+    //1)process
+    memcpy(buffer + offset, &value->process, sizeof(value->process));
+    offset += sizeof(value->process);
+
+    //2)message length
+    int messageLen = strlen(value->message) + 1;//+1 because of '\0'
+	memcpy(buffer + offset, &messageLen, sizeof(messageLen));
+	offset += sizeof(messageLen);
+
+    //3)message
+    memcpy(buffer + offset, value->message, messageLen);
+
+}
+
+void deserializeHandShake(t_MessageGenericHandshake *value, char *bufferReceived){
+    int offset = 0;
+    int messageLen = 0;
+
+    //1)process
+    memcpy(&value->process, bufferReceived, sizeof(value->process));
+    offset += sizeof(value->process);
+
+    //2)message length
+	memcpy(&messageLen, bufferReceived + offset, sizeof(messageLen));
+	offset += sizeof(messageLen);
+
+    //3)message
+	value->message = malloc(messageLen);
+    memcpy(value->message, bufferReceived + offset, messageLen);
+
+}
+
+void serializeUMC_Swap(t_MessageUMC_Swap *value, char *buffer, int valueSize){
+	int offset = 0;
+    enum_processes process = UMC;
+
+    //0)valueSize
+	memcpy(buffer, &valueSize, sizeof(valueSize));
+	offset += sizeof(valueSize);
+
+	//1)From process
+	memcpy(buffer, &process, sizeof(process));
+	offset += sizeof(process);
+
+    //2)pageNro
+    memcpy(buffer, &value->pageNro, sizeof(value->pageNro));
+    offset += sizeof(value->pageNro);
+
+    //3)processID
+    memcpy(buffer + offset, &value->processID, sizeof(value->processID));
+    offset += sizeof(value->processID);
+
+    //4)processStatus
+    memcpy(buffer + offset, &value->processStatus, sizeof(value->processStatus));
+	offset += sizeof(value->processStatus);
+
+	//5)totalPages
+	memcpy(buffer + offset, &value->totalPages, sizeof(value->totalPages));
+	offset += sizeof(value->totalPages);
+
+}
+
+void deserializeSwap_UMC(t_MessageUMC_Swap *value, char *bufferReceived){
+    int offset = 0;
+
+    //2)pageNro
+    memcpy(&value->pageNro, bufferReceived, sizeof(value->pageNro));
+    offset += sizeof(value->pageNro);
+
+    //3)processID
+    memcpy(&value->processID, bufferReceived + offset, sizeof(value->processID));
+    offset += sizeof(value->processID);
+
+    //4)processStatus
+    memcpy(&value->processStatus, bufferReceived + offset, sizeof(value->processStatus));
+	offset += sizeof(value->processStatus);
+
+	//5)totalPages
+	memcpy(&value->totalPages, bufferReceived + offset, sizeof(value->totalPages));
+	offset += sizeof(value->totalPages);
+
+}
+
+/* EJEMPLO DE COMO CREAR UN CLIENTE Y MANDAR MENSAJES AL SERVER
+int socketClient;
+
+	char ip[15] = "127.0.0.1";
+	int exitcode = openClientConnection(&ip, 8080, &socketClient);
+
+	//If exitCode == 0 the client could connect to the server
+	if (exitcode == 0){
+
+		// ***1) Send handshake
+		sendClientHandShake(&socketClient,SWAP);
+
+		// ***2)Receive handshake response
+		//Receive message size
+		int messageSize = 0;
+		char *messageRcv = malloc(sizeof(messageSize));
+		int receivedBytes = receiveMessage(&socketClient, messageRcv, sizeof(messageSize));
+
+		//Receive message using the size read before
+		memcpy(&messageSize, messageRcv, sizeof(int));
+		printf("messageRcv received: %s\n",messageRcv);
+		printf("messageSize received: %d\n",messageSize);
+		messageRcv = realloc(messageRcv,messageSize);
+		receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
+
+		printf("bytes received: %d\n",receivedBytes);
+
+		//starting handshake with client connected
+		t_MessageGenericHandshake *message = malloc(sizeof(t_MessageGenericHandshake));
+		deserializeHandShake(message, messageRcv);
+
+		switch (message->process){
+			case ACCEPTED:{
+				printf("%s\n",message->message);
+				break;
+			}
+			default:{
+				perror("Process couldn't connect to SERVER");//TODO => Agregar logs con librerias
+				printf("Not able to connect to server %s. Please check if it's down.\n",ip);
+				break;
+			}
+		}
+
+		while(1){
+			//aca tiene que ir una validacion para ver si el server sigue arriba
+			//send(socketClient, msg, sizeof(msg),0);
+		}
+
+	}else{
+		perror("no me pude conectar al server!"); //
+		printf("mi socket es: %d\n", socketClient);
+	}
+
+	return exitcode;
+
+ */
 
 
