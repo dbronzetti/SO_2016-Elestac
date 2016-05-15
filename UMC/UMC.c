@@ -1,15 +1,29 @@
 #include "UMC.h"
 
-int main(){
+configFile configuration;
+
+int main(int argc, char *argv[]){
 	int exitCode = EXIT_SUCCESS ; //Normal completition
-	configFile configuration;
 	int socketServer;
 	int socketClient;
 	int highestDescriptor;
 	int socketCounter;
 	fd_set readSocketSet;
+	char *configurationFile = NULL;
 
-	configuration.port = 8080;
+	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS TODO => Agregar logs con librerias
+
+	int i;
+	for( i = 0; i < argc; i++){
+		if (strcmp(argv[i], "-c") == 0){
+			configurationFile = argv[i+1];
+			printf("Configuration File: '%s'\n",configurationFile);
+		}
+	}
+
+	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS TODO => Agregar logs con librerias
+
+	getConfiguration(configurationFile);
 
 	exitCode = openServerConnection(configuration.port, &socketServer);
 	printf("socketServer: %d\n",socketServer);
@@ -70,12 +84,6 @@ int main(){
 							close(socketClient);
 						}else{
 							switch ((int) message->process){
-								case SWAP:{
-									printf("%s\n",message->message);
-									exitCode = sendClientAcceptation(&socketClient, &readSocketSet);
-									highestDescriptor = (highestDescriptor < socketClient)?socketClient: highestDescriptor;
-									break;
-								}
 								case CPU:{
 									printf("%s\n",message->message);
 									exitCode = sendClientAcceptation(&socketClient, &readSocketSet);
@@ -177,3 +185,86 @@ int main(){
 }
 
 
+void getConfiguration(char *configFile){
+
+	FILE *file = fopen(configFile, "r");
+
+	assert(("ERROR - Could not open the configuration file", file != 0));// ERROR - Could not open file TODO => Agregar logs con librerias
+
+	char parameter[12]; //[12] is the max paramenter's name size
+	char parameterValue[20];
+
+	while ((fscanf(file, "%s", parameter)) != EOF){
+
+		switch(getEnum(parameter)){
+			case(PUERTO):{ //1
+				fscanf(file, "%s",parameterValue);
+				configuration.port = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
+				//printf("port: %d \n", configuration.port);
+				break;
+			}
+			case(IP_SWAP):{ //2
+				fscanf(file, "%s",parameterValue);
+				(strcmp(parameter, EOL_DELIMITER) != 0) ? memcpy(&configuration.ip_swap, parameterValue, sizeof(configuration.ip_swap)) : "" ;
+				break;
+			}
+			case(PUERTO_SWAP):{ //3
+				fscanf(file, "%s",parameterValue);
+				configuration.port_swap = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
+				break;
+			}
+			case(MARCOS):{ //4
+				fscanf(file, "%s",parameterValue);
+				configuration.frames_max = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
+				break;
+			}
+			case(MARCO_SIZE):{ //5
+				fscanf(file, "%s",parameterValue);
+				configuration.frames_size = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue): 0 /*DEFAULT VALUE*/ ;
+				break;
+			}
+			case(MARCO_X_PROC):{ //6
+				fscanf(file, "%s",parameterValue);
+				configuration.frames_max_proc = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
+				break;
+			}
+			case(ENTRADAS_TLB):{ //7
+				fscanf(file, "%s",parameterValue);
+				configuration.TLB_entries = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
+				break;
+			}
+			case(RETARDO):{ //8
+				fscanf(file, "%s",parameterValue);
+				configuration.delay = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
+				break;
+			}
+			default:{
+				if (strcmp(parameter, EOL_DELIMITER) != 0){
+					perror("Error - Parameter read not recognized");//TODO => Agregar logs con librerias
+					printf("Error Parameter read not recognized '%s'\n",parameter);
+				}
+				break;
+			}
+		}// END switch(parameter)
+	}
+
+}
+
+int getEnum(char *string){
+	int parameter = -1;
+
+	//printf("string: %s \n", string);
+
+	strcmp(string,"PUERTO") == 0 ? parameter = PUERTO : -1 ;
+	strcmp(string,"IP_SWAP") == 0 ? parameter = IP_SWAP : -1 ;
+	strcmp(string,"PUERTO_SWAP") == 0 ? parameter = PUERTO_SWAP : -1 ;
+	strcmp(string,"MARCOS") == 0 ? parameter = MARCOS : -1 ;
+	strcmp(string,"MARCO_SIZE") == 0 ? parameter = MARCO_SIZE : -1 ;
+	strcmp(string,"MARCO_X_PROC") == 0 ? parameter = MARCO_X_PROC : -1 ;
+	strcmp(string,"ENTRADAS_TLB") == 0 ? parameter = ENTRADAS_TLB : -1 ;
+	strcmp(string,"RETARDO") == 0 ? parameter = RETARDO : -1 ;
+
+	//printf("parameter: %d \n", parameter);
+
+	return parameter;
+}

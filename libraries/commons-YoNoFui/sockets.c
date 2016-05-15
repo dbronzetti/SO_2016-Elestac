@@ -5,6 +5,8 @@ int openServerConnection(int newSocketServerPort, int *socketServer){
 
 	struct sockaddr_in newSocketInfo;
 
+	assert(("ERROR - Server port is the DEFAULT (=0)", newSocketServerPort != 0)); // FAILS if the Server port is equal to default value (0) TODO => Agregar logs con librerias
+
 	newSocketInfo.sin_family = AF_INET; //AF_INET = IPv4
 	newSocketInfo.sin_addr.s_addr = INADDR_ANY; //
 	newSocketInfo.sin_port = htons(newSocketServerPort);

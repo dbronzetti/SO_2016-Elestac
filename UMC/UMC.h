@@ -1,6 +1,9 @@
 #include <errno.h>
+#include <assert.h>
 #include "sockets.h"
 #include "commons/collections/list.h"
+
+#define EOL_DELIMITER ";"
 
 typedef struct {
 	int port;
@@ -13,4 +16,16 @@ typedef struct {
 	int delay;
 } configFile;
 
+typedef enum{
+	PUERTO = 0,
+	IP_SWAP,
+	PUERTO_SWAP,
+	MARCOS,
+	MARCO_SIZE,
+	MARCO_X_PROC,
+	ENTRADAS_TLB,
+	RETARDO
+} enum_configParameters;
 
+void getConfiguration(char *configFile);
+int getEnum(char *string);
