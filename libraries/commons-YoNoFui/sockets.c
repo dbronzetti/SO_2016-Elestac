@@ -46,7 +46,7 @@ int openClientConnection(char *IPServer, int PortServer, int *socketClient){
 	*socketClient = socket(AF_INET, SOCK_STREAM, 0);
 
 	if (connect(*socketClient, (void*) &serverSocketInfo, sizeof(serverSocketInfo)) != 0){
-		perror("Failed connect to server in OpenClientConnection()\n"); //TODO => Agregar logs con librerias
+		perror("Failed connect to server in OpenClientConnection()"); //TODO => Agregar logs con librerias
 		printf("Please check whether the server '%s' is up or the correct port is: %d \n",IPServer, PortServer);
 
 		//Free socket created
@@ -61,13 +61,14 @@ int openClientConnection(char *IPServer, int PortServer, int *socketClient){
 int acceptClientConnection(int *socketServer, int *socketClient){
 	int exitcode = EXIT_SUCCESS; //Normal completition
 	struct sockaddr_in clientConnection;
-	unsigned int addressSize;
+	unsigned int addressSize = sizeof(clientConnection); //The addressSize has to be initialized with the size of sockaddr_in before passing it to accept function
 
 	*socketClient = accept(*socketServer, (void*) &clientConnection, &addressSize);
 
 	if (*socketClient != -1){
 		printf("The was received a connection in: %d.\n", *socketClient);
 	}else{
+		perror("Failed to get a new connection"); //TODO => Agregar logs con librerias
 		exitcode = EXIT_FAILURE;
 	}
 
@@ -130,7 +131,7 @@ int sendClientHandShake(int *socketClient, enum_processes process){
 	return exitcode;
 }
 
-int sendClientAcceptation(int *socketClient, fd_set *readSocketSet){
+int sendClientAcceptation(int *socketClient){
 	int exitcode = EXIT_SUCCESS; //Normal completition
 	int bufferSize = 0;
 	int messageLen = 0;
@@ -146,10 +147,7 @@ int sendClientAcceptation(int *socketClient, fd_set *readSocketSet){
 	char *buffer = malloc(bufferSize);
 	serializeHandShake(messageACK, buffer, bufferSize);
 
-	send(*socketClient, (void*) buffer, bufferSize,0);
-
-	//Add the new client socket to the set after the successful handshake
-	FD_SET(*socketClient, readSocketSet);
+	exitcode = send(*socketClient, (void*) buffer, bufferSize,0) == -1 ? EXIT_FAILURE : EXIT_SUCCESS ;
 
 	free(buffer);
 	free(messageACK);

@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <assert.h>
+#include <pthread.h>
 #include "sockets.h"
 #include "commons/collections/list.h"
 
@@ -14,7 +15,12 @@ typedef struct {
 	int frames_max_proc;
 	int TLB_entries; /* 0 = Disable */
 	int delay;
-} configFile;
+} t_configFile;
+
+typedef struct {
+	int socketServer;
+	int socketClient;
+} t_serverData;
 
 typedef enum{
 	PUERTO = 0,
@@ -29,3 +35,7 @@ typedef enum{
 
 void getConfiguration(char *configFile);
 int getEnum(char *string);
+void startServer();
+void newClients (void *parameter);
+void processMessageReceived (void *parameter);
+void handShake (void *parameter);

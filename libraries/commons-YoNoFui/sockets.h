@@ -54,7 +54,7 @@ int openServerConnection(int newSocketServerPort, int *socketServer);
 int acceptClientConnection(int *socketServer, int *socketClient);
 int openClientConnection(char *IPServer, int PortServer, int *socketClient);
 int sendClientHandShake(int *socketClient, enum_processes process);
-int sendClientAcceptation(int *socketClient, fd_set *readSocketSet);
+int sendClientAcceptation(int *socketClient);
 int receiveMessage(int *socketClient, char *messageRcv, int bufferSize);
 void serializeHandShake(t_MessageGenericHandshake *value, char *buffer, int valueSize);
 void deserializeHandShake(t_MessageGenericHandshake *value, char *bufferReceived);

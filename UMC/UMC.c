@@ -1,15 +1,12 @@
 #include "UMC.h"
 
-configFile configuration;
+t_configFile configuration;
+pthread_mutex_t socketMutex;
 
 int main(int argc, char *argv[]){
-	int exitCode = EXIT_SUCCESS ; //Normal completition
-	int socketServer;
-	int socketClient;
-	int highestDescriptor;
-	int socketCounter;
-	fd_set readSocketSet;
+	int exitCode = EXIT_FAILURE ; //DEFAULT failure
 	char *configurationFile = NULL;
+	pthread_t serverThread;
 
 	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS TODO => Agregar logs con librerias
 
@@ -25,165 +22,209 @@ int main(int argc, char *argv[]){
 
 	getConfiguration(configurationFile);
 
-	exitCode = openServerConnection(configuration.port, &socketServer);
-	printf("socketServer: %d\n",socketServer);
-
-	//Clear socket set
-	FD_ZERO(&readSocketSet);
-
-	//If exitCode == 0 the server connection is openned and listenning
-	if (exitCode == 0) {
-		puts ("the server is openned");
-
-		//
-		highestDescriptor = socketServer;
-		//Add socket server to the set
-		FD_SET(socketServer,&readSocketSet);
-
-		while (1){
-
-			do{
-				exitCode = select(highestDescriptor + 1, &readSocketSet, NULL, NULL, NULL);
-			} while (exitCode == -1 && errno == EINTR);
-
-			//TODO disparar un thread para revisar actividad detectada
-			if (exitCode > EXIT_SUCCESS){
-				//Checking new connections in server socket
-				if (FD_ISSET(socketServer, &readSocketSet)){
-					//The server has detected activity, a new connection has been received
-					//TODO disparar un thread para acceptar cada cliente nuevo (debido a que el accept es bloqueante) y para hacer el handshake
-					exitCode = acceptClientConnection(&socketServer, &socketClient);
-
-					if (exitCode == EXIT_FAILURE){
-						printf("There was detected an attempt of wrong connection\n");//TODO => Agregar logs con librerias
-					}else{
-						//TODO posiblemente aca haya que disparar otro thread para que haga el recv y continue recibiendo conexiones al mismo tiempo
-
-						//Receive message size
-						int messageSize = 0;
-						char *messageRcv = malloc(sizeof(messageSize));
-						int receivedBytes = receiveMessage(&socketClient, messageRcv, sizeof(messageSize));
-
-						//Receive message using the size read before
-						memcpy(&messageSize, messageRcv, sizeof(int));
-						//printf("messageSize received: %d\n",messageSize);
-						messageRcv = realloc(messageRcv,messageSize);
-						receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
-
-						printf("bytes received in message: %d\n",receivedBytes);
-
-						//starting handshake with client connected
-						t_MessageGenericHandshake *message = malloc(sizeof(t_MessageGenericHandshake));
-						deserializeHandShake(message, messageRcv);
-
-						//Now it's checked that the client is not down
-						if ( receivedBytes == 0 ){
-							perror("One of the clients is down!"); //TODO => Agregar logs con librerias
-							printf("Please check the client: %d is down!\n", socketClient);
-							FD_CLR(socketClient, &readSocketSet);
-							close(socketClient);
-						}else{
-							switch ((int) message->process){
-								case CPU:{
-									printf("%s\n",message->message);
-									exitCode = sendClientAcceptation(&socketClient, &readSocketSet);
-									highestDescriptor = (highestDescriptor < socketClient)?socketClient: highestDescriptor;
-									break;
-								}
-								case NUCLEO:{
-									printf("%s\n",message->message);
-									exitCode = sendClientAcceptation(&socketClient, &readSocketSet);
-									highestDescriptor = (highestDescriptor < socketClient)?socketClient: highestDescriptor;
-									break;
-								}
-								default:{
-									perror("Process not allowed to connect");//TODO => Agregar logs con librerias
-									printf("Invalid process '%d' tried to connect to UMC\n",(int) message->process);
-									close(socketClient);
-									break;
-								}
-							}
-						}
-
-						free(messageRcv);
-						free(message->message);
-						free(message);
-					}// END handshake
-				}
-
-				//check activity in all the descriptors from the set
-				for(socketCounter=0 ; (socketCounter<highestDescriptor+1); socketCounter++){
-					//Skipping check the server activity again
-					if (socketServer != socketCounter && FD_ISSET(socketCounter,&readSocketSet)){
-
-						//Receive message size
-						int messageSize = 0;
-						char *messageRcv = malloc(sizeof(messageSize));
-						int receivedBytes = receiveMessage(&socketClient, messageRcv, sizeof(messageSize));
-						messageSize = atoi(messageRcv);
-
-						//Receive process from which the message is going to be interpreted
-						enum_processes fromProcess;
-						messageRcv = realloc(messageRcv, sizeof(fromProcess));
-						receivedBytes = receiveMessage(&socketClient, messageRcv, sizeof(fromProcess));
-
-						//Receive message using the size read before
-						fromProcess = (enum_processes) messageRcv;
-						messageRcv = realloc(messageRcv, messageSize);
-						receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
-
-						printf("bytes received: %d\n",receivedBytes);
-
-						if ( receivedBytes > 0 ){
-
-							switch (fromProcess){
-								case SWAP:{
-									t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
-									deserializeSwap_UMC(message, messageRcv);
-									printf("se recibio el processID #%d\n",message->processID);
-									free(message);
-									break;
-								}
-								case CPU:{
-									printf("Processing CPU message received\n");
-									break;
-								}
-								case NUCLEO:{
-									printf("Processing NUCLEO message received\n");
-									break;
-								}
-								default:{
-									perror("Process not allowed to connect");//TODO => Agregar logs con librerias
-									printf("Invalid process '#%d' tried to connect to UMC\n",(int) fromProcess);
-									close(socketClient);
-									break;
-								}
-							}
-
-						}else if (receivedBytes == 0 ){
-							//The client is down when bytes received are 0
-							perror("One of the clients is down!"); //TODO => Agregar logs con librerias
-							printf("Please check the client: %d is down!\n", socketCounter);
-							FD_CLR(socketCounter, &readSocketSet);
-							close(socketCounter);
-						}else{
-							perror("Error - No able to received");//TODO => Agregar logs con librerias
-							printf("Error receiving from socket '%d', with error: %d\n",socketCounter,errno);
-						}
-
-					free(messageRcv);
-					}
-				}//end checking activity
-			}
-		}
-	}
-
-	//cleaning set
-	FD_ZERO(&readSocketSet);
+	//Create thread for server start
+	pthread_mutex_init(&socketMutex, NULL);
+	pthread_create(&serverThread, NULL, (void*) startServer, NULL);
+	pthread_join(serverThread, NULL);
 
 	return exitCode;
 }
 
+void startServer(){
+	int exitCode = EXIT_FAILURE; //DEFAULT Failure
+	t_serverData serverData;
+
+	exitCode = openServerConnection(configuration.port, &serverData.socketServer);
+	printf("socketServer: %d\n",serverData.socketServer);
+
+	//If exitCode == 0 the server connection is opened and listening
+	if (exitCode == 0) {
+		puts ("The server is opened.");
+
+		exitCode = listen(serverData.socketServer, SOMAXCONN);
+
+		while (1){
+			newClients((void*) &serverData);
+		}
+	}
+
+}
+
+void newClients (void *parameter){
+	int exitCode = EXIT_FAILURE; //DEFAULT Failure
+	int pid;
+
+	t_serverData *serverData = (t_serverData*) parameter;
+
+	//TODO disparar un thread para acceptar cada cliente nuevo (debido a que el accept es bloqueante) y para hacer el handshake
+
+	exitCode = acceptClientConnection(&serverData->socketServer, &serverData->socketClient);
+
+	if (exitCode == EXIT_FAILURE){
+		printf("There was detected an attempt of wrong connection\n");//TODO => Agregar logs con librerias
+	}else{
+		//TODO posiblemente aca haya que disparar otro thread para que haga el recv y continue recibiendo conexiones al mismo tiempo
+		//Create thread attribute detached
+		pthread_attr_t handShakeThreadAttr;
+		pthread_attr_init(&handShakeThreadAttr);
+		pthread_attr_setdetachstate(&handShakeThreadAttr, PTHREAD_CREATE_DETACHED);
+
+		//Create thread for checking new connections in server socket
+		pthread_t handShakeThread;
+		pthread_create(&handShakeThread, &handShakeThreadAttr, (void*) handShake, parameter);
+
+		//Destroy thread attribute
+		pthread_attr_destroy(&handShakeThreadAttr);
+
+	}// END handshakes
+
+}
+
+void handShake (void *parameter){
+	int exitCode = EXIT_FAILURE; //DEFAULT Failure
+
+	t_serverData *serverData = (t_serverData*) parameter;
+
+	//Receive message size
+	int messageSize = 0;
+	char *messageRcv = malloc(sizeof(messageSize));
+	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(messageSize));
+
+	//Receive message using the size read before
+	memcpy(&messageSize, messageRcv, sizeof(int));
+	//printf("messageSize received: %d\n",messageSize);
+	messageRcv = realloc(messageRcv,messageSize);
+	receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
+
+	printf("bytes received in message: %d\n",receivedBytes);
+
+	//starting handshake with client connected
+	t_MessageGenericHandshake *message = malloc(sizeof(t_MessageGenericHandshake));
+	deserializeHandShake(message, messageRcv);
+
+	//Now it's checked that the client is not down
+	if ( receivedBytes == 0 ){
+		perror("The client went down while handshaking!"); //TODO => Agregar logs con librerias
+		printf("Please check the client: %d is down!\n", serverData->socketClient);
+	}else{
+		switch ((int) message->process){
+			case CPU:{
+				printf("%s\n",message->message);
+				exitCode = sendClientAcceptation(&serverData->socketClient);
+
+				if (exitCode == EXIT_SUCCESS){
+
+					//Create thread attribute detached
+					pthread_attr_t processMessageThreadAttr;
+					pthread_attr_init(&processMessageThreadAttr);
+					pthread_attr_setdetachstate(&processMessageThreadAttr, PTHREAD_CREATE_DETACHED);
+
+					//Create thread for checking new connections in server socket
+					pthread_t processMessageThread;
+					pthread_create(&processMessageThread, &processMessageThreadAttr, (void*) processMessageReceived, parameter);
+
+					//Destroy thread attribute
+					pthread_attr_destroy(&processMessageThreadAttr);
+				}
+
+				break;
+			}
+			case NUCLEO:{
+				printf("%s\n",message->message);
+				exitCode = sendClientAcceptation(&serverData->socketClient);
+
+				if (exitCode == EXIT_SUCCESS){
+
+					//Create thread attribute detached
+					pthread_attr_t processMessageThreadAttr;
+					pthread_attr_init(&processMessageThreadAttr);
+					pthread_attr_setdetachstate(&processMessageThreadAttr, PTHREAD_CREATE_DETACHED);
+
+					//Create thread for checking new connections in server socket
+					pthread_t processMessageThread;
+					pthread_create(&processMessageThread, &processMessageThreadAttr, (void*) processMessageReceived, parameter);
+
+					//Destroy thread attribute
+					pthread_attr_destroy(&processMessageThreadAttr);
+				}
+
+				break;
+			}
+			default:{
+				perror("Process not allowed to connect");//TODO => Agregar logs con librerias
+				printf("Invalid process '%d' tried to connect to UMC\n",(int) message->process);
+				close(serverData->socketClient);
+				break;
+			}
+		}
+	}
+
+	free(messageRcv);
+	free(message->message);
+	free(message);
+}
+
+void processMessageReceived (void *parameter){
+	int exitCode = EXIT_FAILURE; //DEFAULT Failure
+
+	t_serverData *serverData = (t_serverData*) parameter;
+
+	//Receive message size
+	int messageSize = 0;
+	char *messageRcv = malloc(sizeof(messageSize));
+	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(messageSize));
+
+	if ( receivedBytes > 0 ){
+		messageSize = atoi(messageRcv);
+
+		//Receive process from which the message is going to be interpreted
+		enum_processes fromProcess;
+		messageRcv = realloc(messageRcv, sizeof(fromProcess));
+		receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(fromProcess));
+
+		//Receive message using the size read before
+		fromProcess = (enum_processes) messageRcv;
+		messageRcv = realloc(messageRcv, messageSize);
+		receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
+
+		printf("bytes received: %d\n",receivedBytes);
+
+		switch (fromProcess){
+			case SWAP:{
+				t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
+				deserializeSwap_UMC(message, messageRcv);
+				printf("Se recibio el processID #%d\n",message->processID);
+				free(message);
+				break;
+			}
+			case CPU:{
+				printf("Processing CPU message received\n");
+				break;
+			}
+			case NUCLEO:{
+				printf("Processing NUCLEO message received\n");
+				break;
+			}
+			default:{
+				perror("Process not allowed to connect");//TODO => Agregar logs con librerias
+				printf("Invalid process '#%d' tried to connect to UMC\n",(int) fromProcess);
+				close(serverData->socketClient);
+				break;
+			}
+		}
+
+	}else if (receivedBytes == 0 ){
+		//The client is down when bytes received are 0
+		perror("One of the clients is down!"); //TODO => Agregar logs con librerias
+		printf("Please check the client: %d is down!\n", serverData->socketClient);
+	}else{
+		perror("Error - No able to received");//TODO => Agregar logs con librerias
+		printf("Error receiving from socket '%d', with error: %d\n",serverData->socketClient,errno);
+	}
+
+	free(messageRcv);
+
+}
 
 void getConfiguration(char *configFile){
 
@@ -200,7 +241,6 @@ void getConfiguration(char *configFile){
 			case(PUERTO):{ //1
 				fscanf(file, "%s",parameterValue);
 				configuration.port = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
-				//printf("port: %d \n", configuration.port);
 				break;
 			}
 			case(IP_SWAP):{ //2
