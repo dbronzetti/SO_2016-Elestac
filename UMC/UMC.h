@@ -35,6 +35,7 @@ typedef enum{
 
 void getConfiguration(char *configFile);
 int getEnum(char *string);
+void startUMCConsole();
 void startServer();
 void newClients (void *parameter);
 void processMessageReceived (void *parameter);

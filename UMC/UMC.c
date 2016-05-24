@@ -7,6 +7,7 @@ int main(int argc, char *argv[]){
 	int exitCode = EXIT_FAILURE ; //DEFAULT failure
 	char *configurationFile = NULL;
 	pthread_t serverThread;
+	pthread_t consolaThread;
 
 	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS TODO => Agregar logs con librerias
 
@@ -23,9 +24,13 @@ int main(int argc, char *argv[]){
 	getConfiguration(configurationFile);
 
 	//Create thread for server start
-	pthread_mutex_init(&socketMutex, NULL);
 	pthread_create(&serverThread, NULL, (void*) startServer, NULL);
+
+	//Create thread for UMC console
+	pthread_create(&consolaThread, NULL, (void*) startUMCConsole, NULL);
+
 	pthread_join(serverThread, NULL);
+	pthread_join(consolaThread, NULL);
 
 	return exitCode;
 }
@@ -290,6 +295,58 @@ void getConfiguration(char *configFile){
 
 }
 
+void startUMCConsole(){
+	char command[50];
+	char value[50];
+
+	printf("\n***********************************\n");
+	printf("* UMC Console ready for your use! *");
+	printf("\n***********************************\n\n");
+	printf("COMMANDS USAGE:\n\n");
+
+	printf("===> COMMAND:\tretardo [VALUE]\n");
+	printf("== [VALUE]\n");
+	printf("<numericValue>\t::Cantidad de milisegundos que el sistema debe esperar antes de responder una solicitud\n\n");
+
+	printf("===> COMMAND:\tdump [OPTIONS] [VALUE]\n");
+	printf("== [OPTIONS]\n");
+	printf("estructuras\t:: Tablas de paginas de todos los procesos o de un proceso en particular\n");
+	printf("contenido\t:: Datos almacenados en la memoria de todos los procesos o de un proceso en particular\n\n");
+	printf("== [VALUE]\n");
+	printf("all\t\t:: Todos los procesos\n");
+	printf("<processName>\t:: Nombre del proceso deseado\n\n");
+
+	printf("===> COMMAND:\tflush [OPTIONS] [VALUE]\n");
+	printf("== [OPTIONS]\n");
+	printf("tlb\t\t:: Limpia completamente el contenido de la TLB\n");
+	printf("memory\t\t:: Marca todas las paginas del proceso como modificadas\n\n");
+
+	while (1){
+		scanf("%s %s", command, value);
+
+		if (strcmp(command,"retardo") == 0 ){
+			configuration.delay = atoi(value);
+			printf("The delay UMC was successfully changed to: %d\n", configuration.delay);
+		}
+
+		if (strcmp(command,"dump") == 0 ){
+
+			printf("A copy of this dump was saved in: \n");
+		}
+
+		if (strcmp(command,"flush") == 0 ){
+
+			printf("The '%s' flush was completed successfully\n", value);
+		}
+
+
+	}
+
+	//free(command);
+	//free(value);
+
+}
+
 int getEnum(char *string){
 	int parameter = -1;
 
@@ -308,3 +365,4 @@ int getEnum(char *string){
 
 	return parameter;
 }
+
