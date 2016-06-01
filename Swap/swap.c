@@ -18,7 +18,6 @@ struct bloqueDeMemoria{
 
 ///////////////////////configurable trucho//////////////////////////////////
 int puertoEscucha;
-int nombreSwap;
 int tamanioDePagina;
 int cantidadDePaginas;
 int retardoCompactacion;
@@ -47,7 +46,7 @@ int agregarProceso(bloqueSwap* unBloque,t_list* unaLista){
 	archivoSwap=fopen(nombre_swap,"a+");
 	descriptorSwap=fileno(archivoSwap);
 	lseek(descriptorSwap,0,SEEK_SET);
-	archivoMapeado=mmap(0,(tamanioDePagina*cantidadDePaginas),PROT_READ,PROT_WRITE,(void*)descriptorSwap,MAP_SHARED,MAP_FIXED,tamanioDePagina*unBloque->paginaInicial);
+	archivoMapeado=mmap(0,(tamanioDePagina*cantidadDePaginas),PROT_WRITE,MAP_SHARED,(void*)descriptorSwap,(tamanioDePagina*unBloque->paginaInicial));
 	bloqueSwap* elementoEncontrado;
 	elementoEncontrado=(bloqueSwap*)malloc(sizeof(bloqueSwap));
 	bloqueSwap* nuevoBloqueVacio;
@@ -78,7 +77,7 @@ int agregarProceso(bloqueSwap* unBloque,t_list* unaLista){
 	list_remove_and_destroy_by_condition(unaLista,(void*)posibleBloqueAEliminar,(void*)destructorBloqueSwap);
 	list_add(unaLista,(void*)nuevoBloqueVacio);
 	list_add(unaLista,(void*)unBloque);
-	munmap(archivoMapeado);
+	munmap(archivoMapeado,(tamanioDePagina*cantidadDePaginas));
 	return 0;
 }
 
@@ -124,7 +123,7 @@ int compactarArchivo(t_list* unaLista){
 		list_add(unaLista,bloqueVacioCompacto);
 		return 0;
 	}
-}
+}}
 
 int eliminarProceso(t_list* unaLista,bloqueSwap unProceso){
 	bloqueSwap* procesoAEliminar=malloc(sizeof(bloqueSwap));
@@ -149,8 +148,41 @@ void crearArchivoDeSwap(){
 	cadenaTotal=strcat(cadenaTotal,tamanioPagina);
 	cadenaTotal=strcat(cadenaTotal,terceraParteCadena);
 	cadenaTotal=strcat(cadenaTotal,cadCantidadDePaginas);
-	system(cadenaTotal);
+	system(cadenaTotal[50]);
 	}
+int condicionLeer(bloqueSwap* unBloque,bloqueSwap* otroBloque){
+			return (unBloque->PID==otroBloque->PID);
+			}
+void leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap){
+
+
+	bloqueSwap* bloqueEncontrado;
+	FILE* archivoSwap;
+	int descriptorSwap;
+	char* archivoMapeado;
+	char* paginaAEnviar;
+	archivoSwap=fopen(nombre_swap,"a+");
+	descriptorSwap=fileno(archivoSwap);
+	lseek(descriptorSwap,0,SEEK_SET);
+	bloqueEncontrado=list_find(listaSwap,(void*)condicionLeer);
+	archivoMapeado=mmap(0,tamanioDePagina*cantidadDePaginas,PROT_WRITE,MAP_SHARED,descriptorSwap,tamanioDePagina*bloqueDeSwap->paginaInicial);
+	memcpy(paginaAEnviar,archivoMapeado,tamanioDePagina);
+	//enviar(paginaAEnviar);
+	}
+
+void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque,t_list* listaSwap){
+	int descriptorSwap;
+	char* archivoMapeado;
+	FILE* archivoSwap;
+	archivoSwap=fopen(nombre_swap,"a+");
+	descriptorSwap=fileno(archivoSwap);
+	lseek(descriptorSwap,0,SEEK_SET);
+
+	archivoMapeado=mmap(0,tamanioDePagina*cantidadDePaginas,PROT_WRITE,MAP_SHARED,descriptorSwap,tamanioDePagina*unBloque->paginaInicial);
+	memset(archivoMapeado+unBloque->cantDePaginas,paginaAEscribir,tamanioDePagina);
+}
+
+
 
 
 
