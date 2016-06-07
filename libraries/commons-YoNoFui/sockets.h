@@ -50,6 +50,32 @@ typedef struct{
 	enum_processStatus processStatus;
 } t_MessageUMC_Nucleo;
 
+typedef struct{
+	enum_processStatus processStatus;
+} t_MessageNucleo_UMC;
+
+typedef struct{
+	int head;
+	int processID;
+	enum_processStatus processStatus;
+	char path[250];
+	int pc;
+	int cantInstruc;
+	int operacion;
+	int numSocket;
+	int id;
+} t_MessageNucleo_CPU;
+
+typedef struct{
+	int processID;
+	enum_processStatus processStatus;
+} t_MessageNucleo_Consola;
+
+typedef struct{
+	int processID;
+	enum_processStatus processStatus;
+} t_MessageCPU_Nucleo;
+
 int openServerConnection(int newSocketServerPort, int *socketServer);
 int acceptClientConnection(int *socketServer, int *socketClient);
 int openClientConnection(char *IPServer, int PortServer, int *socketClient);
@@ -72,5 +98,8 @@ void deserializeNucleo_UMC(t_MessageUMC_Nucleo *value, char *bufferReceived);
 
 void serializeUMC_CPU(t_MessageUMC_CPU *value, char *buffer, int valueSize);
 void deserializeCPU_UMC(t_MessageUMC_CPU *value, char *bufferReceived);
+
+void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize);
+void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char *bufferReceived);
 
 #endif /*SOCKET_H_*/

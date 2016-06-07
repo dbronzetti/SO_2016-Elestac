@@ -3,6 +3,7 @@
 	<name>commons-YoNoFui</name>
 	<comment></comment>
 	<projects>
+		<project>commons</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
