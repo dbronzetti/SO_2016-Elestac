@@ -1,3 +1,6 @@
+#ifndef UMC_H_
+#define UMC_H_
+
 #include <errno.h>
 #include <assert.h>
 #include <pthread.h>
@@ -40,3 +43,5 @@ void startServer();
 void newClients (void *parameter);
 void processMessageReceived (void *parameter);
 void handShake (void *parameter);
+
+#endif /* UMC_H_ */
