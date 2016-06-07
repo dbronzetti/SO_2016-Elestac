@@ -28,24 +28,24 @@
 								<option defaultValue="gnu.c.optimization.level.none" id="gnu.c.compiler.exe.debug.option.optimization.level.355321501" name="Optimization Level" superClass="gnu.c.compiler.exe.debug.option.optimization.level" valueType="enumerated"/>
 								<option id="gnu.c.compiler.exe.debug.option.debugging.level.1969613690" name="Debug Level" superClass="gnu.c.compiler.exe.debug.option.debugging.level" value="gnu.c.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.files.783143468" name="Include files (-include)" superClass="gnu.c.compiler.option.include.files" valueType="includeFiles">
-									<listOptionValue builtIn="false" value="/home/utnso/git/tp-2016-1c-YoNoFui/libraries/commons-YoNoFui/commons-YoNoFui/sockets.c"/>
+									<listOptionValue builtIn="false" value="/home/utnso/git/tp-2016-1c-YoNoFui/libraries/commons-YoNoFui/sockets.c"/>
 								</option>
 								<option id="gnu.c.compiler.option.include.paths.1157285019" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commos-YoNoFui}&quot;"/>
-									<listOptionValue builtIn="false" value="/home/utnso/git/tp-2016-1c-YoNoFui/libraries/commons-YoNoFui/commons-YoNoFui"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commons}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/utnso/git/tp-2016-1c-YoNoFui/libraries/commons-YoNoFui"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commons-YoNoFui}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1970179097" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.debug.506370866" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.debug">
 								<option id="gnu.c.link.option.libs.233149099" name="Libraries (-l)" superClass="gnu.c.link.option.libs" valueType="libs">
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="commos-YoNoFui"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="commons"/>
-									<listOptionValue builtIn="false" value=""/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="commons-YoNoFui"/>
 								</option>
 								<option id="gnu.c.link.option.paths.4568850" name="Library search path (-L)" superClass="gnu.c.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commos-YoNoFui/Debug}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commons/Debug}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/utnso/git/tp-2016-1c-YoNoFui/libraries/commons-YoNoFui"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commons-YoNoFui/Debug}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.linker.input.979123461" superClass="cdt.managedbuild.tool.gnu.c.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
@@ -55,23 +55,13 @@
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug.248101922" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug"/>
 							<tool id="cdt.managedbuild.tool.gnu.assembler.exe.debug.698375491" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.debug">
 								<option id="gnu.both.asm.option.include.paths.2028867352" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commos-YoNoFui}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commons}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commons-YoNoFui}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1515164381" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
 					</folderInfo>
-					<fileInfo id="cdt.managedbuild.config.gnu.exe.debug.1839753168.1854313254" name="serializacion.c" rcbsApplicability="disable" resourcePath="serializacion.c" toolsToInvoke="cdt.managedbuild.tool.gnu.c.compiler.exe.debug.460247004.1304036373">
-						<tool id="cdt.managedbuild.tool.gnu.c.compiler.exe.debug.460247004.1304036373" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.debug.460247004">
-							<option id="gnu.c.compiler.option.include.paths.1263843051" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
-								<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commos-YoNoFui}&quot;"/>
-								<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commons}&quot;"/>
-								<listOptionValue builtIn="false" value="/home/utnso/git/tp-2016-1c-YoNoFui/libraries/commons-YoNoFui/commons-YoNoFui"/>
-							</option>
-							<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.247983469" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
-						</tool>
-					</fileInfo>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">

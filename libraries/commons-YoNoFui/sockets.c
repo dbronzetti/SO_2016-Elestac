@@ -251,6 +251,50 @@ void deserializeSwap_UMC(t_MessageUMC_Swap *value, char *bufferReceived){
 
 }
 
+void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize) {
+	int offset = 0;
+	enum_processes process = NUCLEO;
+
+	//0)valueSize
+	memcpy(buffer, &valueSize, sizeof(valueSize));
+	offset += sizeof(valueSize);
+
+	//1)From process
+	memcpy(buffer, &process, sizeof(process));
+	offset += sizeof(process);
+
+	//2)head
+	memcpy(buffer + offset, &value->head, sizeof(value->head));
+	offset += sizeof(value->head);
+
+	//3)processID
+	memcpy(buffer + offset, &value->processID, sizeof(value->processID));
+	offset += sizeof(value->processID);
+
+	//4)path
+	memcpy(buffer + offset, &value->path, 250);
+	offset += 250;
+
+	//5)pc
+	memcpy(buffer + offset, &value->pc, sizeof(value->pc));
+	offset += sizeof(value->pc);
+
+	//6)cantInstruc
+	memcpy(buffer + offset, &value->cantInstruc, sizeof(value->cantInstruc));
+
+}
+
+void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char * bufferReceived) {
+	int offset = 0;
+
+	memcpy(&value->operacion, bufferReceived, sizeof(value->operacion));
+	offset += sizeof(value->operacion);
+
+	memcpy(&value->processID, bufferReceived + offset, sizeof(value->processID));
+	offset += sizeof(value->processID);
+}
+
+
 /* EJEMPLO DE COMO CREAR UN CLIENTE Y MANDAR MENSAJES AL SERVER
 int socketClient;
 
