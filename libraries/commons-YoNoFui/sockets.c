@@ -154,6 +154,14 @@ int sendClientAcceptation(int *socketClient){
 	return exitcode;
 }
 
+int sendMessage (int *socketClient, char *buffer, int bufferSize){
+	int exitcode = EXIT_SUCCESS; //Normal completition
+
+	exitcode = send(*socketClient, (void*) buffer, bufferSize,0) == -1 ? EXIT_FAILURE : EXIT_SUCCESS ;
+
+	return exitcode;
+}
+
 int receiveMessage(int *socketClient, char *messageRcv, int bufferSize){
 
 	int receivedBytes = recv(*socketClient, (void*) messageRcv, bufferSize, 0);
