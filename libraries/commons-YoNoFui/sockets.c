@@ -284,8 +284,8 @@ void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize
 	offset += 250;
 
 	//5)pc
-	memcpy(buffer + offset, &value->pc, sizeof(value->pc));
-	offset += sizeof(value->pc);
+	memcpy(buffer + offset, &value->ProgramCounter, sizeof(value->ProgramCounter));
+	offset += sizeof(value->ProgramCounter);
 
 	//6)cantInstruc
 	memcpy(buffer + offset, &value->cantInstruc, sizeof(value->cantInstruc));
