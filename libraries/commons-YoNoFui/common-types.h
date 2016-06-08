@@ -2,6 +2,15 @@
 * Common Types for all the processes 
 ***************************************************/
 #include <commons/collections/list.h>
+#include <stdio.h>
+
+typedef enum{
+	DISCO = 0//TODO definir enum_dispositivos
+} enum_dispositivos;
+
+typedef struct{
+	//TODO ver como implementar t_nombre_semaforo
+} t_nombre_semaforo;
 
 typedef struct{
 	int pag;
@@ -44,3 +53,20 @@ struct bloqueDeControl{
 	t_list *indiceDeEtiquetas;//cola o pila con registros del tipo t_registroIndiceEtiqueta
 	t_list *indiceDeStack;//cola o pila con registros del tipo t_registroStack
 }typedef t_PCB;
+
+void setPageSize (int pageSize);
+int getLogicalAddress (int page);
+int definirVariable(t_vars nombreVariable);
+int obtenerPosicionVariable(t_vars identificador_variable);
+void *dereferenciar(t_memoryLocation direccion_variable);
+void asignar(t_memoryLocation direccion_variable, t_memoryLocation valor);
+t_memoryLocation *obtenerValorCompartida(t_vars variable);
+t_memoryLocation asignarValorCompartida(t_vars variable, t_memoryLocation valor);
+void irAlLabel(t_registroIndiceEtiqueta etiqueta);
+void llamarConRetorno(t_registroIndiceEtiqueta etiqueta, t_registroStack donde_retornar);
+void retornar(t_memoryLocation *retorno);
+int imprimir(t_memoryLocation valor_mostrar);
+int imprimirTexto(char* texto);
+int entradaSalida(enum_dispositivos dispositivo, int tiempo);
+void wait(t_nombre_semaforo identificador_semaforo);
+void signal(t_nombre_semaforo identificador_semaforo);
