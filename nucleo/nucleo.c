@@ -253,7 +253,7 @@ void processMessageReceived (void *parameter){
 					case 1: //Entrada Salida
 						recv(serverData->socketClient, (void*) datosEntradaSalida, sizeof(t_es),MSG_WAITALL);
 						deserializeIO(&infoES, &datosEntradaSalida);
-						hacerEntradaSalida(serverData->socketClient, message->processID,infoES.pc, infoES.tiempo);
+						hacerEntradaSalida(serverData->socketClient, message->processID,infoES.ProgramCounter, infoES.tiempo);
 						break;
 					case 2: //Finaliza Proceso Bien
 						finalizaProceso(serverData->socketClient, message->processID,message->operacion);
@@ -315,21 +315,21 @@ void correrPath(char* path){
 	path[i-1]='\0';
 
 	//Creo el PCB del proceso.
-	t_pcb* PCB = malloc(sizeof(t_pcb));
+	t_PCB* PCB = malloc(sizeof(t_PCB));
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
 
-	PCB->pid = idProcesos;
+	PCB->PID = idProcesos;
 	strcpy(PCB->path,path);
-	PCB->pc = 0;
+	PCB->ProgramCounter = 0;
 	PCB->estado=1;
 	idProcesos++;
 	PCB->finalizar = 0;
 	list_add(listaProcesos,(void*)PCB);
-	log_info(logNucleo, "myProcess %d - Iniciado  Path: %s",PCB->pid, path);
+	log_info(logNucleo, "myProcess %d - Iniciado  Path: %s",PCB->PID, path);
 
 	//Agrego a la Cola de Listos
-	datosProceso->pc = PCB->pc;
-	datosProceso->pid = PCB->pid;
+	datosProceso->ProgramCounter = PCB->ProgramCounter;
+	datosProceso->PID = PCB->PID;
 
 	pthread_mutex_lock(&cListos);
 	queue_push(colaListos, (void*)datosProceso);
@@ -339,26 +339,26 @@ void correrPath(char* path){
 
 }
 
-void atenderCorteQuantum(int socket,int pid){
+void atenderCorteQuantum(int socket,int PID){
 	//Libero la CPU
 	liberarCPU(socket);
 
 	//Cambio el PC del Proceso, le sumo el quantum al PC actual.
-	t_pcb* infoProceso;
-	int buscar = buscarPCB(pid);
-	infoProceso = (t_pcb*)list_get(listaProcesos,buscar);
+	t_PCB* infoProceso;
+	int buscar = buscarPCB(PID);
+	infoProceso = (t_PCB*)list_get(listaProcesos,buscar);
 	int pcnuevo;
-	pcnuevo = infoProceso->pc + configuration.quantum;
-	actualizarPC(pid,pcnuevo);
+	pcnuevo = infoProceso->ProgramCounter + configuration.quantum;
+	actualizarPC(PID,pcnuevo);
 	//Agrego el proceso a la Cola de Listos
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
-	datosProceso->pid = pid;
-	datosProceso->pc = pcnuevo;
+	datosProceso->PID = PID;
+	datosProceso->ProgramCounter = pcnuevo;
 	if (infoProceso->finalizar == 0){
 
 	//Cambio el estado del proceso
 	int estado = 1;
-	cambiarEstadoProceso(pid, estado);
+	cambiarEstadoProceso(PID, estado);
 	pthread_mutex_lock(&cListos);
 	queue_push(colaListos,(void*)datosProceso);
 	pthread_mutex_unlock(&cListos);
@@ -372,25 +372,25 @@ void atenderCorteQuantum(int socket,int pid){
 	planificarProceso();
 }
 
-void finalizaProceso(int socket, int pid, int estado) {
+void finalizaProceso(int socket, int PID, int estado) {
 
-	int posicion = buscarPCB(pid);
+	int posicion = buscarPCB(PID);
 	int estadoProceso;
 	//Cambio el estado del proceso, y guardo en Log que finalizo correctamente
-	t_pcb* datosProceso;
-	datosProceso = (t_pcb*) list_get(listaProcesos, posicion);
+	t_PCB* datosProceso;
+	datosProceso = (t_PCB*) list_get(listaProcesos, posicion);
 	if (estado == 2) {
 		estadoProceso = 4;
-		cambiarEstadoProceso(pid, estadoProceso);
+		cambiarEstadoProceso(PID, estadoProceso);
 		log_info(logNucleo, "myProcess %d path %s - Finalizo correctamente",
-				datosProceso->pid, datosProceso->path);
+				datosProceso->PID, datosProceso->path);
 	} else {
 		if (estado == 3) {
 			estadoProceso = 5;
-			cambiarEstadoProceso(pid, estadoProceso);
+			cambiarEstadoProceso(PID, estadoProceso);
 			log_info(logNucleo,
 					"myProcess %d path %s - Finalizo incorrectamente por falta de espacio en Swap",
-					datosProceso->pid, datosProceso->path);
+					datosProceso->PID, datosProceso->path);
 		}
 	}
 	//Libero la CPU
@@ -415,7 +415,7 @@ void planificarProceso() {
 	}
 
 	//Le envio la informacion a la CPU
-	t_pcb* datosPCB;
+	t_PCB* datosPCB;
 	t_MessageNucleo_CPU contextoProceso;
 	t_proceso* datosProceso;
 	contextoProceso.head = 0;
@@ -427,16 +427,16 @@ void planificarProceso() {
 		datosProceso = (t_proceso*) queue_peek(colaListos);
 		pthread_mutex_unlock(&cListos);
 
-		int posicion = buscarPCB(datosProceso->pid);
+		int posicion = buscarPCB(datosProceso->PID);
 		if (posicion != -1) {
-			datosPCB = (t_pcb*) list_get(listaProcesos, posicion);
+			datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
 			char* bufferEnviar = malloc(sizeof(t_MessageNucleo_CPU));
 
 			contextoProceso.cantInstruc = configuration.quantum;
 
-			contextoProceso.pc = datosPCB->pc;
+			contextoProceso.ProgramCounter = datosPCB->ProgramCounter;
 			strcpy(contextoProceso.path, datosPCB->path);
-			contextoProceso.processID = datosPCB->pid;
+			contextoProceso.processID = datosPCB->PID;
 			//Saco el primer elemento de la cola, porque ya lo planifique.
 			pthread_mutex_lock(&cListos);
 			queue_pop(colaListos);
@@ -445,7 +445,7 @@ void planificarProceso() {
 			send(libre, bufferEnviar, sizeof(t_MessageNucleo_CPU), 0);
 			//Cambio Estado del Proceso
 			int estado = 2;
-			cambiarEstadoProceso(datosPCB->pid, estado);
+			cambiarEstadoProceso(datosPCB->PID, estado);
 
 		} else {
 			printf("Proceso no encontrado en la lista.\n");
@@ -454,16 +454,16 @@ void planificarProceso() {
 		pthread_mutex_lock(&cFinalizar);
 		datosProceso = (t_proceso*) queue_peek(colaFinalizar);
 		pthread_mutex_unlock(&cFinalizar);
-		int posicion = buscarPCB(datosProceso->pid);
+		int posicion = buscarPCB(datosProceso->PID);
 		if (posicion != -1) {
-			datosPCB = (t_pcb*) list_get(listaProcesos, posicion);
+			datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
 			char* bufferEnviar = malloc(sizeof(t_MessageNucleo_CPU));
 
 			contextoProceso.head = 1;
 
-			contextoProceso.pc = datosPCB->pc;
+			contextoProceso.ProgramCounter = datosPCB->ProgramCounter;
 			strcpy(contextoProceso.path, datosPCB->path);
-			contextoProceso.processID = datosPCB->pid;
+			contextoProceso.processID = datosPCB->PID;
 			serializeNucleo_CPU(&contextoProceso, bufferEnviar, sizeof(t_MessageNucleo_CPU));
 			//Saco el primer elemento de la cola, porque ya lo planifique.
 			pthread_mutex_lock(&cFinalizar);
@@ -473,7 +473,7 @@ void planificarProceso() {
 			send(libre, bufferEnviar, sizeof(t_MessageNucleo_CPU), 0);
 			//Cambio Estado del Proceso
 			int estado = 2;
-			cambiarEstadoProceso(datosPCB->pid, estado);
+			cambiarEstadoProceso(datosPCB->PID, estado);
 		}
 	}
 
@@ -494,12 +494,12 @@ int buscarCPULibre() {
 }
 
 int buscarPCB(int id) {
-	t_pcb* datosPCB;
+	t_PCB* datosPCB;
 	int i = 0;
 	int cantPCB = list_size(listaProcesos);
 	for (i = 0; i < cantPCB; i++) {
 		datosPCB = list_get(listaProcesos, i);
-		if (datosPCB->pid == id) {
+		if (datosPCB->PID == id) {
 			return i;
 		}
 	}
@@ -519,18 +519,18 @@ int buscarCPU(int socket) {
 	return -1;
 }
 
-void hacerEntradaSalida(int socket, int pid, int pc, int tiempo) {
+void hacerEntradaSalida(int socket, int PID, int ProgramCounter, int tiempo) {
 
 	t_bloqueado* infoBloqueado = malloc(sizeof(t_bloqueado));
 //Libero la CPU que ocupaba el proceso
 	liberarCPU(socket);
 //Cambio el estado del proceso
 	int estado = 3;
-	cambiarEstadoProceso(pid, estado);
+	cambiarEstadoProceso(PID, estado);
 //Cambio el PC del Proceso
-	actualizarPC(pid, pc);
+	actualizarPC(PID, ProgramCounter);
 //Agrego a la cola de Bloqueados, y seteo el semaforo
-	infoBloqueado->pid = pid;
+	infoBloqueado->PID = PID;
 	infoBloqueado->tiempo = tiempo;
 
 	pthread_mutex_lock(&cBloqueados);
@@ -552,11 +552,11 @@ void liberarCPU(int socket) {
 	}
 }
 
-void cambiarEstadoProceso(int pid, int estado) {
-	int cambiar = buscarPCB(pid);
+void cambiarEstadoProceso(int PID, int estado) {
+	int cambiar = buscarPCB(PID);
 	if (cambiar != -1) {
-		t_pcb* datosProceso;
-		datosProceso = (t_pcb*) list_get(listaProcesos, cambiar);
+		t_PCB* datosProceso;
+		datosProceso = (t_PCB*) list_get(listaProcesos, cambiar);
 		datosProceso->estado = estado;
 	} else {
 		printf("Error a cambiar estado de proceso, proceso no encontrado en la lista.\n");
@@ -574,16 +574,16 @@ void atenderBloqueados() {
 		sleep(datosProceso->tiempo);
 		//Proceso en estado ready
 		int estado = 1;
-		cambiarEstadoProceso(datosProceso->pid, estado);
+		cambiarEstadoProceso(datosProceso->PID, estado);
 		//Agrego a la Lista de Listos el Proceso
-		int buscar = buscarPCB(datosProceso->pid);
-		t_pcb * informacionDeProceso = list_get(listaProcesos, buscar);
+		int buscar = buscarPCB(datosProceso->PID);
+		t_PCB * informacionDeProceso = list_get(listaProcesos, buscar);
 		t_proceso* infoProceso = (t_proceso*) malloc(sizeof(t_proceso));
-		t_pcb* datos;
+		t_PCB* datos;
 		if (buscar != -1) {
-			datos = (t_pcb*) list_get(listaProcesos, buscar);
-			infoProceso->pid = datos->pid;
-			infoProceso->pc = datos->pc;
+			datos = (t_PCB*) list_get(listaProcesos, buscar);
+			infoProceso->PID = datos->PID;
+			infoProceso->ProgramCounter = datos->ProgramCounter;
 			pthread_mutex_lock(&cBloqueados);
 			queue_pop(colaBloqueados);
 			pthread_mutex_unlock(&cBloqueados);
@@ -603,12 +603,12 @@ void atenderBloqueados() {
 	}
 }
 
-void actualizarPC(int pid, int pc) {
-	int cambiar = buscarPCB(pid);
+void actualizarPC(int PID, int ProgramCounter) {
+	int cambiar = buscarPCB(PID);
 	if (cambiar != -1) {
-		t_pcb* datosProceso;
-		datosProceso = (t_pcb*) list_get(listaProcesos, cambiar);
-		datosProceso->pc = pc;
+		t_PCB* datosProceso;
+		datosProceso = (t_PCB*) list_get(listaProcesos, cambiar);
+		datosProceso->ProgramCounter = ProgramCounter;
 	} else {
 		printf("Error a cambiar el PC del proceso, proceso no encontrado en la lista.\n");
 	}
@@ -617,11 +617,11 @@ void actualizarPC(int pid, int pc) {
 void obtenerps() {
 	int total;
 	char* estado = malloc(50);
-	t_pcb* datosProceso;
+	t_PCB* datosProceso;
 	total = list_size(listaProcesos);
 	int i;
 	for (i = 0; i < total; i++) {
-		datosProceso = (t_pcb*) list_get(listaProcesos, i);
+		datosProceso = (t_PCB*) list_get(listaProcesos, i);
 		switch (datosProceso->estado) {
 		case 1:
 			strcpy(estado, "Ready");
@@ -639,22 +639,22 @@ void obtenerps() {
 			strcpy(estado, "Exit failure");
 			break;
 		}
-		printf("myProcess %d estado:%s\n", datosProceso->pid, estado);
+		printf("myProcess %d estado:%s\n", datosProceso->PID, estado);
 	}
 }
 
-void finalizarPid(int pid) {
-	if ((pid < 0) || (pid > idProcesos)) {
+void finalizarPid(int PID) {
+	if ((PID < 0) || (PID > idProcesos)) {
 		printf("Error, PID inexistente.\n");
 		return;
 	}
-	int ret = buscarPCB(pid);
+	int ret = buscarPCB(PID);
 	if (ret == -1) {
 		printf("Error al buscar el proceso.\n");
 		return;
 	}
-	t_pcb* datosProceso;
-	datosProceso = (t_pcb*) list_get(listaProcesos, ret);
+	t_PCB* datosProceso;
+	datosProceso = (t_PCB*) list_get(listaProcesos, ret);
 	switch (datosProceso->estado) {
 	case 1:
 		//EL proceso esta en la cola de Ready
@@ -687,8 +687,8 @@ void deserializeIO(t_es* datos, char** buffer) {
 	memcpy(&datos->tiempo, *buffer, sizeof(datos->tiempo));
 	offset += sizeof(datos->tiempo);
 
-	memcpy(&datos->pc, *buffer + offset, sizeof(datos->pc));
-	offset += sizeof(datos->pc);
+	memcpy(&datos->ProgramCounter, *buffer + offset, sizeof(datos->ProgramCounter));
+	offset += sizeof(datos->ProgramCounter);
 }
 
 void getConfiguration(char *configFile){

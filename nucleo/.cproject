@@ -31,9 +31,9 @@
 									<listOptionValue builtIn="false" value="/home/utnso/git/tp-2016-1c-YoNoFui/libraries/commons-YoNoFui/sockets.c"/>
 								</option>
 								<option id="gnu.c.compiler.option.include.paths.1157285019" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commos-YoNoFui}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commons}&quot;"/>
 									<listOptionValue builtIn="false" value="/home/utnso/git/tp-2016-1c-YoNoFui/libraries/commons-YoNoFui"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commons-YoNoFui}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1970179097" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>

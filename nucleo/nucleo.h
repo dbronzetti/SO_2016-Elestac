@@ -7,6 +7,7 @@
 #define NUCLEO_H_
 #define EOL_DELIMITER ";"
 
+#include "common-types.h"
 #include "sockets.h"
 #include "commons/log.h"
 #include "commons/temporal.h"
@@ -51,48 +52,16 @@ typedef struct {
 	int socketClient;
 } t_serverData;
 
-typedef struct {
-	int longitud;
-	int desplazamiento;
-} t_cod;
-
-typedef struct {
-/*serialización de un diccionario que asocia el identificador de cada
- función y etiqueta del programa con la primer instrucción ejecutable de la misma*/
-} t_etiqueta;
-
-typedef struct {
-	t_list* args;
-	t_list* vars;
-	int retPos;
-	int retVar;
-} t_stack;
-
-//Estructura PCB
-typedef struct PCB {
-	int pid;
-	int estado; //0: New, 1: Ready, 2: Exec, 3: Block, 4:5: Exit
-	int finalizar;
-	int pc;
-	int sp;
-	char path[250];
-	int paginasDeCodigo;
-	t_cod indiceDeCodigo;
-	t_etiqueta indiceDeEtiquetas;
-	t_stack indiceDeStack;
-
-} t_pcb;
-
 //Estructura Procesos Bloqueados
 typedef struct {
-	int pid;
+	int PID;
 	int tiempo;
 } t_bloqueado;
 
 //Estructura Procesos (en cola)
 typedef struct {
-	int pid;
-	int pc;
+	int PID;
+	int ProgramCounter;
 } t_proceso;
 
 //Semaforos
@@ -107,12 +76,12 @@ sem_t semBloqueados;
 
 typedef struct datosEntradaSalida {
 	int tiempo;
-	int pc;
+	int ProgramCounter;
 } t_es;
 
 typedef struct {
 	int socket;
-	int pid;
+	int PID;
 	char ids[];
 } t_entradasalida;
 
