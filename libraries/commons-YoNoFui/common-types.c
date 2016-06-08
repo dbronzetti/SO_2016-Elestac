@@ -129,14 +129,14 @@ int entradaSalida(enum_dispositivos dispositivo, int tiempo){
 	return 0; //TODO ver que valor debe retornar
 }
 
-void wait(t_nombre_semaforo identificador_semaforo){
+void wait(t_nombreSemaforo identificador_semaforo){
 
 	//ver como implementar t_nombre_semaforo
 	//TODO send to Nucleo to execute WAIT function for "identificador_semaforo"
 
 }
 
-void signal(t_nombre_semaforo identificador_semaforo){
+void signal(t_nombreSemaforo identificador_semaforo){
 
 	//ver como implementar t_nombre_semaforo
 	//TODO send to Nucleo to execute SIGNAL function for "identificador_semaforo"

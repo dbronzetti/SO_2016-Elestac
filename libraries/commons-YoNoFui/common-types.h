@@ -10,7 +10,7 @@ typedef enum{
 
 typedef struct{
 	//TODO ver como implementar t_nombre_semaforo
-} t_nombre_semaforo;
+} t_nombreSemaforo;
 
 typedef struct{
 	int pag;
@@ -68,5 +68,5 @@ void retornar(t_memoryLocation *retorno);
 int imprimir(t_memoryLocation valor_mostrar);
 int imprimirTexto(char* texto);
 int entradaSalida(enum_dispositivos dispositivo, int tiempo);
-void wait(t_nombre_semaforo identificador_semaforo);
-void signal(t_nombre_semaforo identificador_semaforo);
+void wait(t_nombreSemaforo identificador_semaforo);
+void signal(t_nombreSemaforo identificador_semaforo);
