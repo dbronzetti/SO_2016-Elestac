@@ -59,7 +59,7 @@ typedef struct{
 	int processID;
 	enum_processStatus processStatus;
 	char path[250];
-	int pc;
+	int ProgramCounter;
 	int cantInstruc;
 	int operacion;
 	int numSocket;
