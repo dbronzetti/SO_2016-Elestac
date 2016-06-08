@@ -131,7 +131,7 @@ void handShake (void *parameter){
 				if (exitCode == EXIT_SUCCESS){
 					t_MessageNucleo_CPU *datosCPU = malloc(sizeof(t_MessageNucleo_CPU));
 					datosCPU->id = numCPU;
-					datosCPU->numSocket = socketClient;
+					datosCPU->numSocket = serverData->socketClient;
 					list_add(listaCPU, (void*)datosCPU);
 					numCPU++;
 
