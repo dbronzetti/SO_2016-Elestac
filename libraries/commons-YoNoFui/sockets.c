@@ -122,7 +122,7 @@ int sendClientHandShake(int *socketClient, enum_processes process){
 	char *buffer = malloc(bufferSize);
 	serializeHandShake(messageACK, buffer, bufferSize);
 
-	send(*socketClient, (void*) buffer, bufferSize,0);
+	exitcode = send(*socketClient, (void*) buffer, bufferSize,0) == -1 ? EXIT_FAILURE : EXIT_SUCCESS ;
 
 	free(buffer);
 	free(messageACK->message);

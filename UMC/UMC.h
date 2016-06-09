@@ -44,4 +44,6 @@ void newClients (void *parameter);
 void processMessageReceived (void *parameter);
 void handShake (void *parameter);
 
+int acceptClientConnection1(void *parameter);
+
 #endif /* UMC_H_ */

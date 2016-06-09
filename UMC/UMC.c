@@ -60,15 +60,26 @@ void newClients (void *parameter){
 	int pid;
 
 	t_serverData *serverData = (t_serverData*) parameter;
-
 	//TODO disparar un thread para acceptar cada cliente nuevo (debido a que el accept es bloqueante) y para hacer el handshake
-
+/**************************************/
+	//Create thread attribute detached
+//			pthread_attr_t acceptClientThreadAttr;
+//			pthread_attr_init(&acceptClientThreadAttr);
+//			pthread_attr_setdetachstate(&acceptClientThreadAttr, PTHREAD_CREATE_DETACHED);
+//
+//			//Create thread for checking new connections in server socket
+//			pthread_t acceptClientThread;
+//			pthread_create(&acceptClientThread, &acceptClientThreadAttr, (void*) acceptClientConnection1, &serverData);
+//
+//			//Destroy thread attribute
+//			pthread_attr_destroy(&acceptClientThreadAttr);
+/************************************/
 	exitCode = acceptClientConnection(&serverData->socketServer, &serverData->socketClient);
 
 	if (exitCode == EXIT_FAILURE){
 		printf("There was detected an attempt of wrong connection\n");//TODO => Agregar logs con librerias
 	}else{
-		//TODO posiblemente aca haya que disparar otro thread para que haga el recv y continue recibiendo conexiones al mismo tiempo
+
 		//Create thread attribute detached
 		pthread_attr_t handShakeThreadAttr;
 		pthread_attr_init(&handShakeThreadAttr);
@@ -83,6 +94,27 @@ void newClients (void *parameter){
 
 	}// END handshakes
 
+}
+
+int acceptClientConnection1(void *parameter){
+
+	t_serverData *serverData = (t_serverData*) parameter;
+	int *socketServer = &serverData->socketServer;
+	int *socketClient = &serverData->socketClient;
+	int exitcode = EXIT_SUCCESS; //Normal completition
+	struct sockaddr_in clientConnection;
+	unsigned int addressSize = sizeof(clientConnection); //The addressSize has to be initialized with the size of sockaddr_in before passing it to accept function
+
+	*socketClient = accept(*socketServer, (void*) &clientConnection, &addressSize);
+
+	if (*socketClient != -1){
+		printf("The was received a connection in: %d.\n", *socketClient);
+	}else{
+		perror("Failed to get a new connection"); //TODO => Agregar logs con librerias
+		exitcode = EXIT_FAILURE;
+	}
+
+	return exitcode;
 }
 
 void handShake (void *parameter){
@@ -118,6 +150,13 @@ void handShake (void *parameter){
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){
+					printf("Sending frame size\n");
+					//After sending ACCEPTATION has to be sent the "Tamanio de pagina" information
+					char *buffer = malloc(sizeof(configuration.frames_size));
+					printf("frame size: %d\n", configuration.frames_size );
+					memcpy(buffer, &configuration.frames_size, sizeof(configuration.frames_size));
+					exitCode = sendMessage(&serverData->socketClient, buffer ,sizeof(configuration.frames_size));
+					free(buffer);
 
 					//Create thread attribute detached
 					pthread_attr_t processMessageThreadAttr;
@@ -139,6 +178,12 @@ void handShake (void *parameter){
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){
+
+					//After sending ACCEPTATION has to be sent the "Tamanio de pagina" information
+					char *buffer = malloc(sizeof(configuration.frames_size));
+					memcpy(buffer, &configuration.frames_size, sizeof(configuration.frames_size));
+					exitCode = sendMessage(&serverData->socketClient, buffer ,sizeof(configuration.frames_size));
+					free(buffer);
 
 					//Create thread attribute detached
 					pthread_attr_t processMessageThreadAttr;
@@ -316,7 +361,7 @@ void startUMCConsole(){
 	printf("all\t\t:: Todos los procesos\n");
 	printf("<processName>\t:: Nombre del proceso deseado\n\n");
 
-	printf("===> COMMAND:\tflush [OPTIONS] [VALUE]\n");
+	printf("===> COMMAND:\tflush [OPTIONS]\n");
 	printf("== [OPTIONS]\n");
 	printf("tlb\t\t:: Limpia completamente el contenido de la TLB\n");
 	printf("memory\t\t:: Marca todas las paginas del proceso como modificadas\n\n");
