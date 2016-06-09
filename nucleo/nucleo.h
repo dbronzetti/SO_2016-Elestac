@@ -58,7 +58,7 @@ typedef struct {
 	int tiempo;
 } t_bloqueado;
 
-//Estructura Procesos (en cola)
+//Estructura Procesos en cola
 typedef struct {
 	int PID;
 	int ProgramCounter;

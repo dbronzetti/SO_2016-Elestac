@@ -5,6 +5,7 @@
 	<projects>
 		<project>commons-YoNoFui</project>
 		<project>commons</project>
+		<project>Parser</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

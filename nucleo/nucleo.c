@@ -40,7 +40,6 @@ int main(int argc, char **argv) {
 	getConfiguration(configurationFile);
 
 	//Create thread for server start
-	pthread_mutex_init(&socketMutex, NULL);
 	pthread_create(&serverThread, NULL, (void*) startServer, NULL);
 	pthread_join(serverThread, NULL);
 
@@ -301,19 +300,6 @@ void processMessageReceived (void *parameter){
 }
 
 void correrPath(char* path){
-	//Verifico que el archivo exista. Sino imprimir error y salir.
-		int i=0;
-		int encontro = 0;
-
-	while(encontro==0){
-		if (path[i]== '\n'){
-			encontro=1;
-		}
-	i++;
-
-	}
-	path[i-1]='\0';
-
 	//Creo el PCB del proceso.
 	t_PCB* PCB = malloc(sizeof(t_PCB));
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
@@ -559,7 +545,7 @@ void cambiarEstadoProceso(int PID, int estado) {
 		datosProceso = (t_PCB*) list_get(listaProcesos, cambiar);
 		datosProceso->estado = estado;
 	} else {
-		printf("Error a cambiar estado de proceso, proceso no encontrado en la lista.\n");
+		printf("Error al cambiar estado de proceso, proceso no encontrado en la lista.\n");
 	}
 }
 
@@ -610,75 +596,7 @@ void actualizarPC(int PID, int ProgramCounter) {
 		datosProceso = (t_PCB*) list_get(listaProcesos, cambiar);
 		datosProceso->ProgramCounter = ProgramCounter;
 	} else {
-		printf("Error a cambiar el PC del proceso, proceso no encontrado en la lista.\n");
-	}
-}
-
-void obtenerps() {
-	int total;
-	char* estado = malloc(50);
-	t_PCB* datosProceso;
-	total = list_size(listaProcesos);
-	int i;
-	for (i = 0; i < total; i++) {
-		datosProceso = (t_PCB*) list_get(listaProcesos, i);
-		switch (datosProceso->estado) {
-		case 1:
-			strcpy(estado, "Ready");
-			break;
-		case 2:
-			strcpy(estado, "Exec");
-			break;
-		case 3:
-			strcpy(estado, "Block");
-			break;
-		case 4:
-			strcpy(estado, "Exit OK");
-			break;
-		case 5:
-			strcpy(estado, "Exit failure");
-			break;
-		}
-		printf("myProcess %d estado:%s\n", datosProceso->PID, estado);
-	}
-}
-
-void finalizarPid(int PID) {
-	if ((PID < 0) || (PID > idProcesos)) {
-		printf("Error, PID inexistente.\n");
-		return;
-	}
-	int ret = buscarPCB(PID);
-	if (ret == -1) {
-		printf("Error al buscar el proceso.\n");
-		return;
-	}
-	t_PCB* datosProceso;
-	datosProceso = (t_PCB*) list_get(listaProcesos, ret);
-	switch (datosProceso->estado) {
-	case 1:
-		//EL proceso esta en la cola de Ready
-		datosProceso->finalizar = 1;
-		break;
-	case 2:
-		//El Proceso esta ejecutando seteo una bandera para avisar que vuelva a cola privilegiada.
-		datosProceso->finalizar = 1;
-		break;
-	case 3:
-		//EL Proceso esta bloqueado
-		datosProceso->finalizar = 1;
-		break;
-
-	case 4:
-		printf("Error, el proceso ya ha sido completado exitosamente.\n");
-		break;
-
-	case 5:
-		printf("Error, el proceso ya ha sido completado de forma incorrecta.\n");
-		break;
-	default:
-		break;
-
+		printf("Error al cambiar el PC del proceso, proceso no encontrado en la lista.\n");
 	}
 }
 
