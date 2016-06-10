@@ -50,7 +50,7 @@ void startServer(){
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
 	t_serverData serverData;
 
-	exitCode = openServerConnection(configuration.puerto_cpu, &serverData.socketServer);
+	exitCode = openServerConnection(configuration.puerto_prog, &serverData.socketServer);
 	printf("socketServer: %d\n",serverData.socketServer);
 
 	//If exitCode == 0 the server connection is opened and listening
@@ -93,6 +93,7 @@ void newClients (void *parameter){
 	}// END handshakes
 
 }
+
 void handShake (void *parameter){
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
 

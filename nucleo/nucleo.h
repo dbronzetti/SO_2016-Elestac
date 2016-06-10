@@ -112,8 +112,6 @@ void finalizaProceso(int, int, int);
 void hacerEntradaSalida(int, int, int, int);
 void atenderBloqueados();
 void atenderCorteQuantum(int, int);
-void obtenerps(void);
-void finalizarPid(int);
 
 //Encabezamiento de Funciones Secundarias
 
