@@ -70,3 +70,4 @@ int imprimirTexto(char* texto);
 int entradaSalida(enum_dispositivos dispositivo, int tiempo);
 void wait(t_nombreSemaforo identificador_semaforo);
 void signal(t_nombreSemaforo identificador_semaforo);
+bool condicionBuscarVarible(t_vars* variableBuscada,t_vars* otraVariable);

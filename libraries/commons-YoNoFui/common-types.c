@@ -22,7 +22,7 @@
 */
 
 int tamanioDePagina = -1; //TODO ver como se lo paso desde la UMC
-
+t_PCB* PCB;
 void setPageSize (int pageSize){
 	tamanioDePagina = pageSize;
 }
@@ -30,23 +30,51 @@ void setPageSize (int pageSize){
 int getLogicalAddress (int page){
 	return (page * tamanioDePagina);
 }
+void destroyRegistroStack(t_registroStack* self){
+	free(self->args);
+	free(self->pos);
+	free(self->retPos);
+	free(self->retVar.offset);
+	free(self->retVar.pag);
+	free(self->retVar.size);
+	free(self->vars);
+}
 
 int definirVariable(t_vars nombreVariable){
 	int varPosition;
-
-	//TODO return var position in Stack
+	t_registroStack* registroBuscado;
+	registroBuscado=list_get(PCB->indiceDeStack,1);
+	list_add(registroBuscado->vars,nombreVariable);
+	varPosition=registroBuscado->vars->elements_count;
+	list_replace_and_destroy_element(PCB->indiceDeStack,1,registroBuscado,(void*)destroyRegistroStack);
+	return varPosition;
 	//varPosition = buscarVariable();
 
 	return varPosition;
 }
 
+
+
 int obtenerPosicionVariable(t_vars identificador_variable){
 	int varOffset = -1 ;// ERROR value by DEFAULT -1
 
 	//TODO return var offset in Stack
-	//varOffset = buscarOffsetVariable();
+	varOffset = buscarOffsetVariable(identificador_variable);
 
 	return varOffset;
+}
+
+bool condicionBuscarVarible(t_vars* variableBuscada,t_vars* otraVariable){
+	return variableBuscada->identificador==otraVariable->identificador;
+}
+
+int buscarOffsetVariable(t_vars identificador_variable){
+	t_registroStack registroBuscado;
+	t_vars variableBuscada;
+	registroBuscado=list_get(PCB->indiceDeStack,1);
+	variableBuscada=list_find(registroBuscado.vars,(void*)condicionBuscarVariable);
+
+	return variableBuscada.direccionValorDeVariable.offset;
 }
 
 void *dereferenciar(t_memoryLocation direccion_variable){
@@ -88,20 +116,35 @@ t_memoryLocation asignarValorCompartida(t_vars variable, t_memoryLocation valor)
 
 void irAlLabel(t_registroIndiceEtiqueta etiqueta){
 
+	PCB->ProgramCounter=etiqueta.posicionDeLaEtiqueta;
+	//list_add(registroAActualizar.args); "Ver como agregar los argumentos"
+
+
 	//TODO change execution line to the etiqueta given
 
 }
 
 void llamarConRetorno(t_registroIndiceEtiqueta etiqueta, t_registroStack donde_retornar){
-
-	//TODO see functionality
+	t_registroStack registroAActualizar;
+	registroAActualizar=list_get(PCB->indiceDeStack,1);
+	registroAActualizar.retPos=donde_retornar;
+	registroAActualizar.retVar=list_get(registroAActualizar.vars,1);
+	registroAActualizar.pos+=1;
+	list_add(PCB->indiceDeStack,registroAActualizar);
 
 }
 
 void retornar(t_memoryLocation *retorno){
+	t_registroStack registroARegresar;
+	registroARegresar=list_find(PCB->indiceDeStack,condicionRetorno);
+	PCB->ProgramCounter=registroARegresar.retPos;
+	PCB->StackPointer=registroARegresar.pos;
 
 	//TODO see functionality
 
+}
+bool condicionRetorno(t_registroStack unRegistro, t_registroStack otroRegistro){
+	return (unRegistro.pos==otroRegistro.retPos);
 }
 
 int imprimir(t_memoryLocation valor_mostrar){
