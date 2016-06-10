@@ -44,7 +44,7 @@ int definirVariable(t_vars nombreVariable){
 	int varPosition;
 	t_registroStack* registroBuscado;
 	registroBuscado=list_get(PCB->indiceDeStack,1);
-	list_add(registroBuscado->vars,nombreVariable);
+	//list_add(registroBuscado->vars,nombreVariable);
 	varPosition=registroBuscado->vars->elements_count;
 	list_replace_and_destroy_element(PCB->indiceDeStack,1,registroBuscado,(void*)destroyRegistroStack);
 	return varPosition;
@@ -68,14 +68,14 @@ bool condicionBuscarVarible(t_vars* variableBuscada,t_vars* otraVariable){
 	return variableBuscada->identificador==otraVariable->identificador;
 }
 
-int buscarOffsetVariable(t_vars identificador_variable){
+/*int buscarOffsetVariable(t_vars identificador_variable){
 	t_registroStack registroBuscado;
 	t_vars variableBuscada;
 	registroBuscado=list_get(PCB->indiceDeStack,1);
 	variableBuscada=list_find(registroBuscado.vars,(void*)condicionBuscarVariable);
 
 	return variableBuscada.direccionValorDeVariable.offset;
-}
+}*/
 
 void *dereferenciar(t_memoryLocation direccion_variable){
 	char *varValue = malloc(direccion_variable.size);
@@ -123,7 +123,7 @@ void irAlLabel(t_registroIndiceEtiqueta etiqueta){
 	//TODO change execution line to the etiqueta given
 
 }
-
+/*
 void llamarConRetorno(t_registroIndiceEtiqueta etiqueta, t_registroStack donde_retornar){
 	t_registroStack registroAActualizar;
 	registroAActualizar=list_get(PCB->indiceDeStack,1);
@@ -132,9 +132,9 @@ void llamarConRetorno(t_registroIndiceEtiqueta etiqueta, t_registroStack donde_r
 	registroAActualizar.pos+=1;
 	list_add(PCB->indiceDeStack,registroAActualizar);
 
-}
+}*/
 
-void retornar(t_memoryLocation *retorno){
+/*void retornar(t_memoryLocation *retorno){
 	t_registroStack registroARegresar;
 	registroARegresar=list_find(PCB->indiceDeStack,condicionRetorno);
 	PCB->ProgramCounter=registroARegresar.retPos;
@@ -142,7 +142,7 @@ void retornar(t_memoryLocation *retorno){
 
 	//TODO see functionality
 
-}
+}*/
 bool condicionRetorno(t_registroStack unRegistro, t_registroStack otroRegistro){
 	return (unRegistro.pos==otroRegistro.retPos);
 }

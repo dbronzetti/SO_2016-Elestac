@@ -16,6 +16,7 @@
 #include "commons/collections/list.h"
 #include "commons/collections/dictionary.h"
 #include "commons/collections/queue.h"
+#include "commons/config.h"
 #include <sys/types.h>
 #include <pthread.h>
 #include <semaphore.h>
@@ -89,7 +90,8 @@ typedef struct {
 t_log* logNucleo;
 
 //Configuracion
-t_configFile configuration;
+t_configFile configuration; //version UMC
+//t_configFile* configNucleo; //version swap
 
 //Variables de Listas
 t_list* listaCPU;

@@ -20,6 +20,7 @@
 #include "common-types.h"
 #include "sockets.h"
 
+
 typedef struct {
 	int port;
 	char ip_nucleo[15];

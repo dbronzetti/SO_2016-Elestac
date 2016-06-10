@@ -610,6 +610,24 @@ void deserializeIO(t_es* datos, char** buffer) {
 	offset += sizeof(datos->ProgramCounter);
 }
 
+/*
+
+void crearArchivoDeConfiguracion(){
+
+	configNucleo = config_create("/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configNucleo");
+	configNucleo->puerto_prog = config_get_int_value(configNucleo,"PUERTO_PROG");
+	configNucleo->puerto_cpu = config_get_int_value(configNucleo,"PUERTO_CPU");
+	configNucleo->quantum = config_get_int_value(configNucleo,"QUANTUM");
+	configNucleo->quantum_sleep = config_get_int_value(configNucleo,"QUANTUM_SLEEP");
+	configNucleo->sem_ids = config_get_array_value(configNucleo,"SEM_IDS");
+	configNucleo->sem_init = config_get_array_value(configNucleo,"SEM_INIT");
+	configNucleo->io_ids = config_get_array_value(configNucleo,"IO_IDS");
+	configNucleo->io_sleep = config_get_array_value(configNucleo,"IO_SLEEP");
+	configNucleo->shared_vars = config_get_array_value(configNucleo,"SHARED_VARS");
+	configNucleo->stack_size = config_get_int_value(configNucleo,"STACK_SIZE");
+}
+*/
+
 void getConfiguration(char *configFile){
 
 	FILE *file = fopen(configFile, "r");
