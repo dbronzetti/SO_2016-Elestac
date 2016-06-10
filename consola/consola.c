@@ -48,9 +48,9 @@ char* leerArchivoYGuardarEnCadena(char* path) {
 	char* hash = "#!/usr/bin/ansisop";
 	char* vacio = "";
 	char* textoExtraido;
-	printf("%s", path);
+	//printf("%s", path);
 	FILE *archivo = NULL;
-	archivo = fopen(path, "r+");
+	//archivo = fopen(path, "r+");
 
 	printf("Ingrese archivo a ejecutar.\n");
 	char* nombrearchivo;
