@@ -1,8 +1,5 @@
 #include "UMC.h"
 
-t_configFile configuration;
-pthread_mutex_t socketMutex;
-
 int main(int argc, char *argv[]){
 	int exitCode = EXIT_FAILURE ; //DEFAULT failure
 	char *configurationFile = NULL;
@@ -321,6 +318,14 @@ void getConfiguration(char *configFile){
 			case(ENTRADAS_TLB):{ //7
 				fscanf(file, "%s",parameterValue);
 				configuration.TLB_entries = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
+
+				// Checking if TLB is enable
+				if (configuration.TLB_entries != 0){
+					//TLB enable
+					createTLB();
+					printf("TLB enable. Size '%d'\n", list_size(TLB));
+				}
+
 				break;
 			}
 			case(RETARDO):{ //8
@@ -342,48 +347,52 @@ void getConfiguration(char *configFile){
 
 void startUMCConsole(){
 	char command[50];
+	char option[50];
 	char value[50];
 
-	printf("\n***********************************\n");
-	printf("* UMC Console ready for your use! *");
-	printf("\n***********************************\n\n");
-	printf("COMMANDS USAGE:\n\n");
-
-	printf("===> COMMAND:\tretardo [VALUE]\n");
-	printf("== [VALUE]\n");
-	printf("<numericValue>\t::Cantidad de milisegundos que el sistema debe esperar antes de responder una solicitud\n\n");
-
-	printf("===> COMMAND:\tdump [OPTIONS] [VALUE]\n");
-	printf("== [OPTIONS]\n");
-	printf("estructuras\t:: Tablas de paginas de todos los procesos o de un proceso en particular\n");
-	printf("contenido\t:: Datos almacenados en la memoria de todos los procesos o de un proceso en particular\n\n");
-	printf("== [VALUE]\n");
-	printf("all\t\t:: Todos los procesos\n");
-	printf("<processName>\t:: Nombre del proceso deseado\n\n");
-
-	printf("===> COMMAND:\tflush [OPTIONS]\n");
-	printf("== [OPTIONS]\n");
-	printf("tlb\t\t:: Limpia completamente el contenido de la TLB\n");
-	printf("memory\t\t:: Marca todas las paginas del proceso como modificadas\n\n");
+	consoleMessageUMC();
 
 	while (1){
-		scanf("%s %s", command, value);
+		scanf("%s %s", command, option);
+
+		system("clear");
+
+		int i;
+		//lower case options
+		for(i = 0; option[i] != '\0'; i++){
+			option[i] = tolower(option[i]);
+		}
 
 		if (strcmp(command,"retardo") == 0 ){
-			configuration.delay = atoi(value);
+			configuration.delay = atoi(option);
 			printf("The delay UMC was successfully changed to: %d\n", configuration.delay);
-		}
-
-		if (strcmp(command,"dump") == 0 ){
-
+		}else if (strcmp(command,"dump") == 0 ){
+			printf("\nCommand entered: '%s %s'\n", command,option);
+			printf("== [VALUE]\n");
+			printf("all\t\t:: Todos los procesos\n");
+			printf("<processName>\t:: Nombre del proceso deseado\n\nPlease enter a value with the above format: ");
+			scanf("%s", value);
 			printf("A copy of this dump was saved in: \n");
+		}else if (strcmp(command,"flush") == 0 ){
+
+			if (strcmp(option, "tlb") == 0){
+				list_clean(TLB);
+				resetTLBEntries();
+				printf("list size after flushing: %d\n",list_size(TLB));
+
+			}else if (strcmp(option, "memory")){
+
+			}
+
+			printf("The '%s' flush was completed successfully\n", option);
+
+		}else{
+
+			printf("\nCommand entered NOT recognized: '%s %s'\n", command,option);
+			printf("Please take a look to the correct commands!\n");
 		}
 
-		if (strcmp(command,"flush") == 0 ){
-
-			printf("The '%s' flush was completed successfully\n", value);
-		}
-
+		consoleMessageUMC();
 
 	}
 
@@ -411,3 +420,57 @@ int getEnum(char *string){
 	return parameter;
 }
 
+void initializeProgram(int PID, int totalPagesRequired, char *programCode){
+
+}
+
+char *requestBytesFromPage(t_memoryLocation virtualAddress){
+	char *memoryContent;
+
+	return memoryContent;
+}
+
+void writeBytesToPage(t_memoryLocation virtualAddress, char *buffer){
+
+}
+
+void endProgram(int PID){
+
+}
+
+void createTLB(){
+	TLB = list_create();
+	resetTLBEntries();
+}
+
+void resetTLBEntries(){
+	int i;
+	for(i=0; i < configuration.TLB_entries; i++){
+		t_TLB *defaultTLBElement;
+		defaultTLBElement->PID = -1; //DEFAULT PID value in TLB
+		list_add(TLB, (void*) defaultTLBElement);
+	}
+
+}
+
+void consoleMessageUMC(){
+	printf("\n***********************************\n");
+	printf("* UMC Console ready for your use! *");
+	printf("\n***********************************\n\n");
+	printf("COMMANDS USAGE:\n\n");
+
+	printf("===> COMMAND:\tretardo [OPTIONS]\n");
+	printf("== [OPTIONS]\n");
+	printf("<numericValue>\t::Cantidad de milisegundos que el sistema debe esperar antes de responder una solicitud\n\n");
+
+	printf("===> COMMAND:\tdump [OPTIONS]\n");
+	printf("== [OPTIONS]\n");
+	printf("estructuras\t:: Tablas de paginas de todos los procesos o de un proceso en particular\n");
+	printf("contenido\t:: Datos almacenados en la memoria de todos los procesos o de un proceso en particular\n\n");
+
+	printf("===> COMMAND:\tflush [OPTIONS]\n");
+	printf("== [OPTIONS]\n");
+	printf("tlb\t\t:: Limpia completamente el contenido de la TLB\n");
+	printf("memory\t\t:: Marca todas las paginas del proceso como modificadas\n\n");
+	printf("UMC console >> $ ");
+}
