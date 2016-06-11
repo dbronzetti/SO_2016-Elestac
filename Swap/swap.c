@@ -12,6 +12,25 @@
 #include "commons/config.h"
 #include "sockets.h"
 
+/*
+
+operacion-> (programa nuevo)
+			PID
+			cantidadDePaginas
+			contenido
+
+		 ->	(escritura)
+		 	nroPagina
+			contenido
+
+		 ->	(lectura)
+	 		nroPagina
+
+ 		 -> (programa fin)
+			PID
+
+*/
+
 struct bloqueDeMemoria{
 	int PID;
 	int cantDePaginas;
