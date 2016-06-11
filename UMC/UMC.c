@@ -366,19 +366,21 @@ void startUMCConsole(){
 		if (strcmp(command,"retardo") == 0 ){
 			configuration.delay = atoi(option);
 			printf("The delay UMC was successfully changed to: %d\n", configuration.delay);
+
 		}else if (strcmp(command,"dump") == 0 ){
 			printf("\nCommand entered: '%s %s'\n", command,option);
 			printf("== [VALUE]\n");
 			printf("all\t\t:: Todos los procesos\n");
 			printf("<processName>\t:: Nombre del proceso deseado\n\nPlease enter a value with the above format: ");
 			scanf("%s", value);
+
 			printf("A copy of this dump was saved in: \n");
+
 		}else if (strcmp(command,"flush") == 0 ){
 
 			if (strcmp(option, "tlb") == 0){
 				list_clean(TLB);
 				resetTLBEntries();
-				printf("list size after flushing: %d\n",list_size(TLB));
 
 			}else if (strcmp(option, "memory")){
 
@@ -404,8 +406,6 @@ void startUMCConsole(){
 int getEnum(char *string){
 	int parameter = -1;
 
-	//printf("string: %s \n", string);
-
 	strcmp(string,"PUERTO") == 0 ? parameter = PUERTO : -1 ;
 	strcmp(string,"IP_SWAP") == 0 ? parameter = IP_SWAP : -1 ;
 	strcmp(string,"PUERTO_SWAP") == 0 ? parameter = PUERTO_SWAP : -1 ;
@@ -414,8 +414,6 @@ int getEnum(char *string){
 	strcmp(string,"MARCO_X_PROC") == 0 ? parameter = MARCO_X_PROC : -1 ;
 	strcmp(string,"ENTRADAS_TLB") == 0 ? parameter = ENTRADAS_TLB : -1 ;
 	strcmp(string,"RETARDO") == 0 ? parameter = RETARDO : -1 ;
-
-	//printf("parameter: %d \n", parameter);
 
 	return parameter;
 }

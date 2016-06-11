@@ -37,6 +37,7 @@ typedef struct{
 } t_TLB; /* It will be created as a fixed list at the beginning of the process using PID as element index */
 
 typedef struct{
+	t_memoryLocation virtualAddress;
 	int frameNumber;
 	unsigned dirtyBit : 1;//field of 1 bit
 	unsigned presentBit : 1;//field of 1 bit
