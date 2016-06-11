@@ -20,6 +20,12 @@ struct bloqueDeMemoria{
 	int paginaInicial;
 
 }typedef bloqueSwap;
+
+typedef struct {
+	int socketServer;
+	int socketClient;
+} t_serverData;
+
 /*<----------------------------------Prototipos----------------------------------------->*/
  void* mapearArchivoEnMemoria(int offset,int tamanio);
  void destructorBloqueSwap(bloqueSwap* self);
@@ -50,56 +56,58 @@ crearArchivoDeSwap();
 FILE* archivoSwap;
 char* paginaAEnviar;
 bloqueSwap* bloqueInicial;
-char* paginaRecibida;
-int* socketUMC;
-bloqueSwap* pedidoRecibidoYDeserializado;
-char* mensajeRecibido;
-char* operacionRecibida;
+
+
+
 bloqueInicial->PID=0;
 bloqueInicial->ocupado=0;
 bloqueInicial->tamanioDelBloque=cantidadDePaginas*tamanioDePagina;
 list_add(listaSwap,(void*)bloqueInicial);
-openServerConnection((int)socketUMC,puertoEscucha);
-sendClientHandShake(socketUMC,SWAP);
 
-while(1){
-		receiveMessage(socketUMC,operacionRecibida,sizeof(bloqueSwap));
-		//deserializarOperacion(operacionARealizar,operacionRecibida);
-
-		receiveMessage(socketUMC,mensajeRecibido,sizeof(bloqueSwap));
-		//deserializarBloqueSwap(pedidoRecibidoYDeserializado,bloqueRecibido)
-		switch(pedidoRecibidoYDeserializado->PID){
-		case agregar_proceso:{
-		if(verificarEspacioDisponible(listaSwap)>pedidoRecibidoYDeserializado->cantDePaginas){
-		if(existeBloqueNecesitado(listaSwap)){
-			agregarProceso(pedidoRecibidoYDeserializado,listaSwap);
-		}else{
-			compactarArchivo(listaSwap);
-			agregarProceso(pedidoRecibidoYDeserializado,listaSwap);
-		}
-
-	}}
-	break;
-case finalizar_proceso:{
-	eliminarProceso(listaSwap,pedidoRecibidoYDeserializado);
-	break;
-	}
-
-case leer_pagina:{
-	leerPagina(pedidoRecibidoYDeserializado,listaSwap);
-	break;
-	}
-case escribir_pagina:{
-	escribirPagina(paginaRecibida,pedidoRecibidoYDeserializado,listaSwap);
-	break;
-	}
-
-}
-
-}
+startServer();
 
 return 1;
 
+}
+
+void processingMessages(int socketClient){
+	char* mensajeRecibido;
+	char* operacionRecibida;
+	char* paginaRecibida;
+	bloqueSwap* pedidoRecibidoYDeserializado;
+
+	receiveMessage(&socketClient,operacionRecibida,sizeof(bloqueSwap));
+	//deserializarOperacion(operacionARealizar,operacionRecibida);
+
+	receiveMessage(socketClient,mensajeRecibido,sizeof(bloqueSwap));
+	//deserializarBloqueSwap(pedidoRecibidoYDeserializado,bloqueRecibido)
+	switch(pedidoRecibidoYDeserializado->PID){
+	case agregar_proceso:{
+		if(verificarEspacioDisponible(listaSwap)>pedidoRecibidoYDeserializado->cantDePaginas){
+			if(existeBloqueNecesitado(listaSwap)){
+				agregarProceso(pedidoRecibidoYDeserializado,listaSwap);
+			}else{
+				compactarArchivo(listaSwap);
+				agregarProceso(pedidoRecibidoYDeserializado,listaSwap);
+			}
+		}
+		break;
+	}
+	case finalizar_proceso:{
+		eliminarProceso(listaSwap,pedidoRecibidoYDeserializado);
+		break;
+	}
+
+	case leer_pagina:{
+		leerPagina(pedidoRecibidoYDeserializado,listaSwap);
+		break;
+	}
+	case escribir_pagina:{
+		escribirPagina(paginaRecibida,pedidoRecibidoYDeserializado,listaSwap);
+		break;
+	}
+
+	}
 }
 
 void destructorBloqueSwap(bloqueSwap* self){
@@ -275,3 +283,97 @@ void crearArchivoDeConfiguracion(){
 	cantidadDePaginas=config_get_int_value(configuracionDeSwap,"CANTIDAD_PAGINAS");
 }
 
+void startServer(){
+	int exitCode = EXIT_FAILURE; //DEFAULT Failure
+	t_serverData serverData;
+
+	exitCode = openServerConnection(puertoEscucha, &serverData.socketServer);
+	printf("socketServer: %d\n",serverData.socketServer);
+
+	//If exitCode == 0 the server connection is opened and listening
+	if (exitCode == 0) {
+		puts ("The server is opened.");
+
+		exitCode = listen(serverData.socketServer, SOMAXCONN);
+
+		while (1){
+			newClients((void*) &serverData);
+		}
+	}
+
+}
+
+void newClients (void *parameter){
+	int exitCode = EXIT_FAILURE; //DEFAULT Failure
+	int pid;
+
+	t_serverData *serverData = (t_serverData*) parameter;
+
+	exitCode = acceptClientConnection(&serverData->socketServer, &serverData->socketClient);
+
+	if (exitCode == EXIT_FAILURE){
+		printf("There was detected an attempt of wrong connection\n");//TODO => Agregar logs con librerias
+	}else{
+
+		handShake(parameter);
+
+	}// END handshakes
+
+}
+
+
+void handShake (void *parameter){
+	int exitCode = EXIT_FAILURE; //DEFAULT Failure
+
+	t_serverData *serverData = (t_serverData*) parameter;
+
+	//Receive message size
+	int messageSize = 0;
+	char *messageRcv = malloc(sizeof(messageSize));
+	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(messageSize));
+
+	//Receive message using the size read before
+	memcpy(&messageSize, messageRcv, sizeof(int));
+	//printf("messageSize received: %d\n",messageSize);
+	messageRcv = realloc(messageRcv,messageSize);
+	receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
+
+	printf("bytes received in message: %d\n",receivedBytes);
+
+	//starting handshake with client connected
+	t_MessageGenericHandshake *message = malloc(sizeof(t_MessageGenericHandshake));
+	deserializeHandShake(message, messageRcv);
+
+	//Now it's checked that the client is not down
+	if ( receivedBytes == 0 ){
+		perror("The client went down while handshaking!"); //TODO => Agregar logs con librerias
+		printf("Please check the client: %d is down!\n", serverData->socketClient);
+	}else{
+		switch ((int) message->process){
+			case UMC:{
+				printf("%s\n",message->message);
+
+				exitCode = sendClientAcceptation(&serverData->socketClient);
+
+				if (exitCode == EXIT_SUCCESS){
+
+					//TODO start receiving request
+					processingMessages(serverData->socketClient);
+
+				}
+
+				break;
+			}
+			default:{
+				perror("Process not allowed to connect");//TODO => Agregar logs con librerias
+				printf("Invalid process '%d' tried to connect to UMC\n",(int) message->process);
+				close(serverData->socketClient);
+				break;
+			}
+		}
+	}
+
+	free(messageRcv);
+	free(message->message);
+	free(message);
+}
