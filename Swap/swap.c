@@ -1,7 +1,7 @@
 #define agregar_proceso 1
 #define finalizar_proceso 2
-#define leer_pagina 3
-#define escribir_pagina 4
+#define lectura_pagina 3
+#define escritura_pagina 4
 #include <stdio.h>
 #include <stdlib.h>
 #include "commons/collections/list.h"
@@ -11,25 +11,7 @@
 #include <sys/mman.h>
 #include "commons/config.h"
 #include "sockets.h"
-
-/*
-
-operacion-> (programa nuevo)
-			PID
-			cantidadDePaginas
-			contenido
-
-		 ->	(escritura)
-		 	nroPagina
-			contenido
-
-		 ->	(lectura)
-	 		nroPagina
-
- 		 -> (programa fin)
-			PID
-
-*/
+#include "common-types.h"
 
 struct bloqueDeMemoria{
 	int PID;
@@ -39,6 +21,29 @@ struct bloqueDeMemoria{
 	int paginaInicial;
 
 }typedef bloqueSwap;
+
+struct nuevoPrograma{
+	int PID;
+	int cantidadDePaginas;
+	char* contenido;
+}typedef nuevo_programa;
+
+struct escribirPagina{
+	int PID;
+	int nroPagina;
+	char* contenido;
+}typedef escribir_pagina;
+
+struct leerPagina{
+	int PID;
+	int nroPagina;
+}typedef leer_pagina;
+
+struct finPrograma{
+	int PID;
+}typedef fin_programa;
+
+
 
 typedef struct {
 	int socketServer;
@@ -53,7 +58,7 @@ typedef struct {
  void crearArchivoDeSwap();
  void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque,t_list* listaSwap);
  int verificarEspacioDisponible(t_list* listaSwap);
- void leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap);
+ char* leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap);
  void crearArchivoDeConfiguracion();
 
 /*>----------------------------------Prototipos-----------------------------------------<*/
@@ -75,33 +80,33 @@ crearArchivoDeSwap();
 FILE* archivoSwap;
 char* paginaAEnviar;
 bloqueSwap* bloqueInicial;
-
-
-
 bloqueInicial->PID=0;
 bloqueInicial->ocupado=0;
 bloqueInicial->tamanioDelBloque=cantidadDePaginas*tamanioDePagina;
 list_add(listaSwap,(void*)bloqueInicial);
-
 startServer();
-
 return 1;
-
 }
 
 void processingMessages(int socketClient){
 	char* mensajeRecibido;
 	char* operacionRecibida;
 	char* paginaRecibida;
-	bloqueSwap* pedidoRecibidoYDeserializado;
 
-	receiveMessage(&socketClient,operacionRecibida,sizeof(bloqueSwap));
-	//deserializarOperacion(operacionARealizar,operacionRecibida);
+	int operacionARealizar;
+	receiveMessage(&socketClient,operacionRecibida,sizeof(int));
+	deserializarOperacion(operacionARealizar,operacionRecibida);
 
-	receiveMessage(socketClient,mensajeRecibido,sizeof(bloqueSwap));
-	//deserializarBloqueSwap(pedidoRecibidoYDeserializado,bloqueRecibido)
-	switch(pedidoRecibidoYDeserializado->PID){
+
+	switch(operacionARealizar){
 	case agregar_proceso:{
+		bloqueSwap* pedidoRecibidoYDeserializado;
+		nuevo_programa programaRecibido;
+
+		receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
+		deserializarBloqueSwap(programaRecibido,mensajeRecibido);
+		pedidoRecibidoYDeserializado->PID=programaRecibido.PID;
+		pedidoRecibidoYDeserializado->cantDePaginas=programaRecibido.cantidadDePaginas;
 		if(verificarEspacioDisponible(listaSwap)>pedidoRecibidoYDeserializado->cantDePaginas){
 			if(existeBloqueNecesitado(listaSwap)){
 				agregarProceso(pedidoRecibidoYDeserializado,listaSwap);
@@ -109,20 +114,41 @@ void processingMessages(int socketClient){
 				compactarArchivo(listaSwap);
 				agregarProceso(pedidoRecibidoYDeserializado,listaSwap);
 			}
-		}
+		}else{
+			printf("No hay espacio disponible para agregar el bloque");
+		};
 		break;
 	}
 	case finalizar_proceso:{
+		fin_programa procesoAFinalizar;
+		bloqueSwap* pedidoRecibidoYDeserializado;
+		receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
+		deserializarBloqueSwap(procesoAFinalizar,mensajeRecibido);
+		pedidoRecibidoYDeserializado->PID=procesoAFinalizar.PID;
 		eliminarProceso(listaSwap,pedidoRecibidoYDeserializado);
 		break;
 	}
 
-	case leer_pagina:{
-		leerPagina(pedidoRecibidoYDeserializado,listaSwap);
+	case lectura_pagina:{
+		bloqueSwap* pedidoRecibidoYDeserializado;
+		leer_pagina lecturaNueva;
+		char* paginaLeida;
+		receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
+		deserializarBloqueSwap(lecturaNueva,mensajeRecibido);
+		pedidoRecibidoYDeserializado->PID=lecturaNueva.PID;
+		pedidoRecibidoYDeserializado->paginaInicial=lecturaNueva.nroPagina;
+		paginaLeida=leerPagina(pedidoRecibidoYDeserializado,listaSwap);
+		sendMessage((int*)socketClient,paginaLeida,tamanioDePagina);
 		break;
 	}
-	case escribir_pagina:{
-		escribirPagina(paginaRecibida,pedidoRecibidoYDeserializado,listaSwap);
+	case escritura_pagina:{
+		escribir_pagina escrituraNueva;
+		bloqueSwap* pedidoRecibidoYDeserializado;
+		receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
+		deserializarBloqueSwap(escrituraNueva,mensajeRecibido);
+		pedidoRecibidoYDeserializado->PID=escrituraNueva.PID;
+		pedidoRecibidoYDeserializado->paginaInicial=escrituraNueva.nroPagina;
+		escribirPagina(escrituraNueva.contenido,pedidoRecibidoYDeserializado,listaSwap);
 		break;
 	}
 
@@ -172,6 +198,8 @@ int agregarProceso(bloqueSwap* unBloque,t_list* unaLista){
 
 
 int compactarArchivo(t_list* unaLista){
+	void* archivoMapeado;
+	archivoMapeado=mapearArchivoEnMemoria(0,cantidadDePaginas*tamanioDePagina);
 	int i,acum;
 	bloqueSwap* bloqueLleno=malloc(sizeof(bloqueSwap));
 	bloqueSwap* bloqueLlenoSiguiente=malloc(sizeof(bloqueSwap));
@@ -189,6 +217,7 @@ int compactarArchivo(t_list* unaLista){
 		bloqueLleno=(bloqueSwap*)list_get(unaLista,i);
 		bloqueLlenoSiguiente=(bloqueSwap*)list_get(unaLista,i+1);
 		bloqueLlenoSiguiente->paginaInicial=bloqueLleno->cantDePaginas+1;
+		memcpy(archivoMapeado + (bloqueLleno->cantDePaginas*tamanioDePagina),archivoMapeado+(bloqueLlenoSiguiente->paginaInicial*tamanioDePagina),bloqueLlenoSiguiente->cantDePaginas*tamanioDePagina);
 		acum+=bloqueLlenoSiguiente->cantDePaginas;
 		}
 		if(cantidadDePaginas-acum!=0){
@@ -231,25 +260,27 @@ void crearArchivoDeSwap(){
 			string_append_with_format(&cadena,"%i",cantidadDePaginas);
 			system(cadena);
 	}
-int condicionLeer(bloqueSwap* unBloque,bloqueSwap* otroBloque){
+bool condicionLeer(bloqueSwap* unBloque,bloqueSwap* otroBloque){
 			return (unBloque->PID==otroBloque->PID);
 			}
-void leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap){
+char* leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap){
 	bloqueSwap* bloqueEncontrado;
 	void* archivoMapeado;
-	char* paginaAEnviar;
+	char* paginaAEnviar=malloc(sizeof(tamanioDePagina));
 	bloqueEncontrado=list_find(listaSwap,(void*)condicionLeer);
-	archivoMapeado=mapearArchivoEnMemoria(tamanioDePagina*bloqueDeSwap->paginaInicial,tamanioDePagina*cantidadDePaginas);
-	memcpy(paginaAEnviar,archivoMapeado,tamanioDePagina);
+	archivoMapeado=mapearArchivoEnMemoria(tamanioDePagina*bloqueEncontrado->paginaInicial,tamanioDePagina*cantidadDePaginas);
+	memcpy(paginaAEnviar,archivoMapeado+(tamanioDePagina*bloqueDeSwap->paginaInicial),tamanioDePagina);
 	munmap(archivoMapeado,cantidadDePaginas*tamanioDePagina);
-	//enviar(paginaAEnviar);
+	return paginaAEnviar;
 	}
 
 void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque,t_list* listaSwap){
 	int descriptorSwap;
 	void* archivoMapeado;
-	archivoMapeado=mapearArchivoEnMemoria(tamanioDePagina*unBloque->paginaInicial,tamanioDePagina*cantidadDePaginas);
-	memset(archivoMapeado+unBloque->cantDePaginas,paginaAEscribir,tamanioDePagina);
+	bloqueSwap* bloqueEncontrado;
+	bloqueEncontrado=list_find(listaSwap,(void*)condicionLeer);
+	archivoMapeado=mapearArchivoEnMemoria(tamanioDePagina*bloqueEncontrado->paginaInicial,tamanioDePagina*cantidadDePaginas);
+	memset(archivoMapeado+((bloqueEncontrado->paginaInicial+unBloque->paginaInicial)*tamanioDePagina),paginaAEscribir,tamanioDePagina);
 	munmap(archivoMapeado,cantidadDePaginas*tamanioDePagina);
 }
 
