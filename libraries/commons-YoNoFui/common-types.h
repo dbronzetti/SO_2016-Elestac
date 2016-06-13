@@ -3,6 +3,8 @@
 ***************************************************/
 #include <commons/collections/list.h>
 #include <stdio.h>
+#include <parser/metadata_program.h>
+#include <parser/parser.h>
 
 typedef enum{
 	DISCO = 0//TODO definir enum_dispositivos
@@ -11,6 +13,8 @@ typedef enum{
 typedef struct{
 	//TODO ver como implementar t_nombre_semaforo
 } t_nombreSemaforo;
+
+
 
 typedef struct{
 	int pag;
@@ -56,18 +60,18 @@ struct bloqueDeControl{
 
 void setPageSize (int pageSize);
 int getLogicalAddress (int page);
-int definirVariable(t_vars nombreVariable);
-int obtenerPosicionVariable(t_vars identificador_variable);
-void *dereferenciar(t_memoryLocation direccion_variable);
-void asignar(t_memoryLocation direccion_variable, t_memoryLocation valor);
-t_memoryLocation *obtenerValorCompartida(t_vars variable);
-t_memoryLocation asignarValorCompartida(t_vars variable, t_memoryLocation valor);
+t_puntero definirVariable(t_vars nombreVariable);
+t_puntero obtenerPosicionVariable(t_vars identificador_variable);
+t_valor_variable dereferenciar(t_puntero direccion_variable);
+void asignar(t_puntero direccion_variable, t_valor_variable valor);
+t_valor_variable obtenerValorCompartida(t_nombre_compartida variable);
+t_valor_variable asignarValorCompartida(t_vars variable, t_valor_variable valor);
 void irAlLabel(t_registroIndiceEtiqueta etiqueta);
-void llamarConRetorno(t_registroIndiceEtiqueta etiqueta, t_registroStack donde_retornar);
-void retornar(t_memoryLocation *retorno);
-int imprimir(t_memoryLocation valor_mostrar);
-int imprimirTexto(char* texto);
-int entradaSalida(enum_dispositivos dispositivo, int tiempo);
+void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
+void retornar(t_valor_variable retorno);
+void imprimir(t_valor_variable valor_mostrar);
+void imprimirTexto(char *texto);
+int entradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
 void wait(t_nombreSemaforo identificador_semaforo);
 void signal(t_nombreSemaforo identificador_semaforo);
 bool condicionBuscarVarible(t_vars* variableBuscada,t_vars* otraVariable);
