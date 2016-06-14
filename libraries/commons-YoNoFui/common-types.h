@@ -60,8 +60,8 @@ struct bloqueDeControl{
 
 void setPageSize (int pageSize);
 int getLogicalAddress (int page);
-t_puntero definirVariable(t_vars nombreVariable);
-t_puntero obtenerPosicionVariable(t_vars identificador_variable);
+t_puntero definirVariable(t_nombre_variable nombreVariable);
+t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable);
 t_valor_variable dereferenciar(t_puntero direccion_variable);
 void asignar(t_puntero direccion_variable, t_valor_variable valor);
 t_valor_variable obtenerValorCompartida(t_nombre_compartida variable);

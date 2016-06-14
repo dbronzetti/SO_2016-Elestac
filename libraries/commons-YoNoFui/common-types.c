@@ -43,34 +43,35 @@ void destroyRegistroStack(t_registroStack* self){
 	free(self->vars);
 }
 
-t_puntero definirVariable(t_vars nombreVariable){
+t_puntero definirVariable(t_nombre_variable nombreVariable){
 	t_puntero varPosition;
-	/*
-	t_registroStack* registroBuscado;
+	t_registroStack* registroBuscado=malloc(sizeof(t_registroStack));
+
 	registroBuscado=list_get(PCB->indiceDeStack,1);
-	//list_add(registroBuscado->vars,nombreVariable);
+	list_add_in_index(registroBuscado->vars,(registroBuscado->vars->elements_count+1),(void*)nombreVariable);
 	varPosition=registroBuscado->vars->elements_count;
-	list_replace_and_destroy_element(PCB->indiceDeStack,1,registroBuscado,(void*)destroyRegistroStack);
 	return varPosition;
 	//varPosition = buscarVariable();
-	*/
-	return varPosition;
 }
 
 
 
-t_puntero obtenerPosicionVariable(t_vars identificador_variable){
-	t_puntero varOffset;// ERROR value by DEFAULT -1
 
-	//TODO return var offset in Stack
-	//varOffset = buscarOffsetVariable(identificador_variable);
+t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
+	bool condicionIgualdad(t_nombre_variable OtroNombreVariable){
+			return(identificador_variable==OtroNombreVariable);
+		}
+	bool condicionVariable(t_registroStack unRegistro){
+			return(list_any_satisfy(unRegistro.vars,(void*)condicionIgualdad));
+		}
+	t_registroStack* registroBuscado=malloc(sizeof(t_registroStack));
+	registroBuscado=(t_registroStack*)list_find(PCB->indiceDeStack,(void*)condicionVariable);
+	return(registroBuscado->pos);
 
-	return varOffset;
+
 }
 
-bool condicionBuscarVarible(t_vars* variableBuscada,t_vars* otraVariable){
-	return variableBuscada->identificador==otraVariable->identificador;
-}
+
 
 /*int buscarOffsetVariable(t_vars identificador_variable){
 	t_registroStack registroBuscado;
