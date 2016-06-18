@@ -3,9 +3,6 @@
 	<name>Consola</name>
 	<comment></comment>
 	<projects>
-		<project>Parser</project>
-		<project>commons</project>
-		<project>commons-YoNoFui</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

@@ -7,90 +7,52 @@
 
 int main() {
 	char inputTeclado[250];
-	char archivoAEjecutar[250];
-//	char* hash = "#!/usr/bin/ansisop";
-	char* codeScript;
+	char archivoAEjecutar[300];
 	while (1) {
 		printf(PROMPT);
 		fgets(inputTeclado, sizeof(inputTeclado), stdin);
 		char ** comando = string_split(inputTeclado, " ");
 		switch (ReconocerComando(comando[0])) {
 		case 1:
-			printf("Comando Reconocido\n");
-
-//			fgets(archivoAEjecutar, sizeof(archivoAEjecutar), stdin);
-			codeScript = leerArchivoYGuardarEnCadena(archivoAEjecutar);
-//			if (string_starts_with(script, hash))
-//			if(compararCadenas(script, hash))
-//				printf("Script válido. \n");
-//			else
-//				printf("Script inválido. \n");
+			printf("Comando Reconocido.\n");
+			leerArchivoYGuardarEnCadena();
+			fgets(inputTeclado, sizeof(inputTeclado), stdin);
+			char ** comando = string_split(inputTeclado, " ");
 			break;
-		default:
-			printf("Comando invalido\n");
+
+		case 2:
 			exit(-1);
+		default:
+			printf("Comando invalido, inténtelo nuevamente.\n");
 		}
-
 	}
-
 	return 0;
 }
 
-int ReconocerComando(char ** comando) {
-	if (strcmp("ejecutar", comando)) {
+int ReconocerComando(char * comando) {
+	if (!strcmp("ejecutar\n", comando)) {
 		return 1;
+	}
+	if (!strcmp("salir\n", comando)) {
+		return 2;
 	}
 	return -1;
 }
 
-char* leerArchivoYGuardarEnCadena(char* path) {
-	//char* nombreArchivo = "prueba.txt";
-	char* hash = "#!/usr/bin/ansisop";
-	char* vacio = "";
-	char* textoExtraido;
-	//printf("%s", path);
-	FILE *archivo = NULL;
-	//archivo = fopen(path, "r+");
-
+void leerArchivoYGuardarEnCadena() {
+	char textoDeArchivo[300];
+	FILE* archivo = NULL;
 	printf("Ingrese archivo a ejecutar.\n");
-	char* nombrearchivo;
-	scanf("%s", nombrearchivo);
-	char lectura[300];
-
-	archivo = fopen(nombrearchivo, "r");
+	char nombreDelArchivo[300];
+	scanf("%s", nombreDelArchivo);
+	archivo = fopen(nombreDelArchivo, "r");
 	if (archivo == NULL) {
-		printf("Error al abrir el archivo\n");
-		return vacio;
+		printf("Error al abrir el archivo.\n");
 	} else {
-
-		fscanf(archivo, "%[^\n]", &lectura);
-		printf("Primera linea: %s\n", lectura);
-
-		if (strcmp(lectura, hash)) {
-			printf("Script inválido. \n");
-		} else {
-			printf("Script válido. \n");
-			while (!feof(archivo)) {
-
-				fgets(textoExtraido, 250, archivo);
-				printf("%s\n", textoExtraido);
-			}
+		while (!feof(archivo)) {
+			fgets(textoDeArchivo, 300, archivo);
+			printf("%s\n", textoDeArchivo);
 		}
-		fclose(archivo);
-		return textoExtraido;
 	}
+	fclose(archivo);
 }
-
-/*
-
-int compararCadenas(char* a, char* b) {
-	char * c;
-	char* hash = "#!/usr/bin/ansisop";
-	c = strstr(a, b);
-	if (!strcmp(c, hash)){
-		return 1;
-	}
-	return 0;
-}
-*/
-

@@ -17,9 +17,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "commons/log.h"
-#include "common-types.h"
-#include "sockets.h"
-
+//#include "common-types.h"
+//#include "sockets.h"
 
 typedef struct {
 	int port;
@@ -40,9 +39,9 @@ t_configFile configuration;
 
 //Encabezamiento de Funciones Principales
 
-char* leerArchivoYGuardarEnCadena(char*);
-//int compararCadenas(char*, char*);
-int ReconocerComando(char ** );
+void leerArchivoYGuardarEnCadena();
+
+int ReconocerComando(char *);
 
 //Encabezamiento de Funciones Secundarias
 
