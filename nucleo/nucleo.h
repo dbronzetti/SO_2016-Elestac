@@ -27,26 +27,13 @@ typedef struct {
 	int puerto_cpu;
 	int quantum;
 	int quantum_sleep;
-	char sem_ids[20];
-	int sem_init[20];
-	char io_ids[20];
-	int io_sleep[20];
-	char shared_vars[20];
+	char** sem_ids;
+	int** sem_init;
+	char** io_ids;
+	int** io_sleep;
+	char** shared_vars;
 	int stack_size;
 } t_configFile;
-
-typedef enum {
-	PUERTO_PROG = 0,
-	PUERTO_CPU,
-	QUANTUM,
-	QUANTUM_SLEEP,
-	SEM_IDS,
-	SEM_INIT,
-	IO_IDS,
-	IO_SLEEP,
-	SHARED_VARS,
-	STACK_SIZE
-} enum_configParameters;
 
 typedef struct {
 	int socketServer;
@@ -86,12 +73,11 @@ typedef struct {
 	char ids[];
 } t_entradasalida;
 
+//Configuracion
+t_configFile configNucleo;
+
 //Logger
 t_log* logNucleo;
-
-//Configuracion
-t_configFile configuration; //version UMC
-//t_configFile* configNucleo; //version swap
 
 //Variables de Listas
 t_list* listaCPU;
@@ -108,7 +94,7 @@ int numCPU = 0;
 
 //Encabezamientos de Funciones Principales
 
-void correrPath(char*);
+void runScript(char*);
 void planificarProceso(void);
 void finalizaProceso(int, int, int);
 void hacerEntradaSalida(int, int, int, int);
@@ -117,18 +103,20 @@ void atenderCorteQuantum(int, int);
 
 //Encabezamiento de Funciones Secundarias
 
-void startServer();
-void newClients(void *parameter);
-void processMessageReceived(void *parameter);
-void handShake(void *parameter);
-void deserializeIO(t_es*, char**);
 int buscarCPULibre(void);
 int buscarPCB(int);
 void cambiarEstadoProceso(int, int);
 void liberarCPU(int);
 int buscarCPU(int);
 void actualizarPC(int, int);
-void getConfiguration(char *configFile);
-int getEnum(char *string);
+void crearArchivoDeConfiguracion();
+
+//Conexiones
+
+void startServer();
+void newClients(void *parameter);
+void processMessageReceived(void *parameter);
+void handShake(void *parameter);
+void deserializeIO(t_es*, char**);
 
 #endif /* NUCLEO_H_ */

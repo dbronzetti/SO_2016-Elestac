@@ -1,0 +1,10 @@
+puerto_prog;
+puerto_cpu;
+quantum;
+quantum_sleep;
+io_ids;
+io_sleep;
+sem_ids;
+sem_init;
+shared_vars;
+stack_size;

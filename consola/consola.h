@@ -8,6 +8,7 @@
 
 #define PROMPT "anSISOP> "
 
+#include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdlib.h>
@@ -17,13 +18,13 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "commons/log.h"
-//#include "common-types.h"
-//#include "sockets.h"
+#include "commons/config.h"
+#include "common-types.h"
+#include "sockets.h"
 
 typedef struct {
-	int port;
 	char ip_nucleo[15];
-	int port_nucleo;
+	int puerto_nucleo;
 } t_configFile;
 
 typedef struct {
@@ -35,19 +36,12 @@ typedef struct {
 t_log* logConsola;
 
 //Configuracion
-t_configFile configuration;
+t_configFile configConsola;
 
 //Encabezamiento de Funciones Principales
 
-void leerArchivoYGuardarEnCadena();
-
-int ReconocerComando(char *);
-
-//Encabezamiento de Funciones Secundarias
-
-void startServer();
-void newClients(void *parameter);
-void handShake(void *parameter);
-void processMessageReceived(void *parameter);
+char* leerArchivoYGuardarEnCadena();
+int reconocerComando(char*);
+int conectarAlNucleo(char*);
 
 #endif /* CONSOLA_H_ */

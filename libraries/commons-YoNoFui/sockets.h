@@ -58,7 +58,7 @@ typedef struct{
 	int head;
 	int processID;
 	enum_processStatus processStatus;
-	char path[250];
+	char* codeScript;
 	int ProgramCounter;
 	int cantInstruc;
 	int operacion;
@@ -68,6 +68,7 @@ typedef struct{
 
 typedef struct{
 	int processID;
+	char* codeScript;
 	enum_processStatus processStatus;
 } t_MessageNucleo_Consola;
 
@@ -101,5 +102,7 @@ void deserializeCPU_UMC(t_MessageUMC_CPU *value, char *bufferReceived);
 
 void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize);
 void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char *bufferReceived);
+
+void deserializeConsola_Nucleo(t_MessageNucleo_Consola *value, char *bufferReceived);
 
 #endif /*SOCKET_H_*/

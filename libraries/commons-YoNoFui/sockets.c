@@ -279,9 +279,9 @@ void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize
 	memcpy(buffer + offset, &value->processID, sizeof(value->processID));
 	offset += sizeof(value->processID);
 
-	//4)path
-	memcpy(buffer + offset, &value->path, 250);
-	offset += 250;
+	//4)codeScript
+	memcpy(buffer + offset, &value->codeScript, sizeof(value->codeScript));
+	offset += sizeof(value->codeScript);
 
 	//5)pc
 	memcpy(buffer + offset, &value->ProgramCounter, sizeof(value->ProgramCounter));
@@ -302,6 +302,17 @@ void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char * bufferReceived) {
 	offset += sizeof(value->processID);
 }
 
+void deserializeConsola_Nucleo(t_MessageNucleo_Consola *value, char *bufferReceived){
+	int offset = 0;
+
+	//1)codeScript
+	memcpy(&value->codeScript, bufferReceived + offset, sizeof(value->codeScript));
+	offset += sizeof(value->codeScript);
+
+	//2)processID
+	memcpy(&value->processID, bufferReceived + offset, sizeof(value->processID));
+	offset += sizeof(value->processID);
+}
 
 /* EJEMPLO DE COMO CREAR UN CLIENTE Y MANDAR MENSAJES AL SERVER
 int socketClient;

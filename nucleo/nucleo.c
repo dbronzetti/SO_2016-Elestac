@@ -9,8 +9,8 @@ int main(int argc, char **argv) {
 
 	int exitCode = EXIT_FAILURE; //DEFAULT failure
 	pthread_t serverThread;
-	char *configurationFile = NULL;
-
+	//Creo archivo de configuracion
+	crearArchivoDeConfiguracion();
 	//Creo el archivo de Log
 		logNucleo = log_create("logNucleo", "TP", 0, LOG_LEVEL_TRACE);
 	//Creo la lista de CPUs
@@ -23,22 +23,6 @@ int main(int argc, char **argv) {
 		colaBloqueados = queue_create();
 	//Creo cola de Procesos a Finalizar (por Finalizar PID).
 		colaFinalizar = queue_create();
-	//Creo archivo de configuracion
-
-	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS TODO => Agregar logs con librerias
-
-	int i;
-	for (i = 0; i < argc; i++) {
-		if (strcmp(argv[i], "-c") == 0) {
-			configurationFile = argv[i + 1];
-			printf("Configuration File: '%s'\n", configurationFile);
-		}
-	}
-
-	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL)); //Verifies if was passed the configuration file as parameter, if DONT FAILS TODO => Agregar logs con librerias
-
-	getConfiguration(configurationFile);
-
 	//Create thread for server start
 	pthread_create(&serverThread, NULL, (void*) startServer, NULL);
 	pthread_join(serverThread, NULL);
@@ -50,7 +34,7 @@ void startServer(){
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
 	t_serverData serverData;
 
-	exitCode = openServerConnection(configuration.puerto_prog, &serverData.socketServer);
+	exitCode = openServerConnection(configNucleo.puerto_prog, &serverData.socketServer);
 	printf("socketServer: %d\n",serverData.socketServer);
 
 	//If exitCode == 0 the server connection is opened and listening
@@ -234,10 +218,11 @@ void processMessageReceived (void *parameter){
 		switch (fromProcess){
 			case CONSOLA:{
 				printf("Processing CONSOLA message received\n");
-				/*t_MessageNucleo_Consola *message = malloc(sizeof(t_MessageNucleo_Consola));
+				t_MessageNucleo_Consola *message = malloc(sizeof(t_MessageNucleo_Consola));
 				deserializeConsola_Nucleo(message, messageRcv);
 				printf("se recibio el processID #%d\n", message->processID);
-				free(message);*/
+				free(message);
+				runScript(messageRcv);
 				break;
 			}
 			case CPU: {
@@ -300,19 +285,20 @@ void processMessageReceived (void *parameter){
 
 }
 
-void correrPath(char* path){
+void runScript(char* codeScript){
 	//Creo el PCB del proceso.
 	t_PCB* PCB = malloc(sizeof(t_PCB));
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
 
 	PCB->PID = idProcesos;
-	strcpy(PCB->path,path);
+
+//	memcpy(PCB->codeScript,codeScript,sizeof((void*)codeScript));	TODO arreglar error de codeScript
 	PCB->ProgramCounter = 0;
 	PCB->estado=1;
 	idProcesos++;
 	PCB->finalizar = 0;
 	list_add(listaProcesos,(void*)PCB);
-	log_info(logNucleo, "myProcess %d - Iniciado  Path: %s",PCB->PID, path);
+	log_info(logNucleo, "myProcess %d - Iniciado  Script: %s",PCB->PID, codeScript);
 
 	//Agrego a la Cola de Listos
 	datosProceso->ProgramCounter = PCB->ProgramCounter;
@@ -335,7 +321,7 @@ void atenderCorteQuantum(int socket,int PID){
 	int buscar = buscarPCB(PID);
 	infoProceso = (t_PCB*)list_get(listaProcesos,buscar);
 	int pcnuevo;
-	pcnuevo = infoProceso->ProgramCounter + configuration.quantum;
+	pcnuevo = infoProceso->ProgramCounter + configNucleo.quantum;
 	actualizarPC(PID,pcnuevo);
 	//Agrego el proceso a la Cola de Listos
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
@@ -369,15 +355,15 @@ void finalizaProceso(int socket, int PID, int estado) {
 	if (estado == 2) {
 		estadoProceso = 4;
 		cambiarEstadoProceso(PID, estadoProceso);
-		log_info(logNucleo, "myProcess %d path %s - Finalizo correctamente",
-				datosProceso->PID, datosProceso->path);
+		log_info(logNucleo, "myProcess %d - Finalizo correctamente",
+				datosProceso->PID);
 	} else {
 		if (estado == 3) {
 			estadoProceso = 5;
 			cambiarEstadoProceso(PID, estadoProceso);
 			log_info(logNucleo,
-					"myProcess %d path %s - Finalizo incorrectamente por falta de espacio en Swap",
-					datosProceso->PID, datosProceso->path);
+					"myProcess %d - Finalizo incorrectamente por falta de espacio en Swap",
+					datosProceso->PID);
 		}
 	}
 	//Libero la CPU
@@ -419,10 +405,10 @@ void planificarProceso() {
 			datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
 			char* bufferEnviar = malloc(sizeof(t_MessageNucleo_CPU));
 
-			contextoProceso.cantInstruc = configuration.quantum;
+			contextoProceso.cantInstruc = configNucleo.quantum;
 
 			contextoProceso.ProgramCounter = datosPCB->ProgramCounter;
-			strcpy(contextoProceso.path, datosPCB->path);
+//			strcpy(contextoProceso.codeScript, datosPCB->codeScript);  TODO arreglar error de codeScript
 			contextoProceso.processID = datosPCB->PID;
 			//Saco el primer elemento de la cola, porque ya lo planifique.
 			pthread_mutex_lock(&cListos);
@@ -449,7 +435,7 @@ void planificarProceso() {
 			contextoProceso.head = 1;
 
 			contextoProceso.ProgramCounter = datosPCB->ProgramCounter;
-			strcpy(contextoProceso.path, datosPCB->path);
+//			strcpy(contextoProceso.codeScript, datosPCB->codeScript);   TODO arreglar error de codeScript
 			contextoProceso.processID = datosPCB->PID;
 			serializeNucleo_CPU(&contextoProceso, bufferEnviar, sizeof(t_MessageNucleo_CPU));
 			//Saco el primer elemento de la cola, porque ya lo planifique.
@@ -610,115 +596,18 @@ void deserializeIO(t_es* datos, char** buffer) {
 	offset += sizeof(datos->ProgramCounter);
 }
 
-/*
-
 void crearArchivoDeConfiguracion(){
-
-	configNucleo = config_create("/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configNucleo");
-	configNucleo->puerto_prog = config_get_int_value(configNucleo,"PUERTO_PROG");
-	configNucleo->puerto_cpu = config_get_int_value(configNucleo,"PUERTO_CPU");
-	configNucleo->quantum = config_get_int_value(configNucleo,"QUANTUM");
-	configNucleo->quantum_sleep = config_get_int_value(configNucleo,"QUANTUM_SLEEP");
-	configNucleo->sem_ids = config_get_array_value(configNucleo,"SEM_IDS");
-	configNucleo->sem_init = config_get_array_value(configNucleo,"SEM_INIT");
-	configNucleo->io_ids = config_get_array_value(configNucleo,"IO_IDS");
-	configNucleo->io_sleep = config_get_array_value(configNucleo,"IO_SLEEP");
-	configNucleo->shared_vars = config_get_array_value(configNucleo,"SHARED_VARS");
-	configNucleo->stack_size = config_get_int_value(configNucleo,"STACK_SIZE");
-}
-*/
-
-void getConfiguration(char *configFile){
-
-	FILE *file = fopen(configFile, "r");
-
-	assert(("ERROR - Could not open the configuration file", file != 0));// ERROR - Could not open file TODO => Agregar logs con librerias
-
-	char parameter[20]; //[12] is the max paramenter's name size
-	char parameterValue[20];
-
-	while ((fscanf(file, "%s", parameter)) != EOF){
-
-		switch(getEnum(parameter)){
-			case(PUERTO_PROG):{ //1
-				fscanf(file, "%s",parameterValue);
-				configuration.puerto_prog = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
-				break;
-			}
-			case(PUERTO_CPU):{ //2
-				fscanf(file, "%s",parameterValue);
-				configuration.puerto_cpu = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
-				break;
-			}
-			case(QUANTUM):{ //3
-				fscanf(file, "%s",parameterValue);
-				configuration.quantum = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
-				break;
-			}
-			case(QUANTUM_SLEEP):{ //4
-				fscanf(file, "%s",parameterValue);
-				configuration.quantum_sleep = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
-				break;
-			}
-			case(SEM_IDS):{ //5
-				fscanf(file, "%s",parameterValue);
-				(strcmp(parameter, EOL_DELIMITER) != 0) ? memcpy(&configuration.sem_ids, parameterValue, sizeof(configuration.sem_ids)) : "" ;
-				break;
-			}
-			case(SEM_INIT):{ //6
-				fscanf(file, "%s",parameterValue);
-				(strcmp(parameter, EOL_DELIMITER) != 0) ? memcpy(&configuration.sem_init, parameterValue, sizeof(configuration.sem_init)) : "" ;
-				break;
-			}
-			case(IO_IDS):{ //7
-				fscanf(file, "%s",parameterValue);
-				(strcmp(parameter, EOL_DELIMITER) != 0) ? memcpy(&configuration.io_ids, parameterValue, sizeof(configuration.io_ids)) : "" ;
-				break;
-			}
-			case(IO_SLEEP):{ //8
-				fscanf(file, "%s",parameterValue);
-				(strcmp(parameter, EOL_DELIMITER) != 0) ? memcpy(&configuration.io_sleep, parameterValue, sizeof(configuration.io_sleep)) : "" ;
-				break;
-			}
-			case(SHARED_VARS):{ //9
-				fscanf(file, "%s",parameterValue);
-				(strcmp(parameter, EOL_DELIMITER) != 0) ? memcpy(&configuration.shared_vars, parameterValue, sizeof(configuration.shared_vars)) : "" ;
-				break;
-			}
-			case(STACK_SIZE):{ //10
-				fscanf(file, "%s",parameterValue);
-				configuration.stack_size = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
-				break;
-			}
-			default:{
-				if (strcmp(parameter, EOL_DELIMITER) != 0){
-					perror("Error - Parameter read not recognized");//TODO => Agregar logs con librerias
-					printf("Error Parameter read not recognized '%s'\n",parameter);
-				}
-				break;
-			}
-		}// END switch(parameter)
-	}
-
+	t_config* configuration;
+	configuration = config_create("/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo");
+	configNucleo.puerto_prog = config_get_int_value(configuration,"PUERTO_PROG");
+	configNucleo.puerto_cpu = config_get_int_value(configuration,"PUERTO_CPU");
+	configNucleo.quantum = config_get_int_value(configuration,"QUANTUM");
+	configNucleo.quantum_sleep = config_get_int_value(configuration,"QUANTUM_SLEEP");
+/*	configNucleo.sem_ids = config_get_array_value(configuration,"SEM_IDS");		TODO arreglar la funcion a usar
+	configNucleo.sem_init = config_get_array_value(configuration,"SEM_INIT");
+	configNucleo.io_ids = config_get_array_value(configuration,"IO_IDS");
+	configNucleo.io_sleep = config_get_array_value(configuration,"IO_SLEEP");
+	configNucleo.shared_vars = config_get_array_value(configuration,"SHARED_VARS");
+	configNucleo.stack_size = config_get_int_value(configuration,"STACK_SIZE");*/
 }
 
-int getEnum(char *string){
-	int parameter = -1;
-
-	//printf("string: %s \n", string);
-
-	strcmp(string,"PUERTO_PROG") == 0 ? parameter = PUERTO_PROG : -1 ;
-	strcmp(string,"PUERTO_CPU") == 0 ? parameter = PUERTO_CPU : -1 ;
-	strcmp(string,"QUANTUM") == 0 ? parameter = QUANTUM : -1 ;
-	strcmp(string,"QUANTUM_SLEEP") == 0 ? parameter = QUANTUM_SLEEP : -1 ;
-	strcmp(string,"SEM_IDS") == 0 ? parameter = SEM_IDS : -1 ;
-	strcmp(string,"SEM_INIT") == 0 ? parameter = SEM_INIT : -1 ;
-	strcmp(string,"IO_IDS") == 0 ? parameter = IO_IDS : -1 ;
-	strcmp(string,"IO_SLEEP") == 0 ? parameter = IO_SLEEP : -1 ;
-	strcmp(string,"SHARED_VARS") == 0 ? parameter = SHARED_VARS : -1 ;
-	strcmp(string,"STACK_SIZE") == 0 ? parameter = STACK_SIZE : -1 ;
-
-	//printf("parameter: %d \n", parameter);
-
-	return parameter;
-}
