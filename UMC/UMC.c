@@ -20,6 +20,13 @@ int main(int argc, char *argv[]){
 
 	getConfiguration(configurationFile);
 
+	//Creating memory block
+	memBlock = calloc(configuration.frames_max, configuration.frames_size);
+
+	//waitForResponse();
+
+	pthread_mutex_init(&socketMutex, NULL);
+
 	//Create thread for server start
 	pthread_create(&serverThread, NULL, (void*) startServer, NULL);
 
@@ -45,6 +52,11 @@ void startServer(){
 
 		exitCode = listen(serverData.socketServer, SOMAXCONN);
 
+		if (exitCode < 0 ){
+			perror("Failed to listen server Port"); //TODO => Agregar logs con librerias
+			return;
+		}
+
 		while (1){
 			newClients((void*) &serverData);
 		}
@@ -57,6 +69,7 @@ void newClients (void *parameter){
 	int pid;
 
 	t_serverData *serverData = (t_serverData*) parameter;
+
 	//TODO disparar un thread para acceptar cada cliente nuevo (debido a que el accept es bloqueante) y para hacer el handshake
 /**************************************/
 	//Create thread attribute detached
@@ -71,47 +84,27 @@ void newClients (void *parameter){
 //			//Destroy thread attribute
 //			pthread_attr_destroy(&acceptClientThreadAttr);
 /************************************/
+
 	exitCode = acceptClientConnection(&serverData->socketServer, &serverData->socketClient);
 
 	if (exitCode == EXIT_FAILURE){
 		printf("There was detected an attempt of wrong connection\n");//TODO => Agregar logs con librerias
 	}else{
 
-		//Create thread attribute detached
-		pthread_attr_t handShakeThreadAttr;
-		pthread_attr_init(&handShakeThreadAttr);
-		pthread_attr_setdetachstate(&handShakeThreadAttr, PTHREAD_CREATE_DETACHED);
+	//Create thread attribute detached
+	pthread_attr_t handShakeThreadAttr;
+	pthread_attr_init(&handShakeThreadAttr);
+	pthread_attr_setdetachstate(&handShakeThreadAttr, PTHREAD_CREATE_DETACHED);
 
-		//Create thread for checking new connections in server socket
-		pthread_t handShakeThread;
-		pthread_create(&handShakeThread, &handShakeThreadAttr, (void*) handShake, parameter);
+	//Create thread for checking new connections in server socket
+	pthread_t handShakeThread;
+	pthread_create(&handShakeThread, &handShakeThreadAttr, (void*) handShake, parameter);
 
-		//Destroy thread attribute
-		pthread_attr_destroy(&handShakeThreadAttr);
+	//Destroy thread attribute
+	pthread_attr_destroy(&handShakeThreadAttr);
 
 	}// END handshakes
 
-}
-
-int acceptClientConnection1(void *parameter){
-
-	t_serverData *serverData = (t_serverData*) parameter;
-	int *socketServer = &serverData->socketServer;
-	int *socketClient = &serverData->socketClient;
-	int exitcode = EXIT_SUCCESS; //Normal completition
-	struct sockaddr_in clientConnection;
-	unsigned int addressSize = sizeof(clientConnection); //The addressSize has to be initialized with the size of sockaddr_in before passing it to accept function
-
-	*socketClient = accept(*socketServer, (void*) &clientConnection, &addressSize);
-
-	if (*socketClient != -1){
-		printf("The was received a connection in: %d.\n", *socketClient);
-	}else{
-		perror("Failed to get a new connection"); //TODO => Agregar logs con librerias
-		exitcode = EXIT_FAILURE;
-	}
-
-	return exitcode;
 }
 
 void handShake (void *parameter){
@@ -126,11 +119,8 @@ void handShake (void *parameter){
 
 	//Receive message using the size read before
 	memcpy(&messageSize, messageRcv, sizeof(int));
-	//printf("messageSize received: %d\n",messageSize);
 	messageRcv = realloc(messageRcv,messageSize);
 	receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
-
-	printf("bytes received in message: %d\n",receivedBytes);
 
 	//starting handshake with client connected
 	t_MessageGenericHandshake *message = malloc(sizeof(t_MessageGenericHandshake));
@@ -144,28 +134,25 @@ void handShake (void *parameter){
 		switch ((int) message->process){
 			case CPU:{
 				printf("%s\n",message->message);
+
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){
-					printf("Sending frame size\n");
+
 					//After sending ACCEPTATION has to be sent the "Tamanio de pagina" information
-					char *buffer = malloc(sizeof(configuration.frames_size));
-					printf("frame size: %d\n", configuration.frames_size );
-					memcpy(buffer, &configuration.frames_size, sizeof(configuration.frames_size));
-					exitCode = sendMessage(&serverData->socketClient, buffer ,sizeof(configuration.frames_size));
-					free(buffer);
+					exitCode = sendMessage(&serverData->socketClient, &configuration.frames_size , sizeof(configuration.frames_size));
 
-					//Create thread attribute detached
-					pthread_attr_t processMessageThreadAttr;
-					pthread_attr_init(&processMessageThreadAttr);
-					pthread_attr_setdetachstate(&processMessageThreadAttr, PTHREAD_CREATE_DETACHED);
-
-					//Create thread for checking new connections in server socket
-					pthread_t processMessageThread;
-					pthread_create(&processMessageThread, &processMessageThreadAttr, (void*) processMessageReceived, parameter);
-
-					//Destroy thread attribute
-					pthread_attr_destroy(&processMessageThreadAttr);
+//					//Create thread attribute detached
+//					pthread_attr_t processMessageThreadAttr;
+//					pthread_attr_init(&processMessageThreadAttr);
+//					pthread_attr_setdetachstate(&processMessageThreadAttr, PTHREAD_CREATE_DETACHED);
+//
+//					//Create thread for checking new connections in server socket
+//					pthread_t processMessageThread;
+//					pthread_create(&processMessageThread, &processMessageThreadAttr, (void*) processMessageReceived, parameter);
+//
+//					//Destroy thread attribute
+//					pthread_attr_destroy(&processMessageThreadAttr);
 				}
 
 				break;
@@ -177,10 +164,9 @@ void handShake (void *parameter){
 				if (exitCode == EXIT_SUCCESS){
 
 					//After sending ACCEPTATION has to be sent the "Tamanio de pagina" information
-					char *buffer = malloc(sizeof(configuration.frames_size));
-					memcpy(buffer, &configuration.frames_size, sizeof(configuration.frames_size));
-					exitCode = sendMessage(&serverData->socketClient, buffer ,sizeof(configuration.frames_size));
-					free(buffer);
+					exitCode = sendMessage(&serverData->socketClient, &configuration.frames_size , sizeof(configuration.frames_size));
+
+					//processMessageReceived(parameter);
 
 					//Create thread attribute detached
 					pthread_attr_t processMessageThreadAttr;
@@ -315,7 +301,12 @@ void getConfiguration(char *configFile){
 				configuration.frames_max_proc = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
 				break;
 			}
-			case(ENTRADAS_TLB):{ //7
+			case(ALGORITMO):{ //7
+				fscanf(file, "%s",parameterValue);
+				configuration.delay = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
+				break;
+			}
+			case(ENTRADAS_TLB):{ //8
 				fscanf(file, "%s",parameterValue);
 				configuration.TLB_entries = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
 
@@ -328,7 +319,7 @@ void getConfiguration(char *configFile){
 
 				break;
 			}
-			case(RETARDO):{ //8
+			case(RETARDO):{ //9
 				fscanf(file, "%s",parameterValue);
 				configuration.delay = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
 				break;
@@ -418,39 +409,6 @@ int getEnum(char *string){
 	return parameter;
 }
 
-void initializeProgram(int PID, int totalPagesRequired, char *programCode){
-
-}
-
-char *requestBytesFromPage(t_memoryLocation virtualAddress){
-	char *memoryContent;
-
-	return memoryContent;
-}
-
-void writeBytesToPage(t_memoryLocation virtualAddress, char *buffer){
-
-}
-
-void endProgram(int PID){
-
-}
-
-void createTLB(){
-	TLB = list_create();
-	resetTLBEntries();
-}
-
-void resetTLBEntries(){
-	int i;
-	for(i=0; i < configuration.TLB_entries; i++){
-		t_TLB *defaultTLBElement;
-		defaultTLBElement->PID = -1; //DEFAULT PID value in TLB
-		list_add(TLB, (void*) defaultTLBElement);
-	}
-
-}
-
 void consoleMessageUMC(){
 	printf("\n***********************************\n");
 	printf("* UMC Console ready for your use! *");
@@ -471,4 +429,41 @@ void consoleMessageUMC(){
 	printf("tlb\t\t:: Limpia completamente el contenido de la TLB\n");
 	printf("memory\t\t:: Marca todas las paginas del proceso como modificadas\n\n");
 	printf("UMC console >> $ ");
+}
+
+void createTLB(){
+	TLB = list_create();
+	resetTLBEntries();
+}
+
+void resetTLBEntries(){
+	int i;
+	for(i=0; i < configuration.TLB_entries; i++){
+		t_TLB *defaultTLBElement;
+		defaultTLBElement->PID = -1; //DEFAULT PID value in TLB
+		list_add(TLB, (void*) defaultTLBElement);
+	}
+
+}
+
+void initializeProgram(int PID, int totalPagesRequired, char *programCode){
+
+}
+
+void endProgram(int PID){
+
+}
+
+char *requestBytesFromPage(t_memoryLocation virtualAddress){
+	char *memoryContent;
+
+	return memoryContent;
+}
+
+void writeBytesToPage(t_memoryLocation virtualAddress, char *buffer){
+
+}
+
+void waitForResponse(){
+	sleep(configuration.delay);
 }

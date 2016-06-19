@@ -18,7 +18,6 @@ int main(){
 
 	exitCode = connectToUMC();
 
-
 	//exitCode = ejecutarPrograma(PCB);
 
 	return EXIT_SUCCESS;
@@ -46,12 +45,8 @@ int connectToUMC(){
 
 			//Receive message using the size read before
 			memcpy(&messageSize, messageRcv, sizeof(int));
-			printf("messageRcv received: %s\n",messageRcv);
-			printf("messageSize received: %d\n",messageSize);
 			messageRcv = realloc(messageRcv,messageSize);
 			receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
-
-			printf("bytes received: %d\n",receivedBytes);
 
 			//starting handshake with client connected
 			t_MessageGenericHandshake *message = malloc(sizeof(t_MessageGenericHandshake));
@@ -64,15 +59,9 @@ int connectToUMC(){
 					printf("%s\n",message->message);
 					printf("Receiving frame size\n");
 					//After receiving ACCEPTATION has to be received the "Tamanio de pagina" information
-					messageRcv = malloc(sizeof(int));
-					receivedBytes = receiveMessage(&socketClient, messageRcv, sizeof(messageSize));
-					printf("bytes received: %d\n",receivedBytes);
-					int tamanio = 0;
-					memcpy(&tamanio, messageRcv, sizeof(int));
-					printf("Tamanio de pagina: %d\n",tamanio);
+					receivedBytes = receiveMessage(&socketClient, &frameSize, sizeof(messageSize));
 
-					free(messageRcv);
-
+					printf("Tamanio de pagina: %d\n",frameSize);
 					break;
 				}
 				default:{
@@ -83,16 +72,10 @@ int connectToUMC(){
 			}
 		}
 
-		while(1){
-			//aca tiene que ir una validacion para ver si el server sigue arriba
-			//send(socketClient, msg, sizeof(msg),0);
-		}
-
 	}else{
 		perror("no me pude conectar al server!"); //
 		printf("mi socket es: %d\n", socketClient);
 	}
-
 
 	return exitcode;
 }

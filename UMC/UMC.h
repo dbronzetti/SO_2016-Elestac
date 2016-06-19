@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include "sockets.h"
 #include "commons/collections/list.h"
+#include "commons/string.h"
 #include "common-types.h"
 
 #define EOL_DELIMITER ";"
@@ -23,6 +24,7 @@ typedef struct {
 	int frames_max_proc;
 	int TLB_entries; /* 0 = Disable */
 	int delay;
+	char algorithm_replace[20]; /* rounding up max length "Clock Modificado" */
 } t_configFile;
 
 typedef struct {
@@ -34,14 +36,9 @@ typedef struct{
 	t_memoryLocation virtualAddress;
 	int frameNumber;
 	int PID;
-} t_TLB; /* It will be created as a fixed list at the beginning of the process using PID as element index */
-
-typedef struct{
-	t_memoryLocation virtualAddress;
-	int frameNumber;
 	unsigned dirtyBit : 1;//field of 1 bit
 	unsigned presentBit : 1;//field of 1 bit
-} t_pageTable;
+} t_TLB; /* It will be created as a fixed list at the beginning of the process using PID as element index */
 
 typedef enum{
 	PUERTO = 0,
@@ -51,11 +48,13 @@ typedef enum{
 	MARCO_SIZE,
 	MARCO_X_PROC,
 	ENTRADAS_TLB,
-	RETARDO
+	RETARDO,
+	ALGORITMO
 } enum_configParameters;
 
 /***** Global variables *****/
 t_configFile configuration;
+char *memBlock;
 pthread_mutex_t socketMutex;
 t_list *TLB;
 
@@ -80,8 +79,6 @@ void initializeProgram(int PID, int totalPagesRequired, char *programCode);
 char *requestBytesFromPage(t_memoryLocation virtualAddress);
 void writeBytesToPage(t_memoryLocation virtualAddress, char *buffer);
 void endProgram(int PID);
-
-
-int acceptClientConnection1(void *parameter);
+void waitForResponse();
 
 #endif /* UMC_H_ */

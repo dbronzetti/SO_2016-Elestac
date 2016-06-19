@@ -12,7 +12,9 @@
 
 AnSISOP_funciones* funciones;
 AnSISOP_kernel* funciones_kernel;
+int frameSize = 0;
 
 int ejecutarPrograma(t_PCB *PCB);
+int connectToUMC();
 
 #endif /* CPU_H_ */
