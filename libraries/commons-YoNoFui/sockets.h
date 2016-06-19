@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include "commons/string.h"
 
 typedef enum{
 	ACCEPTED=0,
@@ -81,8 +82,8 @@ int acceptClientConnection(int *socketServer, int *socketClient);
 int openClientConnection(char *IPServer, int PortServer, int *socketClient);
 int sendClientHandShake(int *socketClient, enum_processes process);
 int sendClientAcceptation(int *socketClient);
-int sendMessage (int *socketClient, char *buffer, int bufferSize);
-int receiveMessage(int *socketClient, char *messageRcv, int bufferSize);
+int sendMessage (int *socketClient, void *buffer, int bufferSize);
+int receiveMessage(int *socketClient, void *messageRcv, int bufferSize);
 void serializeHandShake(t_MessageGenericHandshake *value, char *buffer, int valueSize);
 void deserializeHandShake(t_MessageGenericHandshake *value, char *bufferReceived);
 

@@ -113,14 +113,15 @@ int sendClientHandShake(int *socketClient, enum_processes process){
 		}
 	}
 
-	messageACK->message = malloc(sizeof(char[60]));
-	sprintf(messageACK->message, "The process '%s' is trying to connect you!\0", processString);
+	messageACK->message = string_new();
+	string_append_with_format(&messageACK->message,"The process '%s' is trying to connect you!\0",processString);
 	messageLen = strlen(messageACK->message);
 
 	payloadSize = sizeof(messageACK->process) + sizeof(messageLen) + messageLen + 1; // process + length message + message + 1 (+1 because of '\0')
 	bufferSize = sizeof(bufferSize) + payloadSize ;//+1 because of '\0'
+
 	char *buffer = malloc(bufferSize);
-	serializeHandShake(messageACK, buffer, bufferSize);
+	serializeHandShake(messageACK, buffer, payloadSize);//has to be sent the PAYLOAD size!!
 
 	exitcode = send(*socketClient, (void*) buffer, bufferSize,0) == -1 ? EXIT_FAILURE : EXIT_SUCCESS ;
 
@@ -139,32 +140,35 @@ int sendClientAcceptation(int *socketClient){
 
 	t_MessageGenericHandshake *messageACK = malloc(sizeof(t_MessageGenericHandshake));
 	messageACK->process = ACCEPTED;
-	messageACK->message = "The server has accepted your connection!\0"; //ALWAYS put \0 for finishing the string
+	messageACK->message = string_new();
+	string_append(&messageACK->message,"The server has accepted your connection!\0");//ALWAYS put \0 for finishing the string
 	messageLen = strlen(messageACK->message);
 
 	payloadSize = sizeof(messageACK->process) + sizeof(messageLen) + messageLen + 1; // process + length message + message + 1 (+1 because of '\0')
 	bufferSize = sizeof(bufferSize) + payloadSize ;//+1 because of '\0'
+
 	char *buffer = malloc(bufferSize);
-	serializeHandShake(messageACK, buffer, bufferSize);
+	serializeHandShake(messageACK, buffer, payloadSize);//has to be sent the PAYLOAD size!!
 
 	exitcode = send(*socketClient, (void*) buffer, bufferSize,0) == -1 ? EXIT_FAILURE : EXIT_SUCCESS ;
 
 	free(buffer);
+	free(messageACK->message);
 	free(messageACK);
 	return exitcode;
 }
 
-int sendMessage (int *socketClient, char *buffer, int bufferSize){
+int sendMessage (int *socketClient, void *buffer, int bufferSize){
 	int exitcode = EXIT_SUCCESS; //Normal completition
 
-	exitcode = send(*socketClient, (void*) buffer, bufferSize,0) == -1 ? EXIT_FAILURE : EXIT_SUCCESS ;
+	exitcode = send(*socketClient, buffer, bufferSize,0) == -1 ? EXIT_FAILURE : EXIT_SUCCESS ;
 
 	return exitcode;
 }
 
-int receiveMessage(int *socketClient, char *messageRcv, int bufferSize){
+int receiveMessage(int *socketClient, void *messageRcv, int bufferSize){
 
-	int receivedBytes = recv(*socketClient, (void*) messageRcv, bufferSize, 0);
+	int receivedBytes = recv(*socketClient, messageRcv, bufferSize, 0);
 
 	return receivedBytes;
 }
