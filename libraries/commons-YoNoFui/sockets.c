@@ -85,33 +85,7 @@ int sendClientHandShake(int *socketClient, enum_processes process){
 	t_MessageGenericHandshake *messageACK = malloc(sizeof(t_MessageGenericHandshake));
 	messageACK->process = process;
 
-	switch (process){
-		case CONSOLA:{
-			processString = "CONSOLA";
-			break;
-		}
-		case NUCLEO:{
-			processString = "NUCLEO";
-			break;
-		}
-		case UMC:{
-			processString = "UMC";
-			break;
-		}
-		case SWAP:{
-			processString = "SWAP";
-			break;
-		}
-		case CPU:{
-			processString = "CPU";
-			break;
-		}
-		default:{
-			perror("Process not recognized");//TODO => Agregar logs con librerias
-			printf("Invalid process '%d' tried to send a message\n",(int) process);
-			return exitcode = EXIT_FAILURE;
-		}
-	}
+	processString = getProcessString(process);
 
 	messageACK->message = string_new();
 	string_append_with_format(&messageACK->message,"The process '%s' is trying to connect you!\0",processString);
@@ -318,11 +292,44 @@ void deserializeConsola_Nucleo(t_MessageNucleo_Consola *value, char *bufferRecei
 	offset += sizeof(value->processID);
 }
 
+char *getProcessString (enum_processes process){
+
+	char *processString;
+	switch (process){
+		case CONSOLA:{
+			processString = "CONSOLA";
+			break;
+		}
+		case NUCLEO:{
+			processString = "NUCLEO";
+			break;
+		}
+		case UMC:{
+			processString = "UMC";
+			break;
+		}
+		case SWAP:{
+			processString = "SWAP";
+			break;
+		}
+		case CPU:{
+			processString = "CPU";
+			break;
+		}
+		default:{
+			perror("Process not recognized");//TODO => Agregar logs con librerias
+			printf("Invalid process '%d' tried to send a message\n",(int) process);
+			processString = NULL;
+		}
+	}
+	return processString;
+}
+
 /* EJEMPLO DE COMO CREAR UN CLIENTE Y MANDAR MENSAJES AL SERVER
 int socketClient;
 
-	char ip[15] = "127.0.0.1";
-	int exitcode = openClientConnection(&ip, 8080, &socketClient);
+	char *ip= "127.0.0.1";
+	int exitcode = openClientConnection(ip, 8080, &socketClient);
 
 	//If exitCode == 0 the client could connect to the server
 	if (exitcode == 0){

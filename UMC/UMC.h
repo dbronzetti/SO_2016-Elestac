@@ -38,7 +38,7 @@ typedef struct{
 	int PID;
 	unsigned dirtyBit : 1;//field of 1 bit
 	unsigned presentBit : 1;//field of 1 bit
-} t_TLB; /* It will be created as a fixed list at the beginning of the process using PID as element index */
+} t_memoryAdmin; /* It will be created as a fixed list at the beginning of the process using PID as element index */
 
 typedef enum{
 	PUERTO = 0,
@@ -54,9 +54,10 @@ typedef enum{
 
 /***** Global variables *****/
 t_configFile configuration;
-char *memBlock;
+void *memBlock;
 pthread_mutex_t socketMutex;
 t_list *TLB;
+t_list *pageTablesList;
 
 /***** Prototype functions *****/
 
@@ -65,6 +66,7 @@ void getConfiguration(char *configFile);
 void createTLB();
 void resetTLBEntries();
 void consoleMessageUMC();
+void createAdminStructs();
 int getEnum(char *string);
 
 //Communications

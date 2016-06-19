@@ -45,7 +45,7 @@ typedef struct{
 	enum_processStatus processStatus;
 	int totalPages;
 	int pageNro;
-} t_MessageUMC_CPU;
+} t_MessageCPU_UMC;
 
 typedef struct{
 	enum_processStatus processStatus;
@@ -87,6 +87,7 @@ int sendMessage (int *socketClient, void *buffer, int bufferSize);
 int receiveMessage(int *socketClient, void *messageRcv, int bufferSize);
 void serializeHandShake(t_MessageGenericHandshake *value, char *buffer, int valueSize);
 void deserializeHandShake(t_MessageGenericHandshake *value, char *bufferReceived);
+char *getProcessString (enum_processes process);
 
 //IMPORTANTE!!! --> Nomeclatura de Serializadores y Deserealizadores
 //1) serialize<FromProcess>_<ToProcess> ()
@@ -98,8 +99,8 @@ void deserializeSwap_UMC(t_MessageUMC_Swap *value, char *bufferReceived);
 void serializeUMC_Nucleo(t_MessageUMC_Nucleo *value, char *buffer, int valueSize);
 void deserializeNucleo_UMC(t_MessageUMC_Nucleo *value, char *bufferReceived);
 
-void serializeUMC_CPU(t_MessageUMC_CPU *value, char *buffer, int valueSize);
-void deserializeCPU_UMC(t_MessageUMC_CPU *value, char *bufferReceived);
+void serializeCPU_UMC(t_MessageCPU_UMC *value, char *buffer, int valueSize);
+void deserializeUMC_CPU(t_MessageCPU_UMC *value, char *bufferReceived);
 
 void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize);
 void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char *bufferReceived);

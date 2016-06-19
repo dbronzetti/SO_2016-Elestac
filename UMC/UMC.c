@@ -8,6 +8,7 @@ int main(int argc, char *argv[]){
 
 	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS TODO => Agregar logs con librerias
 
+	//get parameter
 	int i;
 	for( i = 0; i < argc; i++){
 		if (strcmp(argv[i], "-c") == 0){
@@ -16,14 +17,14 @@ int main(int argc, char *argv[]){
 		}
 	}
 
+	//ERROR if not configuration parameter was passed
 	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS TODO => Agregar logs con librerias
 
+	//get configuration from file
 	getConfiguration(configurationFile);
 
-	//Creating memory block
-	memBlock = calloc(configuration.frames_max, configuration.frames_size);
-
-	//waitForResponse();
+	//created administration structures for UMC process
+	createAdminStructs();
 
 	pthread_mutex_init(&socketMutex, NULL);
 
@@ -91,17 +92,17 @@ void newClients (void *parameter){
 		printf("There was detected an attempt of wrong connection\n");//TODO => Agregar logs con librerias
 	}else{
 
-	//Create thread attribute detached
-	pthread_attr_t handShakeThreadAttr;
-	pthread_attr_init(&handShakeThreadAttr);
-	pthread_attr_setdetachstate(&handShakeThreadAttr, PTHREAD_CREATE_DETACHED);
+		//Create thread attribute detached
+		pthread_attr_t handShakeThreadAttr;
+		pthread_attr_init(&handShakeThreadAttr);
+		pthread_attr_setdetachstate(&handShakeThreadAttr, PTHREAD_CREATE_DETACHED);
 
-	//Create thread for checking new connections in server socket
-	pthread_t handShakeThread;
-	pthread_create(&handShakeThread, &handShakeThreadAttr, (void*) handShake, parameter);
+		//Create thread for checking new connections in server socket
+		pthread_t handShakeThread;
+		pthread_create(&handShakeThread, &handShakeThreadAttr, (void*) handShake, parameter);
 
-	//Destroy thread attribute
-	pthread_attr_destroy(&handShakeThreadAttr);
+		//Destroy thread attribute
+		pthread_attr_destroy(&handShakeThreadAttr);
 
 	}// END handshakes
 
@@ -142,17 +143,17 @@ void handShake (void *parameter){
 					//After sending ACCEPTATION has to be sent the "Tamanio de pagina" information
 					exitCode = sendMessage(&serverData->socketClient, &configuration.frames_size , sizeof(configuration.frames_size));
 
-//					//Create thread attribute detached
-//					pthread_attr_t processMessageThreadAttr;
-//					pthread_attr_init(&processMessageThreadAttr);
-//					pthread_attr_setdetachstate(&processMessageThreadAttr, PTHREAD_CREATE_DETACHED);
-//
-//					//Create thread for checking new connections in server socket
-//					pthread_t processMessageThread;
-//					pthread_create(&processMessageThread, &processMessageThreadAttr, (void*) processMessageReceived, parameter);
-//
-//					//Destroy thread attribute
-//					pthread_attr_destroy(&processMessageThreadAttr);
+					//Create thread attribute detached
+					pthread_attr_t processMessageThreadAttr;
+					pthread_attr_init(&processMessageThreadAttr);
+					pthread_attr_setdetachstate(&processMessageThreadAttr, PTHREAD_CREATE_DETACHED);
+
+					//Create thread for checking new connections in server socket
+					pthread_t processMessageThread;
+					pthread_create(&processMessageThread, &processMessageThreadAttr, (void*) processMessageReceived, parameter);
+
+					//Destroy thread attribute
+					pthread_attr_destroy(&processMessageThreadAttr);
 				}
 
 				break;
@@ -223,13 +224,6 @@ void processMessageReceived (void *parameter){
 		printf("bytes received: %d\n",receivedBytes);
 
 		switch (fromProcess){
-			case SWAP:{
-				t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
-				deserializeSwap_UMC(message, messageRcv);
-				printf("Se recibio el processID #%d\n",message->processID);
-				free(message);
-				break;
-			}
 			case CPU:{
 				printf("Processing CPU message received\n");
 				break;
@@ -308,15 +302,7 @@ void getConfiguration(char *configFile){
 			}
 			case(ENTRADAS_TLB):{ //8
 				fscanf(file, "%s",parameterValue);
-				configuration.TLB_entries = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
-
-				// Checking if TLB is enable
-				if (configuration.TLB_entries != 0){
-					//TLB enable
-					createTLB();
-					printf("TLB enable. Size '%d'\n", list_size(TLB));
-				}
-
+				configuration.TLB_entries = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : -1 /*DEFAULT VALUE -1 != 0 (TLB disable)*/;
 				break;
 			}
 			case(RETARDO):{ //9
@@ -346,6 +332,7 @@ void startUMCConsole(){
 	while (1){
 		scanf("%s %s", command, option);
 
+		//cleaning screen
 		system("clear");
 
 		int i;
@@ -439,14 +426,30 @@ void createTLB(){
 void resetTLBEntries(){
 	int i;
 	for(i=0; i < configuration.TLB_entries; i++){
-		t_TLB *defaultTLBElement;
+		t_memoryAdmin *defaultTLBElement;
 		defaultTLBElement->PID = -1; //DEFAULT PID value in TLB
 		list_add(TLB, (void*) defaultTLBElement);
 	}
+}
 
+void createAdminStructs(){
+	//Creating memory block
+	memBlock = calloc(configuration.frames_max, configuration.frames_size);
+
+	// Checking if TLB is enable
+	if (configuration.TLB_entries != 0){
+		//TLB enable
+		createTLB();
+		printf("TLB enable. Size '%d'\n", list_size(TLB));
+	}else{
+		printf("TLB disable!.\n");
+	}
 }
 
 void initializeProgram(int PID, int totalPagesRequired, char *programCode){
+	t_memoryAdmin *pageTable;
+
+	pageTable->PID = PID;
 
 }
 

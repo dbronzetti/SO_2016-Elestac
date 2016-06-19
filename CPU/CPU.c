@@ -1,10 +1,28 @@
 #include "CPU.h"
 
-int main(){
+int main(int argc, char *argv[]){
 	int exitCode = EXIT_SUCCESS;
+	char *configurationFile = NULL;
 	t_PCB *PCB = NULL;
 
-	//TODO CPU 1 - Conectarse a la UMC y setear tamaño de paginas
+	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS TODO => Agregar logs con librerias
+
+	//get parameter
+	int i;
+	for( i = 0; i < argc; i++){
+		if (strcmp(argv[i], "-c") == 0){
+			configurationFile = argv[i+1];
+			printf("Configuration File: '%s'\n",configurationFile);
+		}
+	}
+
+	//ERROR if not configuration parameter was passed
+	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS TODO => Agregar logs con librerias
+
+	//get configuration from file
+	crearArchivoDeConfiguracion(configurationFile);
+
+	//CPU 1 - Conectarse a la UMC y setear tamaño de paginas
 
 	//TODO CPU 2 - Conectarse al Nucleo y quedar a la espera de 1 PCB
 	//TODO CPU 2.1 - Al recibir PCB incrementar el valor del ProgramCounter
@@ -16,18 +34,47 @@ int main(){
 	//TODO CPU 2.5.1 - Si es la ultima sentencia del programa avisar al Nucleo que finalizo el proceso para que elimine las estructuras usadas para este programa
 	//TODO CPU 2.5.2 - Si fue captada la señal SIGUSR1 mientras se estaba ejecutando una instruccion se debe finalizar la misma y acto seguido desconectarse del Nucleo
 
-	exitCode = connectToUMC();
+	exitCode = connectTo(UMC);
+	if(exitCode == EXIT_SUCCESS){
+		printf("CPU connected to UMC successfully\n");
+	}
+
+	exitCode = connectTo(NUCLEO);
+	if(exitCode == EXIT_SUCCESS){
+		printf("CPU connected to NUCLEO successfully\n");
+		waitRequestFromNucleo();
+	}
 
 	//exitCode = ejecutarPrograma(PCB);
 
 	return EXIT_SUCCESS;
 }
 
-int connectToUMC(){
+int connectTo(enum_processes processToConnect){
+	int exitcode = EXIT_FAILURE;//DEFAULT VALUE
 	int socketClient;
+	int port = 0;
+	char *ip = string_new();
 
-	char ip[15] = "127.0.0.1";
-	int exitcode = openClientConnection(&ip, 8080, &socketClient);
+	switch (processToConnect){
+		case UMC:{
+			 string_append(&ip,configuration.ip_UMC);
+			 port= configuration.port_UMC;
+			break;
+		}
+		case NUCLEO:{
+			 string_append(&ip,configuration.ip_Nucleo);
+			 port= configuration.port_Nucleo;
+			break;
+		}
+		default:{
+			perror("Process not identified!");//TODO => Agregar logs con librerias
+			printf("Process '%s' NOT VALID to connected by CPU.\n",getProcessString(processToConnect));
+			break;
+		}
+	}
+
+	exitcode = openClientConnection(ip, port, &socketClient);
 
 	//If exitCode == 0 the client could connect to the server
 	if (exitcode == EXIT_SUCCESS){
@@ -43,32 +90,59 @@ int connectToUMC(){
 			char *messageRcv = malloc(sizeof(messageSize));
 			int receivedBytes = receiveMessage(&socketClient, messageRcv, sizeof(messageSize));
 
-			//Receive message using the size read before
-			memcpy(&messageSize, messageRcv, sizeof(int));
-			messageRcv = realloc(messageRcv,messageSize);
-			receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
+			if ( receivedBytes > 0 ){
+				//Receive message using the size read before
+				memcpy(&messageSize, messageRcv, sizeof(int));
+				messageRcv = realloc(messageRcv,messageSize);
+				receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
 
-			//starting handshake with client connected
-			t_MessageGenericHandshake *message = malloc(sizeof(t_MessageGenericHandshake));
-			deserializeHandShake(message, messageRcv);
+				//starting handshake with client connected
+				t_MessageGenericHandshake *message = malloc(sizeof(t_MessageGenericHandshake));
+				deserializeHandShake(message, messageRcv);
 
-			free(messageRcv);
+				free(messageRcv);
 
-			switch (message->process){
-				case ACCEPTED:{
-					printf("%s\n",message->message);
-					printf("Receiving frame size\n");
-					//After receiving ACCEPTATION has to be received the "Tamanio de pagina" information
-					receivedBytes = receiveMessage(&socketClient, &frameSize, sizeof(messageSize));
+				switch (message->process){
+					case ACCEPTED:{
 
-					printf("Tamanio de pagina: %d\n",frameSize);
-					break;
+						switch(processToConnect){
+							case UMC:{
+								printf("%s\n",message->message);
+								printf("Receiving frame size\n");
+								//After receiving ACCEPTATION has to be received the "Tamanio de pagina" information
+								receivedBytes = receiveMessage(&socketClient, &frameSize, sizeof(messageSize));
+								configuration.pageSize = frameSize;
+
+								printf("Tamanio de pagina: %d\n",frameSize);
+								break;
+							}
+							case NUCLEO:{
+								printf("%s\n",message->message);
+
+								printf("Conectado a NUCLEO\n");
+								break;
+							}
+							default:{
+
+							}
+							}
+
+						break;
+					}
+					default:{
+						perror("Process couldn't connect to SERVER");//TODO => Agregar logs con librerias
+						printf("Not able to connect to server %s. Please check if it's down.\n",ip);
+						break;
+					}
 				}
-				default:{
-					perror("Process couldn't connect to SERVER");//TODO => Agregar logs con librerias
-					printf("Not able to connect to server %s. Please check if it's down.\n",ip);
-					break;
-				}
+
+			}else if (receivedBytes == 0 ){
+				//The client is down when bytes received are 0
+				perror("One of the clients is down!"); //TODO => Agregar logs con librerias
+				printf("Please check the client: %d is down!\n", socketClient);
+			}else{
+				perror("Error - No able to received");//TODO => Agregar logs con librerias
+				printf("Error receiving from socket '%d', with error: %d\n",socketClient,errno);
 			}
 		}
 
@@ -78,6 +152,25 @@ int connectToUMC(){
 	}
 
 	return exitcode;
+}
+
+void sendRequestToUMC(){
+
+}
+
+void waitRequestFromNucleo(){
+	//Receive message size
+	int messageSize = 0;
+	char *messageRcv = malloc(sizeof(messageSize));
+	int receivedBytes = receiveMessage(&socketClient, messageRcv, sizeof(messageSize));
+
+	if ( receivedBytes > 0 ){
+		//Receive message using the size read before
+		memcpy(&messageSize, messageRcv, sizeof(int));
+		messageRcv = realloc(messageRcv,messageSize);
+		receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
+	}
+
 }
 
 
@@ -97,4 +190,11 @@ int ejecutarPrograma(t_PCB *PCB){
 	return exitCode;
 }
 
-
+void crearArchivoDeConfiguracion(char *configFile){
+	t_config* configurationFile;
+	configurationFile = config_create(configFile);
+	configuration.ip_Nucleo = config_get_string_value(configurationFile,"IP_NUCLEO");
+	configuration.port_Nucleo = config_get_int_value(configurationFile,"PUERTO_NUCLEO");
+	configuration.ip_UMC = config_get_string_value(configurationFile,"IP_UMC");
+	configuration.port_UMC = config_get_int_value(configurationFile,"PUERTO_UMC");
+}
