@@ -1,4 +1,4 @@
-puerto_prog;
+puerto_prog 7070;
 puerto_cpu;
 quantum;
 quantum_sleep;

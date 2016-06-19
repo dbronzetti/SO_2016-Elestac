@@ -63,7 +63,7 @@ int conectarAlNucleo(char* codeScript){
 	int socketClient;
 
 	char ip[15] = "127.0.0.0";
-	int exitcode = openClientConnection(ip, 4040, &socketClient);
+	int exitcode = openClientConnection(ip, 7070, &socketClient);
 
 	//If exitCode == 0 the client could connect to the server
 	if (exitcode == EXIT_SUCCESS){
@@ -81,12 +81,8 @@ int conectarAlNucleo(char* codeScript){
 
 			//Receive message using the size read before
 			memcpy(&messageSize, messageRcv, sizeof(int));
-			printf("messageRcv received: %s\n",messageRcv);
-			printf("messageSize received: %d\n",messageSize);
 			messageRcv = realloc(messageRcv,messageSize);
 			receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
-
-			printf("bytes received: %d\n",receivedBytes);
 
 			//starting handshake with client connected
 			t_MessageGenericHandshake *message = malloc(sizeof(t_MessageGenericHandshake));
@@ -94,32 +90,22 @@ int conectarAlNucleo(char* codeScript){
 
 			free(messageRcv);
 
-			switch (message->process){
-				case ACCEPTED:{
-					printf("%s\n",message->message);
-					printf("Receiving codeScript\n");
-					//After receiving ACCEPTATION has to be received the "codeScript" information
-					messageRcv = malloc(sizeof(codeScript));
-					receivedBytes = receiveMessage(&socketClient, messageRcv, sizeof(messageSize));
-					printf("bytes received: %d\n",receivedBytes);
-					memcpy(codeScript, messageRcv, sizeof((void*)codeScript));
-					printf("Codigo de programa: %s\n",codeScript);
+			switch (message->process) {
+			case ACCEPTED: {
+				printf("%s\n", message->message);
+				printf("Receiving frame size\n");
+				//After receiving ACCEPTATION has to be received the "Tamanio de pagina" information
+				receivedBytes = receiveMessage(&socketClient, &frameSize,sizeof(messageSize));
 
-					free(messageRcv);
-
-					break;
-				}
+				printf("Tamanio de pagina: %d\n", frameSize);
+				break;
+			}
 				default:{
 					perror("Process couldn't connect to SERVER");//TODO => Agregar logs con librerias
 					printf("Not able to connect to server %s. Please check if it's down.\n",ip);
 					break;
 				}
 			}
-		}
-
-		while(1){
-			//aca tiene que ir una validacion para ver si el server sigue arriba
-			//send(socketClient, msg, sizeof(msg),0);
 		}
 
 	}else{

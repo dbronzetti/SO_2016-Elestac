@@ -22,6 +22,8 @@
 #include "common-types.h"
 #include "sockets.h"
 
+int frameSize = 0;
+
 typedef struct {
 	char ip_nucleo[15];
 	int puerto_nucleo;

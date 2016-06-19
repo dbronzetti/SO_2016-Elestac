@@ -33,6 +33,7 @@ typedef struct {
 	int** io_sleep;
 	char** shared_vars;
 	int stack_size;
+	int frames_size;
 } t_configFile;
 
 typedef struct {

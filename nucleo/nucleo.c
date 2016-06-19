@@ -23,6 +23,9 @@ int main(int argc, char **argv) {
 		colaBloqueados = queue_create();
 	//Creo cola de Procesos a Finalizar (por Finalizar PID).
 		colaFinalizar = queue_create();
+
+	pthread_mutex_init(&socketMutex, NULL);
+
 	//Create thread for server start
 	pthread_create(&serverThread, NULL, (void*) startServer, NULL);
 	pthread_join(serverThread, NULL);
@@ -42,6 +45,11 @@ void startServer(){
 		puts ("the server is opened");
 
 		exitCode = listen(serverData.socketServer, SOMAXCONN);
+
+		if (exitCode < 0 ){
+			perror("Failed to listen server Port"); //TODO => Agregar logs con librerias
+			return;
+		}
 
 		while (1){
 			newClients((void*) &serverData);
@@ -90,11 +98,8 @@ void handShake (void *parameter){
 
 	//Receive message using the size read before
 	memcpy(&messageSize, messageRcv, sizeof(int));
-	//printf("messageSize received: %d\n",messageSize);
 	messageRcv = realloc(messageRcv,messageSize);
 	receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
-
-	printf("bytes received in message: %d\n",receivedBytes);
 
 	//starting handshake with client connected
 	t_MessageGenericHandshake *message = malloc(sizeof(t_MessageGenericHandshake));
@@ -140,6 +145,10 @@ void handShake (void *parameter){
 
 				if (exitCode == EXIT_SUCCESS){
 
+					//After sending ACCEPTATION has to be sent the "Tamanio de pagina" information
+					exitCode = sendMessage(&serverData->socketClient, &configNucleo.frames_size , sizeof(configNucleo.frames_size));
+
+
 					//Create thread attribute detached
 					pthread_attr_t processMessageThreadAttr;
 					pthread_attr_init(&processMessageThreadAttr);
@@ -161,18 +170,8 @@ void handShake (void *parameter){
 
 				if (exitCode == EXIT_SUCCESS){
 
-					//Create thread attribute detached
-					pthread_attr_t processMessageThreadAttr;
-					pthread_attr_init(&processMessageThreadAttr);
-					pthread_attr_setdetachstate(&processMessageThreadAttr, PTHREAD_CREATE_DETACHED);
-
-					//Create thread for checking new connections in server socket
-					pthread_t processMessageThread;
-					pthread_create(&processMessageThread, &processMessageThreadAttr, (void*) processMessageReceived, parameter);
-
-					//Destroy thread attribute
-					pthread_attr_destroy(&processMessageThreadAttr);
-					break;
+					//After sending ACCEPTATION has to be sent the "Tamanio de pagina" information
+					exitCode = sendMessage(&serverData->socketClient, &configNucleo.frames_size , sizeof(configNucleo.frames_size));
 				}
 			break;
 			}
@@ -608,6 +607,8 @@ void crearArchivoDeConfiguracion(){
 	configNucleo.io_ids = config_get_array_value(configuration,"IO_IDS");
 	configNucleo.io_sleep = config_get_array_value(configuration,"IO_SLEEP");
 	configNucleo.shared_vars = config_get_array_value(configuration,"SHARED_VARS");
-	configNucleo.stack_size = config_get_int_value(configuration,"STACK_SIZE");*/
+	configNucleo.stack_size = config_get_int_value(configuration,"STACK_SIZE");
+	*/
+	configNucleo.frames_size = config_get_int_value(configuration,"FRAMES_SIZE");
 }
 
