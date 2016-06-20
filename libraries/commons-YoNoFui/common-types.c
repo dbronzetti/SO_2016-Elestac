@@ -47,9 +47,9 @@ t_puntero definirVariable(t_nombre_variable nombreVariable){
 	t_puntero varPosition;
 	t_registroStack* registroBuscado=malloc(sizeof(t_registroStack));
 
-	registroBuscado=list_get(PCB->indiceDeStack,1);
+	registroBuscado=list_get(PCB->indiceDeStack,PCB->indiceDeStack->elements_count);
 	list_add_in_index(registroBuscado->vars,(registroBuscado->vars->elements_count+1),(void*)nombreVariable);
-	varPosition=registroBuscado->vars->elements_count;
+	varPosition=registroBuscado->vars->elements_count+1;
 	return varPosition;
 	//varPosition = buscarVariable();
 }
@@ -94,8 +94,8 @@ t_valor_variable dereferenciar(t_puntero direccion_variable){
 }
 
 void asignar(t_puntero direccion_variable, t_valor_variable valor){
-	/*char *valueChar = malloc(valor.size);
 
+	/*
 	memcpy(getLogicalAddress(direccion_variable.pag) + direccion_variable.offset, valueChar, direccion_variable.size);
 
 	free(valueChar);
@@ -136,28 +136,27 @@ void irAlLabel(t_registroIndiceEtiqueta etiqueta){
 }
 
 void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
-	/*
-	t_registroStack registroAActualizar;
-	registroAActualizar=list_get(PCB->indiceDeStack,1);
-	registroAActualizar.retPos=donde_retornar;
-	registroAActualizar.retVar=list_get(registroAActualizar.vars,1);
-	registroAActualizar.pos+=1;
-	list_add(PCB->indiceDeStack,registroAActualizar);
-	*/
+	t_valor_variable retorno;
+	irAEtiqueta(etiqueta);
+	retorno=dereferenciar(donde_retornar);
+	retornar(retorno);
+
 }
 
 void retornar(t_valor_variable retorno){
-	/*t_registroStack registroARegresar;
-	registroARegresar=list_find(PCB->indiceDeStack,condicionRetorno);
-	PCB->ProgramCounter=registroARegresar.retPos;
-	PCB->StackPointer=registroARegresar.pos;
+
+	t_registroStack* registroARegresar;
+	bool condicionRetorno(t_registroStack unRegistro){
+		return (unRegistro.retPos==registroARegresar->pos);
+	}
+	registroARegresar=(t_registroStack*)list_find(PCB->indiceDeStack,(void*)condicionRetorno);
+	PCB->ProgramCounter=registroARegresar->retPos;
+	PCB->StackPointer=registroARegresar->pos;
 
 	//TODO see functionality
-	*/
+
 }
-bool condicionRetorno(t_registroStack unRegistro, t_registroStack otroRegistro){
-	return (unRegistro.pos==otroRegistro.retPos);
-}
+
 
 void imprimir(t_valor_variable valor_mostrar){
 	/*char *valueChar = malloc(valor_mostrar.size);
