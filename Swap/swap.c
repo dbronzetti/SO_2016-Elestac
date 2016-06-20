@@ -2,15 +2,13 @@
 #define finalizar_proceso 2
 #define lectura_pagina 3
 #define escritura_pagina 4
-#include <stdio.h>
+
 #include <stdlib.h>
-#include "commons/collections/list.h"
 #include <stdbool.h>
 #include "commons/string.h"
 #include <string.h>
 #include <sys/mman.h>
 #include "commons/config.h"
-#include "sockets.h"
 #include "common-types.h"
 
 struct bloqueDeMemoria{
@@ -55,11 +53,25 @@ typedef struct {
  void destructorBloqueSwap(bloqueSwap* self);
  int agregarProceso(bloqueSwap* unBloque,t_list* unaLista);
  int compactarArchivo(t_list* unaLista);
+ int condicionDeCompactacion(bloqueSwap* unBloque,bloqueSwap* otroBloque);
  void crearArchivoDeSwap();
+ void handShake (void *parameter);
+ void newClients (void *parameter);
+ void startServer();
  void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque,t_list* listaSwap);
  int verificarEspacioDisponible(t_list* listaSwap);
  char* leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap);
  void crearArchivoDeConfiguracion();
+ void processingMessages(int socketClient);
+ int existeElBloqueNecesitado(t_list* listaSwap);
+ bool condicionLeer(bloqueSwap* unBloque,bloqueSwap* otroBloque);
+ int eliminarProceso(t_list* unaLista,bloqueSwap* unProceso);
+ int elementosVacios(bloqueSwap* unElemento);
+
+
+
+
+
 
 /*>----------------------------------Prototipos-----------------------------------------<*/
 
@@ -74,7 +86,7 @@ int retardoAcceso;
 char* nombre_swap;
 t_list* listaSwap;
 
-int main(){
+int setup(){
 crearArchivoDeConfiguracion();
 crearArchivoDeSwap();
 FILE* archivoSwap;
@@ -95,7 +107,7 @@ void processingMessages(int socketClient){
 
 	int operacionARealizar;
 	receiveMessage(&socketClient,operacionRecibida,sizeof(int));
-	deserializarOperacion(operacionARealizar,operacionRecibida);
+	//,deserializarOperacion(operacionARealizar,operacionRecibida);
 
 
 	switch(operacionARealizar){
@@ -104,11 +116,11 @@ void processingMessages(int socketClient){
 		nuevo_programa programaRecibido;
 
 		receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
-		deserializarBloqueSwap(programaRecibido,mensajeRecibido);
+		//deserializarBloqueSwap(programaRecibido,mensajeRecibido);
 		pedidoRecibidoYDeserializado->PID=programaRecibido.PID;
 		pedidoRecibidoYDeserializado->cantDePaginas=programaRecibido.cantidadDePaginas;
 		if(verificarEspacioDisponible(listaSwap)>pedidoRecibidoYDeserializado->cantDePaginas){
-			if(existeBloqueNecesitado(listaSwap)){
+			if(existeElBloqueNecesitado(listaSwap)){
 				agregarProceso(pedidoRecibidoYDeserializado,listaSwap);
 			}else{
 				compactarArchivo(listaSwap);
@@ -138,7 +150,7 @@ void processingMessages(int socketClient){
 		pedidoRecibidoYDeserializado->PID=lecturaNueva.PID;
 		pedidoRecibidoYDeserializado->paginaInicial=lecturaNueva.nroPagina;
 		paginaLeida=leerPagina(pedidoRecibidoYDeserializado,listaSwap);
-		sendMessage((int*)socketClient,paginaLeida,tamanioDePagina);
+		sendMessage(socketClient,paginaLeida,tamanioDePagina);
 		break;
 	}
 	case escritura_pagina:{
@@ -227,10 +239,11 @@ int compactarArchivo(t_list* unaLista){
 		bloqueVacioCompacto->paginaInicial=acum+1;
 		list_add(unaLista,bloqueVacioCompacto);
 		}
-		return 0;
-	}}
+	}
+	return 0;
+}
 
-int eliminarProceso(t_list* unaLista,bloqueSwap unProceso){
+int eliminarProceso(t_list* unaLista,bloqueSwap* unProceso){
 	bloqueSwap* procesoAEliminar=malloc(sizeof(bloqueSwap));
 	bool buscarPorPid(bloqueSwap unProceso,bloqueSwap otroProceso){
 		return (unProceso.PID==otroProceso.PID);
@@ -337,7 +350,7 @@ void startServer(){
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
 	t_serverData serverData;
 
-	exitCode = openServerConnection(puertoEscucha, &serverData.socketServer);
+	exitCode = openServerConnection(&puertoEscucha, &serverData.socketServer);
 	printf("socketServer: %d\n",serverData.socketServer);
 
 	//If exitCode == 0 the server connection is opened and listening
