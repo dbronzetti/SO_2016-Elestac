@@ -26,9 +26,9 @@ AnSISOP_kernel* funciones_kernel;
 int frameSize = 0;
 
 int ejecutarPrograma(t_PCB *PCB);
-int connectTo(enum_processes processToConnect);
+int connectTo(enum_processes processToConnect, int *socketClient);
 void crearArchivoDeConfiguracion(char *configFile);
 void sendRequestToUMC();
-void waitRequestFromNucleo();
+void waitRequestFromNucleo(int *socketClient);
 
 #endif /* CPU_H_ */

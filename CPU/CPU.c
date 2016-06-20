@@ -3,6 +3,8 @@
 int main(int argc, char *argv[]){
 	int exitCode = EXIT_SUCCESS;
 	char *configurationFile = NULL;
+	int socketUMC = 0;
+	int socketNucleo = 0;
 	t_PCB *PCB = NULL;
 
 	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS TODO => Agregar logs con librerias
@@ -34,15 +36,15 @@ int main(int argc, char *argv[]){
 	//TODO CPU 2.5.1 - Si es la ultima sentencia del programa avisar al Nucleo que finalizo el proceso para que elimine las estructuras usadas para este programa
 	//TODO CPU 2.5.2 - Si fue captada la señal SIGUSR1 mientras se estaba ejecutando una instruccion se debe finalizar la misma y acto seguido desconectarse del Nucleo
 
-	exitCode = connectTo(UMC);
+	exitCode = connectTo(UMC,&socketUMC);
 	if(exitCode == EXIT_SUCCESS){
 		printf("CPU connected to UMC successfully\n");
 	}
 
-	exitCode = connectTo(NUCLEO);
+	exitCode = connectTo(NUCLEO,&socketNucleo);
 	if(exitCode == EXIT_SUCCESS){
 		printf("CPU connected to NUCLEO successfully\n");
-		waitRequestFromNucleo();
+		waitRequestFromNucleo(&socketNucleo);
 	}
 
 	//exitCode = ejecutarPrograma(PCB);
@@ -50,9 +52,8 @@ int main(int argc, char *argv[]){
 	return EXIT_SUCCESS;
 }
 
-int connectTo(enum_processes processToConnect){
+int connectTo(enum_processes processToConnect, int *socketClient){
 	int exitcode = EXIT_FAILURE;//DEFAULT VALUE
-	int socketClient;
 	int port = 0;
 	char *ip = string_new();
 
@@ -74,13 +75,13 @@ int connectTo(enum_processes processToConnect){
 		}
 	}
 
-	exitcode = openClientConnection(ip, port, &socketClient);
+	exitcode = openClientConnection(ip, port, socketClient);
 
 	//If exitCode == 0 the client could connect to the server
 	if (exitcode == EXIT_SUCCESS){
 
 		// ***1) Send handshake
-		exitcode = sendClientHandShake(&socketClient,CPU);
+		exitcode = sendClientHandShake(socketClient,CPU);
 
 		if (exitcode == EXIT_SUCCESS){
 
@@ -88,13 +89,13 @@ int connectTo(enum_processes processToConnect){
 			//Receive message size
 			int messageSize = 0;
 			char *messageRcv = malloc(sizeof(messageSize));
-			int receivedBytes = receiveMessage(&socketClient, messageRcv, sizeof(messageSize));
+			int receivedBytes = receiveMessage(socketClient, messageRcv, sizeof(messageSize));
 
 			if ( receivedBytes > 0 ){
 				//Receive message using the size read before
 				memcpy(&messageSize, messageRcv, sizeof(int));
 				messageRcv = realloc(messageRcv,messageSize);
-				receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
+				receivedBytes = receiveMessage(socketClient, messageRcv, messageSize);
 
 				//starting handshake with client connected
 				t_MessageGenericHandshake *message = malloc(sizeof(t_MessageGenericHandshake));
@@ -110,7 +111,7 @@ int connectTo(enum_processes processToConnect){
 								printf("%s\n",message->message);
 								printf("Receiving frame size\n");
 								//After receiving ACCEPTATION has to be received the "Tamanio de pagina" information
-								receivedBytes = receiveMessage(&socketClient, &frameSize, sizeof(messageSize));
+								receivedBytes = receiveMessage(socketClient, &frameSize, sizeof(messageSize));
 								configuration.pageSize = frameSize;
 
 								printf("Tamanio de pagina: %d\n",frameSize);
@@ -139,16 +140,16 @@ int connectTo(enum_processes processToConnect){
 			}else if (receivedBytes == 0 ){
 				//The client is down when bytes received are 0
 				perror("One of the clients is down!"); //TODO => Agregar logs con librerias
-				printf("Please check the client: %d is down!\n", socketClient);
+				printf("Please check the client: %d is down!\n", *socketClient);
 			}else{
 				perror("Error - No able to received");//TODO => Agregar logs con librerias
-				printf("Error receiving from socket '%d', with error: %d\n",socketClient,errno);
+				printf("Error receiving from socket '%d', with error: %d\n",*socketClient,errno);
 			}
 		}
 
 	}else{
 		perror("no me pude conectar al server!"); //
-		printf("mi socket es: %d\n", socketClient);
+		printf("mi socket es: %d\n", *socketClient);
 	}
 
 	return exitcode;
@@ -158,17 +159,17 @@ void sendRequestToUMC(){
 
 }
 
-void waitRequestFromNucleo(){
+void waitRequestFromNucleo(int *socketClient){
 	//Receive message size
 	int messageSize = 0;
 	char *messageRcv = malloc(sizeof(messageSize));
-	int receivedBytes = receiveMessage(&socketClient, messageRcv, sizeof(messageSize));
+	int receivedBytes = receiveMessage(socketClient, messageRcv, sizeof(messageSize));
 
 	if ( receivedBytes > 0 ){
 		//Receive message using the size read before
 		memcpy(&messageSize, messageRcv, sizeof(int));
 		messageRcv = realloc(messageRcv,messageSize);
-		receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
+		receivedBytes = receiveMessage(socketClient, messageRcv, messageSize);
 	}
 
 }
