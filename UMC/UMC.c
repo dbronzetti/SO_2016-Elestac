@@ -357,7 +357,7 @@ void startUMCConsole(){
 		}else if (strcmp(command,"flush") == 0 ){
 
 			if (strcmp(option, "tlb") == 0){
-				list_clean(TLB);
+				list_clean(TLBList);
 				resetTLBEntries();
 
 			}else if (strcmp(option, "memory")){
@@ -419,7 +419,7 @@ void consoleMessageUMC(){
 }
 
 void createTLB(){
-	TLB = list_create();
+	TLBList = list_create();
 	resetTLBEntries();
 }
 
@@ -428,7 +428,7 @@ void resetTLBEntries(){
 	for(i=0; i < configuration.TLB_entries; i++){
 		t_memoryAdmin *defaultTLBElement;
 		defaultTLBElement->PID = -1; //DEFAULT PID value in TLB
-		list_add(TLB, (void*) defaultTLBElement);
+		list_add(TLBList, (void*) defaultTLBElement);
 	}
 }
 
@@ -440,7 +440,8 @@ void createAdminStructs(){
 	if (configuration.TLB_entries != 0){
 		//TLB enable
 		createTLB();
-		printf("TLB enable. Size '%d'\n", list_size(TLB));
+		TLBActivated = true;
+		printf("TLB enable. Size '%d'\n", list_size(TLBList));
 	}else{
 		printf("TLB disable!.\n");
 	}
@@ -457,14 +458,122 @@ void endProgram(int PID){
 
 }
 
-char *requestBytesFromPage(t_memoryLocation virtualAddress){
-	char *memoryContent;
+void *requestBytesFromPage(t_memoryLocation virtualAddress){
+	void *memoryContent;
+	int *frameNro;
+	void *memoryBlockOffset = NULL;
+	enum_memoryStructure memoryStructure;
+
+
+	if(TLBActivated){//TLB is enable
+		memoryStructure = TLB;
+		frameNro = searchFramebyPage(memoryStructure, READ,virtualAddress);
+	}else{//TLB is disable
+		memoryStructure = MAIN_MEMORY;
+		frameNro = searchFramebyPage(memoryStructure, READ, virtualAddress);
+	}
+
+	if (frameNro == NULL){//PAGE FAUL
+		/*
+		memoryContent = requestPageToSwap(virtualAddress);
+		updateMemoryStructure(memoryStructure, virtualAddress);
+		*/
+	}
+
+	//delay memory access
+	waitForResponse();
+
+	memoryBlockOffset = &memBlock + (*frameNro * configuration.frames_size) + virtualAddress.offset;
+	memcpy(memoryContent, memoryBlockOffset , virtualAddress.size);
 
 	return memoryContent;
 }
 
-void writeBytesToPage(t_memoryLocation virtualAddress, char *buffer){
+void writeBytesToPage(t_memoryLocation virtualAddress, void *buffer){
+	int *frameNro;
+	void *memoryBlockOffset = NULL;
+	enum_memoryStructure memoryStructure;
 
+	if(TLBActivated){//TLB is enable
+		memoryStructure = TLB;
+		frameNro = searchFramebyPage(memoryStructure, WRITE, virtualAddress);
+	}else{//TLB is disable
+		memoryStructure = MAIN_MEMORY;
+		frameNro = searchFramebyPage(memoryStructure, WRITE, virtualAddress);
+	}
+
+	if (frameNro == NULL){//PAGE FAULT
+		/*
+			memoryContent = requestPageToSwap(virtualAddress);
+			updateMemoryStructure(memoryStructure, virtualAddress);
+		 */
+	}
+
+	//delay memory access
+	waitForResponse();
+
+	memoryBlockOffset = &memBlock + (*frameNro * configuration.frames_size) + virtualAddress.offset;
+	memcpy(memoryBlockOffset, buffer , virtualAddress.size);
+
+}
+
+int *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memoryOperations operation, t_memoryLocation virtualAddress){
+	int *frame = NULL; // DEFAULT VALUE
+	t_memoryAdmin* pageNeeded = NULL;
+
+	//** Find function **//
+	bool isPagePresent(t_memoryAdmin* listElement){
+		return (listElement->virtualAddress.pag == virtualAddress.pag);
+	}
+
+	switch(deviceLocation){
+		case(TLB):{
+			pageNeeded = (t_memoryAdmin*) list_find(TLBList,(void*) isPagePresent);
+			break;
+		}
+		case(MAIN_MEMORY):{
+			pageNeeded = (t_memoryAdmin*) list_find(pageTablesList,(void*) isPagePresent);
+			break;
+		}
+		default:{
+			perror("Error - Device Location not recognized for searching");//TODO => Agregar logs con librerias
+			printf("Error Device Location not recognized for searching: '%d'\n",deviceLocation);
+		}
+	}
+
+	if (pageNeeded != NULL){
+		//Page found
+		*frame = pageNeeded->frameNumber;
+
+		switch(operation){
+			case(READ):{
+				//After getting the frame needed for reading, mark memory element as present (overwrite it no matter if it was marked as present before)
+				pageNeeded->presentBit = PAGE_PRESENT;
+				break;
+			}
+			case (WRITE):{
+				//After getting the frame needed for writing, mark memory element as modified
+				pageNeeded->dirtyBit = PAGE_MODIFIED;
+				break;
+			}
+		}
+	}
+
+	return frame;
+}
+
+void updateMemoryStructure(enum_memoryStructure memoryStructure, t_memoryLocation virtualAddress){
+
+	/*
+	 * 1) ver marcos disponibles
+	 * 1.1) si hay disponibles => cargo pagina en marco
+	 * 1.2) si no hay disponibles => ejecuto algoritmo reemplazo segun deviceLocation ( TLB=> LRU, MAIN_MEMORY=> Clock/mejorado)
+	 *
+	 * 2) Algoritmo de reemplazo segun deviceLocation
+	 * 2.1) Si pagina a reemplazar == MODIFIED  =>
+	 * 2.1.1) escribo en swap el contenido de memoria principal
+	 * 2.1.2) reemplazo por pagina a ser cargada
+	 */
 }
 
 void waitForResponse(){

@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include "sockets.h"
 #include "commons/collections/list.h"
 #include "commons/string.h"
@@ -52,12 +53,23 @@ typedef enum{
 	ALGORITMO
 } enum_configParameters;
 
+typedef enum{
+	TLB = 0,
+	MAIN_MEMORY
+} enum_memoryStructure;
+
+typedef enum{
+	READ = 0,
+	WRITE
+} enum_memoryOperations;
+
 /***** Global variables *****/
 t_configFile configuration;
 void *memBlock;
 pthread_mutex_t socketMutex;
-t_list *TLB;
+t_list *TLBList = NULL;
 t_list *pageTablesList;
+bool TLBActivated = false;
 
 /***** Prototype functions *****/
 
@@ -78,9 +90,12 @@ void handShake (void *parameter);
 
 //UMC functions
 void initializeProgram(int PID, int totalPagesRequired, char *programCode);
-char *requestBytesFromPage(t_memoryLocation virtualAddress);
-void writeBytesToPage(t_memoryLocation virtualAddress, char *buffer);
+void *requestBytesFromPage(t_memoryLocation virtualAddress);
+void writeBytesToPage(t_memoryLocation virtualAddress, void *buffer);
 void endProgram(int PID);
+int *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memoryOperations operation, t_memoryLocation virtualAddress);
+void updateMemoryStructure(enum_memoryStructure memoryStructure, t_memoryLocation virtualAddress);
+bool isPagePresent(void* pageNeeded);
 void waitForResponse();
 
 #endif /* UMC_H_ */
