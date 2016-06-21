@@ -58,6 +58,11 @@ struct bloqueDeControl{
 	t_list *indiceDeStack;//cola o pila con registros del tipo t_registroStack
 }typedef t_PCB;
 
+struct variableCompartidaAEnviar{
+	t_valor_variable valorVariable;
+	t_nombre_compartida nombreCompartida;
+}typedef struct_compartida;
+
 void setPageSize (int pageSize);
 int getLogicalAddress (int page);
 t_puntero definirVariable(t_nombre_variable nombreVariable);
@@ -65,10 +70,10 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable);
 t_valor_variable dereferenciar(t_puntero direccion_variable);
 void asignar(t_puntero direccion_variable, t_valor_variable valor);
 t_valor_variable obtenerValorCompartida(t_nombre_compartida variable);
-t_valor_variable asignarValorCompartida(t_vars variable, t_valor_variable valor);
-void irAlLabel(t_registroIndiceEtiqueta etiqueta);
-void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar);
-void retornar(t_valor_variable retorno);
+t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor);
+void irAlLabel(t_nombre_etiqueta etiqueta){
+void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
+void retornar(t_valor_variable retorno){
 void imprimir(t_valor_variable valor_mostrar);
 void imprimirTexto(char *texto);
 int entradaSalida(t_nombre_dispositivo dispositivo, int tiempo);

@@ -26,7 +26,7 @@ t_PCB* PCB;
 void setPageSize (int pageSize){
 	tamanioDePagina = pageSize;
 }
-
+int socket;
 
 
 
@@ -84,60 +84,62 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
 
 t_valor_variable dereferenciar(t_puntero direccion_variable){
 	t_valor_variable varValue;
-	//char *varValue = malloc(direccion_variable.size);
-
-	//memcpy(varValue, getLogicalAddress(direccion_variable.pag) + direccion_variable.offset, direccion_variable.size);
-
-	//free(varValue);
-
+	memcpy((void*)varValue,(void*)direccion_variable,sizeof(t_valor_variable));
 	return varValue;
 }
 
 void asignar(t_puntero direccion_variable, t_valor_variable valor){
-
-	/*
-	memcpy(getLogicalAddress(direccion_variable.pag) + direccion_variable.offset, valueChar, direccion_variable.size);
-
-	free(valueChar);
-	*/
+	memcpy((void*)direccion_variable,(void*)valor,sizeof(valor));
 }
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
-	t_valor_variable varValue;
-	/*t_memoryLocation *varValue = NULL;
-	varValue->offset = variable.direccionValorDeVariable.offset;
-	varValue->pag = variable.direccionValorDeVariable.pag;
-	varValue->size = variable.direccionValorDeVariable.size;
-	//TODO return var value from Nucleo*/
-	return varValue;
+	t_valor_variable valorVariableDeserializado;
+	char* valorVariableSerializado;
+
+	int valorDeError;
+
+	valorDeError=sendMessage(socket,variable,sizeof(char));
+	if(valorDeError!=-1){
+		printf("Los datos se enviaron correctamente");
+		if(receiveMessage(socket,valorVariableSerializado,sizeof(t_valor_variable))!=-1){
+
+		memcpy(valorVariableDeserializado,valorVariableSerializado,sizeof(t_valor_variable));
+		}
+		}else{
+		printf("Los datos no pudieron ser enviados");
+
+	}
+	return valorVariableDeserializado;
+
+
 }
 
-t_valor_variable asignarValorCompartida(t_vars variable, t_valor_variable valor){
+t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
+	struct_compartida variableCompuesta;
+	char* struct_serializado=malloc(sizeof(struct_compartida));
 	t_valor_variable value;
-	/*
-	char *valueChar = malloc(valor.size);
+	variableCompuesta.nombreCompartida=variable;
+	variableCompuesta.valorVariable=valor;
+	//serializarStructCompartida(struct_serializado,variableCompuesta);
+	sendMessage(socket,struct_serializado,sizeof(struct_serializado));
 
-	memcpy(valueChar, getLogicalAddress(valor.pag) + valor.offset, valor.size);
-
-	//TODO return var value copied to Nucleo
-	*/
-	return value;
+	return valor;
 
 }
 
-void irAlLabel(t_registroIndiceEtiqueta etiqueta){
-
-	PCB->ProgramCounter=etiqueta.posicionDeLaEtiqueta;
-	//list_add(registroAActualizar.args); "Ver como agregar los argumentos"
-
-
-	//TODO change execution line to the etiqueta given
+void irAlLabel(t_nombre_etiqueta etiqueta){
+	t_registroIndiceEtiqueta* registroBuscado;
+	int condicionEtiquetas(t_nombre_etiqueta unaEtiqueta,t_registroIndiceEtiqueta registroIndiceEtiqueta){
+		return (registroIndiceEtiqueta.funcion==unaEtiqueta);
+	}
+	registroBuscado=(t_registroIndiceEtiqueta*)list_find(PCB->indiceDeEtiquetas,(void*)condicionEtiquetas);
+	PCB->ProgramCounter=registroBuscado->posicionDeLaEtiqueta;
 
 }
 
 void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 	t_valor_variable retorno;
-	irAEtiqueta(etiqueta);
+	irAlLabel(etiqueta);
 	retorno=dereferenciar(donde_retornar);
 	retornar(retorno);
 
@@ -153,7 +155,6 @@ void retornar(t_valor_variable retorno){
 	PCB->ProgramCounter=registroARegresar->retPos;
 	PCB->StackPointer=registroARegresar->pos;
 
-	//TODO see functionality
 
 }
 
