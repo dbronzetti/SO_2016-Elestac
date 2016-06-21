@@ -104,7 +104,8 @@ void processingMessages(int socketClient){
 	char* mensajeRecibido;
 	char* operacionRecibida;
 	char* paginaRecibida;
-
+	char* mensajeDeError = string_new();
+	string_append(&mensajeDeError,"Error: No se pudo enviar los datos");
 	int operacionARealizar;
 	receiveMessage(&socketClient,operacionRecibida,sizeof(int));
 	//,deserializarOperacion(operacionARealizar,operacionRecibida);
@@ -114,9 +115,13 @@ void processingMessages(int socketClient){
 	case agregar_proceso:{
 		bloqueSwap* pedidoRecibidoYDeserializado;
 		nuevo_programa programaRecibido;
+		int valorDeError;
 
-		receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
+		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
+
+		if(valorDeError != -1){
 		//deserializarBloqueSwap(programaRecibido,mensajeRecibido);
+
 		pedidoRecibidoYDeserializado->PID=programaRecibido.PID;
 		pedidoRecibidoYDeserializado->cantDePaginas=programaRecibido.cantidadDePaginas;
 		if(verificarEspacioDisponible(listaSwap)>pedidoRecibidoYDeserializado->cantDePaginas){
@@ -128,16 +133,28 @@ void processingMessages(int socketClient){
 			}
 		}else{
 			printf("No hay espacio disponible para agregar el bloque");
-		};
+		}
+		}else{
+
+			printf("No se recibio correctamente los datos");
+
+		}
 		break;
 	}
 	case finalizar_proceso:{
 		fin_programa procesoAFinalizar;
 		bloqueSwap* pedidoRecibidoYDeserializado;
-		receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
+		int valorDeError;
+		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
+
+		if(valorDeError != -1){
+
 		deserializarBloqueSwap(procesoAFinalizar,mensajeRecibido);
 		pedidoRecibidoYDeserializado->PID=procesoAFinalizar.PID;
 		eliminarProceso(listaSwap,pedidoRecibidoYDeserializado);
+		}else{
+			printf("No se recibio correctamente los datos");
+		}
 		break;
 	}
 
@@ -145,25 +162,43 @@ void processingMessages(int socketClient){
 		bloqueSwap* pedidoRecibidoYDeserializado;
 		leer_pagina lecturaNueva;
 		char* paginaLeida;
-		receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
+		int valorDeError;
+		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
+
+		if(valorDeError != -1){
 		deserializarBloqueSwap(lecturaNueva,mensajeRecibido);
 		pedidoRecibidoYDeserializado->PID=lecturaNueva.PID;
 		pedidoRecibidoYDeserializado->paginaInicial=lecturaNueva.nroPagina;
 		paginaLeida=leerPagina(pedidoRecibidoYDeserializado,listaSwap);
-		sendMessage(socketClient,paginaLeida,tamanioDePagina);
+		int valorDeError = sendMessage(socketClient,paginaLeida,tamanioDePagina);
+		if(valorDeError != -1){
+			printf("Se enviaron correctamente los datos");
+			sendMessage(socketClient,mensajeDeError,string_length(mensajeDeError));
+		}else{
+			printf("No se enviaron correctamente los datos");
+		}
+		}else{
+			printf("No se recibio correctamente los datos");
+		}
 		break;
 	}
 	case escritura_pagina:{
 		escribir_pagina escrituraNueva;
 		bloqueSwap* pedidoRecibidoYDeserializado;
-		receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
+		int valorDeError;
+		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
+		if(valorDeError != -1){
 		deserializarBloqueSwap(escrituraNueva,mensajeRecibido);
 		pedidoRecibidoYDeserializado->PID=escrituraNueva.PID;
 		pedidoRecibidoYDeserializado->paginaInicial=escrituraNueva.nroPagina;
 		escribirPagina(escrituraNueva.contenido,pedidoRecibidoYDeserializado,listaSwap);
+		}else{
+			printf("No se recibio correctamente los datos");
+		}
+
 		break;
 	}
-
+	default: printf("La operacion recibida es invalida");
 	}
 }
 
