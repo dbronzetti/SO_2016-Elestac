@@ -595,20 +595,19 @@ void deserializeIO(t_es* datos, char** buffer) {
 	offset += sizeof(datos->ProgramCounter);
 }
 
-void crearArchivoDeConfiguracion(){
+void crearArchivoDeConfiguracion(char *configFile){
 	t_config* configuration;
 	configuration = config_create("/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo");
 	configNucleo.puerto_prog = config_get_int_value(configuration,"PUERTO_PROG");
 	configNucleo.puerto_cpu = config_get_int_value(configuration,"PUERTO_CPU");
 	configNucleo.quantum = config_get_int_value(configuration,"QUANTUM");
 	configNucleo.quantum_sleep = config_get_int_value(configuration,"QUANTUM_SLEEP");
-/*	configNucleo.sem_ids = config_get_array_value(configuration,"SEM_IDS");		TODO arreglar la funcion a usar
-	configNucleo.sem_init = config_get_array_value(configuration,"SEM_INIT");
-	configNucleo.io_ids = config_get_array_value(configuration,"IO_IDS");
-	configNucleo.io_sleep = config_get_array_value(configuration,"IO_SLEEP");
-	configNucleo.shared_vars = config_get_array_value(configuration,"SHARED_VARS");
+	configNucleo.sem_ids = (void*) config_get_array_value(configuration,"SEM_IDS");
+	configNucleo.sem_init = (void*) config_get_array_value(configuration,"SEM_INIT");
+	configNucleo.io_ids = (void*) config_get_array_value(configuration,"IO_IDS");
+	configNucleo.io_sleep = (void*) config_get_array_value(configuration,"IO_SLEEP");
+	configNucleo.shared_vars = (void*) config_get_array_value(configuration,"SHARED_VARS");
 	configNucleo.stack_size = config_get_int_value(configuration,"STACK_SIZE");
-	*/
 	configNucleo.frames_size = config_get_int_value(configuration,"FRAMES_SIZE");
 }
 

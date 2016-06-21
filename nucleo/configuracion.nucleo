@@ -1,10 +1,10 @@
-puerto_prog 7070;
-puerto_cpu;
-quantum;
-quantum_sleep;
-io_ids;
-io_sleep;
-sem_ids;
-sem_init;
-shared_vars;
-stack_size;
+puerto_prog=5000
+puerto_cpu=5001
+quantum=3
+quantum_sleep=500
+io_ids=[Disco, Impresora, Scanner]
+io_sleep=[1000, 2000, 1000]
+sem_ids=[SEM1, SEM2, SEM3]
+sem_init=[0, 0, 5]
+shared_vars=[!Global, !UnaVar, !tiempo3]
+stack_size=2

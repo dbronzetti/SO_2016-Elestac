@@ -27,11 +27,11 @@ typedef struct {
 	int puerto_cpu;
 	int quantum;
 	int quantum_sleep;
-	char** sem_ids;
-	int** sem_init;
-	char** io_ids;
-	int** io_sleep;
-	char** shared_vars;
+	char* sem_ids;
+	int* sem_init;
+	char* io_ids;
+	int* io_sleep;
+	char* shared_vars;
 	int stack_size;
 	int frames_size;
 } t_configFile;

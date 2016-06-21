@@ -25,14 +25,9 @@
 int frameSize = 0;
 
 typedef struct {
-	char ip_nucleo[15];
-	int puerto_nucleo;
+	int port_Nucleo;
+	char* ip_Nucleo;
 } t_configFile;
-
-typedef struct {
-	int socketServer;
-	int socketClient;
-} t_serverData;
 
 //Logger
 t_log* logConsola;
@@ -40,10 +35,11 @@ t_log* logConsola;
 //Configuracion
 t_configFile configConsola;
 
-//Encabezamiento de Funciones Principales
+//Encabezamiento de Funciones
 
 char* leerArchivoYGuardarEnCadena();
 int reconocerComando(char*);
-int conectarAlNucleo(char*);
+void crearArchivoDeConfiguracion();
+int connectTo(enum_processes processToConnect, int *socketClient);
 
 #endif /* CONSOLA_H_ */
