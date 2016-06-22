@@ -13,7 +13,6 @@
 #include <semaphore.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <stdbool.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -21,6 +20,8 @@
 #include "commons/config.h"
 #include "common-types.h"
 #include "sockets.h"
+
+//Encabezamiento de Funciones
 
 int frameSize = 0;
 
@@ -35,11 +36,10 @@ t_log* logConsola;
 //Configuracion
 t_configFile configConsola;
 
-//Encabezamiento de Funciones
-
 char* leerArchivoYGuardarEnCadena();
-int reconocerComando(char*);
+int reconocerComando(char* comando);
 void crearArchivoDeConfiguracion();
 int connectTo(enum_processes processToConnect, int *socketClient);
+
 
 #endif /* CONSOLA_H_ */

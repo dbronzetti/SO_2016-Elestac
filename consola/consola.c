@@ -4,8 +4,11 @@
  */
 
 #include "consola.h"
+char* ip_Nucleo;
+int puertoNucleo;
 
-int main(int argc, char **argv) {
+
+int main(){
 	int socketNucleo=0;
 //	crearArchivoDeConfiguracion();
 	char* codeScript;
@@ -37,7 +40,7 @@ int main(int argc, char **argv) {
 	return exitCode;
 }
 
-int reconocerComando(char * comando) {
+int reconocerComando(char* comando) {
 	if (!strcmp("ejecutar\n", comando)) {
 		return 1;
 	}
@@ -72,8 +75,8 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 
 	switch (processToConnect){
 			case NUCLEO:{
-				 string_append(&ip,configConsola.ip_Nucleo);
-				 port= configConsola.port_Nucleo;
+				 string_append(&ip,ip_Nucleo);
+				 port= puertoNucleo;
 				break;
 			}
 			default:{
@@ -147,8 +150,8 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 void crearArchivoDeConfiguracion(){
 	t_config* configuration;
 	configuration = config_create("/home/utnso/git/tp-2016-1c-YoNoFui/consola/configuracion.consola");
-	configConsola.port_Nucleo = config_get_int_value(configuration,"PUERTO_NUCLEO");
-	configConsola.ip_Nucleo = config_get_string_value(configuration,"IP_NUCLEO");
+	puertoNucleo = config_get_int_value(configuration,"PUERTO_NUCLEO");
+	ip_Nucleo = config_get_string_value(configuration,"IP_NUCLEO");
 }
 
 
