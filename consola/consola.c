@@ -6,38 +6,44 @@
 #include "consola.h"
 char* ip_Nucleo;
 int puertoNucleo;
+int socketNucleo=0;
 
-
-int main(){
-	int socketNucleo=0;
-//	crearArchivoDeConfiguracion();
+int main() {
+	//	crearArchivoDeConfiguracion();
 	char* codeScript;
 	int exitCode = EXIT_SUCCESS;
 	char inputTeclado[250];
+	printf("antes de conectarme");
+	exitCode = connectTo(NUCLEO, &socketNucleo);
+	if (exitCode == EXIT_SUCCESS) {
+		printf("CONSOLA connected to NUCLEO successfully\n");
+	}
+
+	printf("despues de conectarme");
 	while (1) {
 		printf(PROMPT);
 		fgets(inputTeclado, sizeof(inputTeclado), stdin);
 		char ** comando = string_split(inputTeclado, " ");
 		switch (reconocerComando(comando[0])) {
-		case 1:
+		case 1: {
 			printf("Comando Reconocido.\n");
 			codeScript = leerArchivoYGuardarEnCadena();
 			fgets(inputTeclado, sizeof(inputTeclado), stdin);
-			break;
+			exitCode = sendMessage(&socketNucleo, codeScript,sizeof(codeScript));
+			int sizeOf = sizeof(codeScript);
+			printf("el tamanio del codigo del script es: %d", sizeOf);
 
-		case 2:
+			break;
+		}
+
+		case 2: {
 			exit(-1);
+			break;
+		}
 		default:
 			printf("Comando invalido, inténtelo nuevamente.\n");
 		}
 	}
-
-	exitCode = connectTo(NUCLEO, &socketNucleo);
-	if(exitCode == EXIT_SUCCESS){
-			printf("CONSOLA connected to NUCLEO successfully\n");
-		}
-
-	return exitCode;
 }
 
 int reconocerComando(char* comando) {
@@ -68,23 +74,24 @@ char* leerArchivoYGuardarEnCadena() {
 	fclose(archivo);
 	return textoDeArchivo;
 }
+
 int connectTo(enum_processes processToConnect, int *socketClient){
 	int exitcode = EXIT_FAILURE;//DEFAULT VALUE
 	int port = 0;
 	char *ip = string_new();
 
 	switch (processToConnect){
-			case NUCLEO:{
-				 string_append(&ip,ip_Nucleo);
-				 port= puertoNucleo;
-				break;
-			}
-			default:{
-				perror("Process not identified!");//TODO => Agregar logs con librerias
-				printf("Process '%s' NOT VALID to connected by CONSOLA.\n",getProcessString(processToConnect));
-				break;
-			}
-		}
+	case NUCLEO:{
+		string_append(&ip,ip_Nucleo);
+		port= puertoNucleo;
+		break;
+	}
+	default:{
+		perror("Process not identified!");//TODO => Agregar logs con librerias
+		printf("Process '%s' NOT VALID to connected by CONSOLA.\n",getProcessString(processToConnect));
+		break;
+	}
+	}
 	exitcode = openClientConnection(ip, port, socketClient);
 
 	//If exitCode == 0 the client could connect to the server
@@ -123,11 +130,11 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 					printf("Tamanio de pagina: %d\n", frameSize);
 					break;
 				}
-					default:{
-						perror("Process couldn't connect to SERVER");//TODO => Agregar logs con librerias
-						printf("Not able to connect to server %s. Please check if it's down.\n",ip);
-						break;
-					}
+				default:{
+					perror("Process couldn't connect to SERVER");//TODO => Agregar logs con librerias
+					printf("Not able to connect to server %s. Please check if it's down.\n",ip);
+					break;
+				}
 				}
 			}else if (receivedBytes == 0 ){
 				//The client is down when bytes received are 0
@@ -144,7 +151,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 		printf("mi socket es: %d\n", *socketClient);
 	}
 
-		return exitcode;
+	return exitcode;
 }
 
 void crearArchivoDeConfiguracion(){
@@ -154,4 +161,35 @@ void crearArchivoDeConfiguracion(){
 	ip_Nucleo = config_get_string_value(configuration,"IP_NUCLEO");
 }
 
-
+int reconocerOperacion() {
+	char* tamanioSerializado;
+	int tamanio;
+	int operacion;
+	char* operacionSerializada;
+	int exitCode = EXIT_SUCCESS;
+	exitCode = receiveMessage(&socketNucleo, operacionSerializada, sizeof(int));
+	memcpy(operacion, operacionSerializada, sizeof(int));
+	switch (operacion) {
+	case 1: {
+		exitCode = receiveMessage(&socketNucleo, tamanioSerializado,sizeof(int));
+		memcpy(tamanio, &tamanioSerializado, sizeof(int));
+		char* textoImprimir;
+		exitCode = receiveMessage(&socketNucleo, textoImprimir,sizeof(tamanio));
+		printf("Texto: %s", textoImprimir);
+		break;
+	}
+	case 2: {
+		char* valorAMostrarSerializado;
+		int valorAMostrar;
+		exitCode = receiveMessage(&socketNucleo, valorAMostrarSerializado,sizeof(int));
+		memcpy(valorAMostrar, valorAMostrarSerializado, sizeof(int));
+		printf("Valor Recibido:%i", valorAMostrar);
+		break;
+	}
+	case 3: {
+		exit(-1);
+		break;
+	}
+	}
+	return exitCode;
+}

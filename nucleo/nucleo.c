@@ -291,7 +291,7 @@ void runScript(char* codeScript){
 
 	PCB->PID = idProcesos;
 
-//	memcpy(PCB->codeScript,codeScript,sizeof((void*)codeScript));	TODO arreglar error de codeScript
+	strcpy(PCB->codeScript,codeScript);
 	PCB->ProgramCounter = 0;
 	PCB->estado=1;
 	idProcesos++;
@@ -407,7 +407,7 @@ void planificarProceso() {
 			contextoProceso.cantInstruc = configNucleo.quantum;
 
 			contextoProceso.ProgramCounter = datosPCB->ProgramCounter;
-//			strcpy(contextoProceso.codeScript, datosPCB->codeScript);  TODO arreglar error de codeScript
+			strcpy(contextoProceso.codeScript, datosPCB->codeScript);
 			contextoProceso.processID = datosPCB->PID;
 			//Saco el primer elemento de la cola, porque ya lo planifique.
 			pthread_mutex_lock(&cListos);
@@ -434,7 +434,7 @@ void planificarProceso() {
 			contextoProceso.head = 1;
 
 			contextoProceso.ProgramCounter = datosPCB->ProgramCounter;
-//			strcpy(contextoProceso.codeScript, datosPCB->codeScript);   TODO arreglar error de codeScript
+			strcpy(contextoProceso.codeScript, datosPCB->codeScript);
 			contextoProceso.processID = datosPCB->PID;
 			serializeNucleo_CPU(&contextoProceso, bufferEnviar, sizeof(t_MessageNucleo_CPU));
 			//Saco el primer elemento de la cola, porque ya lo planifique.

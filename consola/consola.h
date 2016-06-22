@@ -40,6 +40,6 @@ char* leerArchivoYGuardarEnCadena();
 int reconocerComando(char* comando);
 void crearArchivoDeConfiguracion();
 int connectTo(enum_processes processToConnect, int *socketClient);
-
+int reconocerOperacion();
 
 #endif /* CONSOLA_H_ */
