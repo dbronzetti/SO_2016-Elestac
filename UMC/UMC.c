@@ -26,7 +26,8 @@ int main(int argc, char *argv[]){
 	//created administration structures for UMC process
 	createAdminStructs();
 
-	pthread_mutex_init(&socketMutex, NULL);
+	pthread_mutex_init(&TLBAccessMutex, NULL);
+	pthread_mutex_init(&memoryAccessMutex, NULL);
 
 	//Create thread for server start
 	pthread_create(&serverThread, NULL, (void*) startServer, NULL);
@@ -357,8 +358,11 @@ void startUMCConsole(){
 		}else if (strcmp(command,"flush") == 0 ){
 
 			if (strcmp(option, "tlb") == 0){
-				list_clean(TLBList);
+				//Locking TLB access for reading
+				pthread_mutex_lock(&TLBAccessMutex);
+				list_clean_and_destroy_elements(TLBList, (void*) destroyElementTLB);
 				resetTLBEntries();
+				pthread_mutex_unlock(&TLBAccessMutex);
 
 			}else if (strcmp(option, "memory")){
 
@@ -379,6 +383,11 @@ void startUMCConsole(){
 	//free(command);
 	//free(value);
 
+}
+
+void destroyElementTLB(t_memoryAdmin *elementTLB){
+	free(elementTLB->virtualAddress);
+	free(elementTLB);
 }
 
 int getEnum(char *string){
@@ -426,7 +435,7 @@ void createTLB(){
 void resetTLBEntries(){
 	int i;
 	for(i=0; i < configuration.TLB_entries; i++){
-		t_memoryAdmin *defaultTLBElement;
+		t_memoryAdmin *defaultTLBElement = malloc(sizeof(t_memoryAdmin));
 		defaultTLBElement->PID = -1; //DEFAULT PID value in TLB
 		list_add(TLBList, (void*) defaultTLBElement);
 	}
@@ -448,13 +457,78 @@ void createAdminStructs(){
 }
 
 void initializeProgram(int PID, int totalPagesRequired, char *programCode){
-	t_memoryAdmin *pageTable;
 
-	pageTable->PID = PID;
+	//** Find function by PID**//
+	bool isThereEmptyEntry(t_memoryAdmin* listElement){
+		return (listElement->PID == -1);
+	}
+
+	if(TLBActivated){//TLB is enable
+		t_memoryAdmin *PageTableElem = NULL;
+
+		PageTableElem = (t_memoryAdmin*) list_find(TLBList, (void*) isThereEmptyEntry);
+
+		if (PageTableElem != NULL){
+			//Load new program structure in empty TLB entry
+			PageTableElem->PID = PID;
+
+			//TODO Request space to Swap
+
+		}else{//No empty entry is present in TLB
+
+			//TODO Replacement algorithm LRU
+
+		}
+
+	}else{//TLB is disable
+		t_pageTablesxProc *newPageTableProc = malloc(sizeof(t_pageTablesxProc));
+
+		newPageTableProc->PID = PID;
+		newPageTableProc->ptrPageTable = NULL;//List is going to be created when the program is loaded in Main memory
+
+		//Adding new Page table entry by process
+		list_add(pageTablesListxProc,(void *)newPageTableProc);
+
+		free(newPageTableProc);
+	}
 
 }
 
 void endProgram(int PID){
+
+	//** Find function by PID**//
+	bool find_PIDEntryTLB(t_memoryAdmin* listElement){
+		return (listElement->PID == PID);
+	}
+
+	//** TLB Element Destroyer **//
+	void TLB_Element_destroy(t_memoryAdmin *self) {
+	    free(self->virtualAddress);
+	    free(self);
+	}
+
+	//** Find function by PID**//
+	bool find_PIDEntry_PageTable(t_pageTablesxProc* listElement){
+		return (listElement->PID == PID);
+	}
+
+	//** Page Table Element Destroyer **//
+	void PageTable_Element_destroy(t_pageTablesxProc *self) {
+		list_destroy_and_destroy_elements(self->ptrPageTable, (void*) TLB_Element_destroy);
+		free(self);
+	}
+
+	if(TLBActivated){//TLB is enable
+
+		list_remove_and_destroy_by_condition(TLBList, (void*) find_PIDEntryTLB, (void*) TLB_Element_destroy);
+
+	}else{//TLB is disable
+
+		list_remove_and_destroy_by_condition(pageTablesListxProc, (void*) find_PIDEntry_PageTable, (void*) PageTable_Element_destroy);
+
+	}
+
+	//TODO Notify to Swap for freeing space
 
 }
 
@@ -473,7 +547,7 @@ void *requestBytesFromPage(t_memoryLocation virtualAddress){
 		frameNro = searchFramebyPage(memoryStructure, READ, virtualAddress);
 	}
 
-	if (frameNro == NULL){//PAGE FAUL
+	if (frameNro == NULL){//PAGE FAULT
 		/*
 		memoryContent = requestPageToSwap(virtualAddress);
 		updateMemoryStructure(memoryStructure, virtualAddress);
@@ -484,7 +558,10 @@ void *requestBytesFromPage(t_memoryLocation virtualAddress){
 	waitForResponse();
 
 	memoryBlockOffset = &memBlock + (*frameNro * configuration.frames_size) + virtualAddress.offset;
+
+	pthread_mutex_lock(&memoryAccessMutex);//Checking mutex before reading
 	memcpy(memoryContent, memoryBlockOffset , virtualAddress.size);
+	pthread_mutex_unlock(&memoryAccessMutex);
 
 	return memoryContent;
 }
@@ -513,48 +590,69 @@ void writeBytesToPage(t_memoryLocation virtualAddress, void *buffer){
 	waitForResponse();
 
 	memoryBlockOffset = &memBlock + (*frameNro * configuration.frames_size) + virtualAddress.offset;
+
+	pthread_mutex_lock(&memoryAccessMutex);//Locking mutex for writing memory
 	memcpy(memoryBlockOffset, buffer , virtualAddress.size);
+	pthread_mutex_unlock(&memoryAccessMutex);//unlocking mutex for writing memory
 
 }
 
 int *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memoryOperations operation, t_memoryLocation virtualAddress){
 	int *frame = NULL; // DEFAULT VALUE
+	t_pageTablesxProc *pageTablexProc = NULL;
+	t_list *pageTableList = NULL;//lista con registros del tipo t_memoryAdmin
 	t_memoryAdmin* pageNeeded = NULL;
 
-	//** Find function **//
-	bool isPagePresent(t_memoryAdmin* listElement){
-		return (listElement->virtualAddress.pag == virtualAddress.pag);
+	//** Find function by page**//
+	bool is_PagePresent(t_memoryAdmin* listElement){
+		return (listElement->virtualAddress->pag == virtualAddress.pag);
 	}
 
-	switch(deviceLocation){
-		case(TLB):{
-			pageNeeded = (t_memoryAdmin*) list_find(TLBList,(void*) isPagePresent);
-			break;
-		}
-		case(MAIN_MEMORY):{
-			pageNeeded = (t_memoryAdmin*) list_find(pageTablesList,(void*) isPagePresent);
-			break;
-		}
-		default:{
-			perror("Error - Device Location not recognized for searching");//TODO => Agregar logs con librerias
-			printf("Error Device Location not recognized for searching: '%d'\n",deviceLocation);
-		}
+	//** Find function by process**//
+	bool is_PIDPageTablePresent(t_pageTablesxProc* listElement){
+		return (listElement->PID == PIDactive);
 	}
 
-	if (pageNeeded != NULL){
-		//Page found
-		*frame = pageNeeded->frameNumber;
+	//Look for table page by active Process
+	pageTablexProc = (t_pageTablesxProc*) list_find(pageTablesListxProc,(void*) is_PIDPageTablePresent);
 
-		switch(operation){
-			case(READ):{
-				//After getting the frame needed for reading, mark memory element as present (overwrite it no matter if it was marked as present before)
-				pageNeeded->presentBit = PAGE_PRESENT;
+	if (pageTablexProc != NULL){
+
+		pageTableList = pageTablexProc->ptrPageTable;
+
+		switch(deviceLocation){
+			case(TLB):{
+				//Locking TLB access for reading
+				pthread_mutex_lock(&TLBAccessMutex);
+				pageNeeded = (t_memoryAdmin*) list_find(TLBList,(void*) is_PagePresent);
+				pthread_mutex_unlock(&TLBAccessMutex);
 				break;
 			}
-			case (WRITE):{
-				//After getting the frame needed for writing, mark memory element as modified
-				pageNeeded->dirtyBit = PAGE_MODIFIED;
+			case(MAIN_MEMORY):{
+				pageNeeded = (t_memoryAdmin*) list_find(pageTableList,(void*) is_PagePresent);
 				break;
+			}
+			default:{
+				perror("Error - Device Location not recognized for searching");//TODO => Agregar logs con librerias
+				printf("Error Device Location not recognized for searching: '%d'\n",deviceLocation);
+			}
+		}
+
+		if (pageNeeded != NULL){
+			//Page found
+			*frame = pageNeeded->frameNumber;
+
+			switch(operation){
+				case(READ):{
+					//After getting the frame needed for reading, mark memory element as present (overwrite it no matter if it was marked as present before)
+					pageNeeded->presentBit = PAGE_PRESENT;
+					break;
+				}
+				case (WRITE):{
+					//After getting the frame needed for writing, mark memory element as modified
+					pageNeeded->dirtyBit = PAGE_MODIFIED;
+					break;
+				}
 			}
 		}
 	}
@@ -578,4 +676,8 @@ void updateMemoryStructure(enum_memoryStructure memoryStructure, t_memoryLocatio
 
 void waitForResponse(){
 	sleep(configuration.delay);
+}
+
+void changeActiveProcess(int PID){
+	PIDactive = PID;
 }

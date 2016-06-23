@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <semaphore.h>
 #include "sockets.h"
 #include "commons/collections/list.h"
 #include "commons/string.h"
@@ -34,12 +35,17 @@ typedef struct {
 } t_serverData;
 
 typedef struct{
-	t_memoryLocation virtualAddress;
+	t_memoryLocation *virtualAddress;
 	int frameNumber;
 	int PID;
 	unsigned dirtyBit : 1;//field of 1 bit
 	unsigned presentBit : 1;//field of 1 bit
 } t_memoryAdmin; /* It will be created as a fixed list at the beginning of the process using PID as element index */
+
+typedef struct{
+	int PID;
+	t_list *ptrPageTable;
+} t_pageTablesxProc;
 
 typedef enum{
 	PUERTO = 0,
@@ -66,10 +72,12 @@ typedef enum{
 /***** Global variables *****/
 t_configFile configuration;
 void *memBlock;
-pthread_mutex_t socketMutex;
-t_list *TLBList = NULL;
-t_list *pageTablesList;
-bool TLBActivated = false;
+int PIDactive;
+pthread_mutex_t TLBAccessMutex;
+pthread_mutex_t memoryAccessMutex;
+t_list *TLBList = NULL;//lista con registros del tipo t_memoryAdmin
+t_list *pageTablesListxProc;//lista con registros del tipo t_pageTablesxProc
+bool TLBActivated = false; //TLB use FALSE by DEFAULT
 
 /***** Prototype functions *****/
 
@@ -77,6 +85,7 @@ bool TLBActivated = false;
 void getConfiguration(char *configFile);
 void createTLB();
 void resetTLBEntries();
+void destroyElementTLB(t_memoryAdmin *elementTLB);
 void consoleMessageUMC();
 void createAdminStructs();
 int getEnum(char *string);
@@ -97,5 +106,6 @@ int *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memoryOperation
 void updateMemoryStructure(enum_memoryStructure memoryStructure, t_memoryLocation virtualAddress);
 bool isPagePresent(void* pageNeeded);
 void waitForResponse();
+void changeActiveProcess(int PID);
 
 #endif /* UMC_H_ */
