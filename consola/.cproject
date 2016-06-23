@@ -31,7 +31,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commons-YoNoFui}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.include.files.1496885550" name="Include files (-include)" superClass="gnu.c.compiler.option.include.files" valueType="includeFiles">
-									<listOptionValue builtIn="false" value="/home/utnso/git/tp-2016-1c-YoNoFui/libraries/commons-YoNoFui/sockets.c"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commons-YoNoFui/sockets.c}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.150762393" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
