@@ -35,6 +35,7 @@
 								<option id="gnu.c.compiler.so.debug.option.debugging.level.512512714" name="Debug Level" superClass="gnu.c.compiler.so.debug.option.debugging.level" value="gnu.c.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.1485518468" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commons}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/utnso/git/tp-2016-1c-YoNoFui/libraries/ansisop-parser/parser/parser"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.36177617" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
@@ -44,7 +45,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/commons/Debug}&quot;"/>
 								</option>
 								<option id="gnu.c.link.option.libs.552414986" name="Libraries (-l)" superClass="gnu.c.link.option.libs" valueType="libs">
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="commons"/>
+									<listOptionValue builtIn="false" value="commons"/>
+									<listOptionValue builtIn="false" value="parser-ansisop"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.linker.input.957722092" superClass="cdt.managedbuild.tool.gnu.c.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>

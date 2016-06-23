@@ -261,6 +261,7 @@ void processMessageReceived (void *parameter){
 			}
 			case UMC:{
 				printf("Processing UMC message received\n");
+
 				break;
 			}
 			default:{

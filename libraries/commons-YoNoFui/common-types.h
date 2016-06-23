@@ -10,9 +10,6 @@ typedef enum{
 	DISCO = 0//TODO definir enum_dispositivos
 } enum_dispositivos;
 
-typedef struct{
-	//TODO ver como implementar t_nombre_semaforo
-} t_nombreSemaforo;
 
 
 
@@ -63,6 +60,12 @@ struct variableCompartidaAEnviar{
 	t_nombre_compartida nombreCompartida;
 }typedef struct_compartida;
 
+typedef struct datosEntradaSalida {
+	int tiempo;
+	int ProgramCounter;
+	t_nombre_dispositivo dispositivo;
+} t_es;
+
 void setPageSize (int pageSize);
 int getLogicalAddress (int page);
 t_puntero definirVariable(t_nombre_variable nombreVariable);
@@ -76,7 +79,9 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar);
 void retornar(t_valor_variable retorno);
 void imprimir(t_valor_variable valor_mostrar);
 void imprimirTexto(char *texto);
-int entradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
-void wait(t_nombreSemaforo identificador_semaforo);
-void signal(t_nombreSemaforo identificador_semaforo);
-bool condicionBuscarVarible(t_vars* variableBuscada,t_vars* otraVariable);
+void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
+void wait(t_nombre_semaforo identificador_semaforo);
+void signal(t_nombre_semaforo identificador_semaforo);
+int condicionBuscarVarible(t_vars* variableBuscada,t_vars* otraVariable);
+void serializarES(t_es *dispositivoEnviar, char *dispositivoSerializado);
+

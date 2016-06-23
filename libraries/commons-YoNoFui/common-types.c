@@ -18,8 +18,8 @@
 	entradaSalida
 	wait
 	signal
-*
-*/
+ *
+ */
 
 int tamanioDePagina = -1; //TODO ver como se lo paso desde la UMC
 t_PCB* PCB;
@@ -59,11 +59,11 @@ t_puntero definirVariable(t_nombre_variable nombreVariable){
 
 t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
 	bool condicionIgualdad(t_nombre_variable OtroNombreVariable){
-			return(identificador_variable==OtroNombreVariable);
-		}
+		return(identificador_variable==OtroNombreVariable);
+	}
 	bool condicionVariable(t_registroStack unRegistro){
-			return(list_any_satisfy(unRegistro.vars,(void*)condicionIgualdad));
-		}
+		return(list_any_satisfy(unRegistro.vars,(void*)condicionIgualdad));
+	}
 	t_registroStack* registroBuscado=malloc(sizeof(t_registroStack));
 	registroBuscado=(t_registroStack*)list_find(PCB->indiceDeStack,(void*)condicionVariable);
 	return(registroBuscado->pos);
@@ -103,9 +103,9 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 		printf("Los datos se enviaron correctamente");
 		if(receiveMessage(socket,valorVariableSerializado,sizeof(t_valor_variable))!=-1){
 
-		memcpy(valorVariableDeserializado,valorVariableSerializado,sizeof(t_valor_variable));
+			memcpy(valorVariableDeserializado,valorVariableSerializado,sizeof(t_valor_variable));
 		}
-		}else{
+	}else{
 		printf("Los datos no pudieron ser enviados");
 
 	}
@@ -160,38 +160,55 @@ void retornar(t_valor_variable retorno){
 
 
 void imprimir(t_valor_variable valor_mostrar){
-	/*char *valueChar = malloc(valor_mostrar.size);
+	char *valueChar = malloc(sizeof(t_valor_variable));
 
-	memcpy(valueChar, getLogicalAddress(valor_mostrar.pag) + valor_mostrar.offset, valor_mostrar.size);
+	memcpy(valueChar,(void*) valor_mostrar, sizeof(valor_mostrar));
+	sendMessage (&socket, valueChar, sizeof(t_valor_variable));
 
 	//TODO send to Nucleo valueChar to be printed on Consola
-	*/
+
 }
 
 void imprimirTexto(char *texto){
 
-	//TODO send to Nucleo "texto" to be printed on Consola
+	sendMessage (&socket, texto, sizeof(texto));
 
 }
 
-int entradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
-
-	//TODO send to Nucleo "dispositivo" to be used by n units of "tiempo"
+void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo) {
+	t_es* dispositivoEnviar = malloc(sizeof(t_es));
+	dispositivoEnviar->dispositivo = dispositivo;
+	dispositivoEnviar->tiempo = tiempo;
+	char* dispositivoSerializado;
+	serializarES(dispositivoEnviar, dispositivoSerializado);
+	sendMessage(&socket, dispositivoSerializado, sizeof(t_es));
 	// definir enum_dispositivos
-
-	return 0; //TODO ver que valor debe retornar
 }
 
-void wait(t_nombreSemaforo identificador_semaforo){
+void wait(t_nombre_semaforo identificador_semaforo){
 
-	//ver como implementar t_nombre_semaforo
+	sendMessage(&socket, identificador_semaforo , strlen(identificador_semaforo));
+
 	//TODO send to Nucleo to execute WAIT function for "identificador_semaforo"
 
 }
 
-void signal(t_nombreSemaforo identificador_semaforo){
-
-	//ver como implementar t_nombre_semaforo
+void signal(t_nombre_semaforo identificador_semaforo){
+	char* nombre_semaforo;
+	sendMessage(&socket, identificador_semaforo , strlen(identificador_semaforo));
 	//TODO send to Nucleo to execute SIGNAL function for "identificador_semaforo"
 
 }
+
+void serializarES(t_es *dispositivoEnviar, char *dispositivoSerializado){
+
+	memcpy(dispositivoSerializado,dispositivoEnviar->dispositivo , (strlen(dispositivoEnviar->dispositivo)));
+	int offset = strlen(dispositivoEnviar->dispositivo);
+
+	memcpy(dispositivoSerializado + offset,dispositivoEnviar->tiempo, sizeof(int));
+	offset += sizeof(int);
+
+	memcpy(dispositivoSerializado + offset,dispositivoEnviar->ProgramCounter, sizeof(int));
+
+}
+

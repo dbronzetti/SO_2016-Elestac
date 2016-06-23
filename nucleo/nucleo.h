@@ -63,11 +63,6 @@ pthread_mutex_t socketMutex;
 //Semaforo Contador
 sem_t semBloqueados;
 
-typedef struct datosEntradaSalida {
-	int tiempo;
-	int ProgramCounter;
-} t_es;
-
 typedef struct {
 	int socket;
 	int PID;

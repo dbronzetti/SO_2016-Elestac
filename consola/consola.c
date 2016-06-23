@@ -13,11 +13,11 @@ int main() {
 	char* codeScript;
 	int exitCode = EXIT_SUCCESS;
 	char inputTeclado[250];
-	printf("antes de conectarme");
+	/*printf("antes de conectarme");
 	exitCode = connectTo(NUCLEO, &socketNucleo);
 	if (exitCode == EXIT_SUCCESS) {
 		printf("CONSOLA connected to NUCLEO successfully\n");
-	}
+	}*/
 
 	printf("despues de conectarme");
 	while (1) {
@@ -26,12 +26,12 @@ int main() {
 		char ** comando = string_split(inputTeclado, " ");
 		switch (reconocerComando(comando[0])) {
 		case 1: {
+			int* tamanioArchivo=0;
 			printf("Comando Reconocido.\n");
-			codeScript = leerArchivoYGuardarEnCadena();
+			codeScript = leerArchivoYGuardarEnCadena(tamanioArchivo);
 			fgets(inputTeclado, sizeof(inputTeclado), stdin);
-			exitCode = sendMessage(&socketNucleo, codeScript,sizeof(codeScript));
-			int sizeOf = sizeof(codeScript);
-			printf("el tamanio del codigo del script es: %d", sizeOf);
+			//exitCode = sendMessage(&socketNucleo, codeScript,sizeof(codeScript));
+			printf("%i\n",*tamanioArchivo);
 
 			break;
 		}
@@ -44,6 +44,7 @@ int main() {
 			printf("Comando invalido, inténtelo nuevamente.\n");
 		}
 	}
+	return exitCode;
 }
 
 int reconocerComando(char* comando) {
@@ -56,18 +57,24 @@ int reconocerComando(char* comando) {
 	return -1;
 }
 
-char* leerArchivoYGuardarEnCadena() {
-	char textoDeArchivo[300];
-	FILE* archivo = NULL;
+char* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
+	FILE* archivo=NULL;
+
+	int descriptorArchivo;
 	printf("Ingrese archivo a ejecutar.\n");
-	char nombreDelArchivo[300];
+	char nombreDelArchivo[60];
 	scanf("%s", nombreDelArchivo);
 	archivo = fopen(nombreDelArchivo, "r");
+	descriptorArchivo=fileno(archivo);
+	lseek(descriptorArchivo,0,SEEK_END);
+	tamanioDeArchivo=ftell(archivo);
+	char* textoDeArchivo=malloc(tamanioDeArchivo);
+	lseek(descriptorArchivo,0,SEEK_SET);
 	if (archivo == NULL) {
 		printf("Error al abrir el archivo.\n");
 	} else {
 		while (!feof(archivo)) {
-			fgets(textoDeArchivo, 300, archivo);
+			fgets(textoDeArchivo, tamanioDeArchivo, archivo);
 			printf("%s\n", textoDeArchivo);
 		}
 	}
@@ -162,27 +169,27 @@ void crearArchivoDeConfiguracion(){
 }
 
 int reconocerOperacion() {
-	char* tamanioSerializado;
+	char* tamanioSerializado=malloc(sizeof(int));
 	int tamanio;
 	int operacion;
-	char* operacionSerializada;
+	char* operacionSerializada=malloc(sizeof(int));
 	int exitCode = EXIT_SUCCESS;
 	exitCode = receiveMessage(&socketNucleo, operacionSerializada, sizeof(int));
-	memcpy(operacion, operacionSerializada, sizeof(int));
+	memcpy(&operacion, &operacionSerializada, sizeof(int));
 	switch (operacion) {
 	case 1: {
 		exitCode = receiveMessage(&socketNucleo, tamanioSerializado,sizeof(int));
-		memcpy(tamanio, &tamanioSerializado, sizeof(int));
-		char* textoImprimir;
-		exitCode = receiveMessage(&socketNucleo, textoImprimir,sizeof(tamanio));
+		memcpy(&tamanio, &tamanioSerializado, sizeof(int));
+		char* textoImprimir=malloc(tamanio);
+		exitCode = receiveMessage(&socketNucleo, (void*) textoImprimir,sizeof(tamanio));
 		printf("Texto: %s", textoImprimir);
 		break;
 	}
 	case 2: {
-		char* valorAMostrarSerializado;
+		char* valorAMostrarSerializado=malloc(sizeof(int));
 		int valorAMostrar;
 		exitCode = receiveMessage(&socketNucleo, valorAMostrarSerializado,sizeof(int));
-		memcpy(valorAMostrar, valorAMostrarSerializado, sizeof(int));
+		memcpy(&valorAMostrar, &valorAMostrarSerializado, sizeof(int));
 		printf("Valor Recibido:%i", valorAMostrar);
 		break;
 	}

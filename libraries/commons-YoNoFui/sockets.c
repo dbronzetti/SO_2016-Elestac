@@ -287,9 +287,6 @@ void deserializeConsola_Nucleo(t_MessageNucleo_Consola *value, char *bufferRecei
 	memcpy(&value->codeScript, bufferReceived + offset, sizeof(value->codeScript));
 	offset += sizeof(value->codeScript);
 
-	//2)processID
-	memcpy(&value->processID, bufferReceived + offset, sizeof(value->processID));
-	offset += sizeof(value->processID);
 }
 
 char *getProcessString (enum_processes process){

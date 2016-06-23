@@ -4,8 +4,6 @@
 	<comment></comment>
 	<projects>
 		<project>commons-YoNoFui</project>
-		<project>Parser</project>
-		<project>commons</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
