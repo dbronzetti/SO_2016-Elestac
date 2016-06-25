@@ -9,7 +9,7 @@ int puertoNucleo;
 int socketNucleo=0;
 
 int main() {
-	//	crearArchivoDeConfiguracion();
+	crearArchivoDeConfiguracion();
 	char* codeScript;
 	int exitCode = EXIT_SUCCESS;
 	char inputTeclado[250];
