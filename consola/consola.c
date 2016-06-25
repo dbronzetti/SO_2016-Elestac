@@ -13,11 +13,14 @@ int main() {
 	char* codeScript;
 	int exitCode = EXIT_SUCCESS;
 	char inputTeclado[250];
-	/*printf("antes de conectarme");
+	printf("antes de conectarme");
 	exitCode = connectTo(NUCLEO, &socketNucleo);
 	if (exitCode == EXIT_SUCCESS) {
 		printf("CONSOLA connected to NUCLEO successfully\n");
-	}*/
+	}else{
+		printf("No server available - shutting down proces!!\n");
+		return EXIT_FAILURE;
+	}
 
 	printf("despues de conectarme");
 	while (1) {

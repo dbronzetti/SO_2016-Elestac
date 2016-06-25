@@ -1,3 +1,2 @@
-port_Nucleo
-ip_Nucleo
-
+PUERTO_NUCLEO=8080
+IP_NUCLEO=127.0.0.1
