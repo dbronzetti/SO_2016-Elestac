@@ -179,23 +179,25 @@ void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo) {
 	t_es* dispositivoEnviar = malloc(sizeof(t_es));
 	dispositivoEnviar->dispositivo = dispositivo;
 	dispositivoEnviar->tiempo = tiempo;
-	char* dispositivoSerializado;
+	int sizeDS = 0;
+	char* dispositivoSerializado = malloc(sizeof(sizeDS));
 	serializarES(dispositivoEnviar, dispositivoSerializado);
 	sendMessage(&socket, dispositivoSerializado, sizeof(t_es));
 	// definir enum_dispositivos
 }
 
 void wait(t_nombre_semaforo identificador_semaforo){
-
+	int semID=0;
 	sendMessage(&socket, identificador_semaforo , strlen(identificador_semaforo));
-
+	sendMessage(&socket, semID, sizeof(int));
 	//TODO send to Nucleo to execute WAIT function for "identificador_semaforo"
 
 }
 
 void signal(t_nombre_semaforo identificador_semaforo){
-	char* nombre_semaforo;
+	int semID=1;
 	sendMessage(&socket, identificador_semaforo , strlen(identificador_semaforo));
+	sendMessage(&socket, semID , sizeof(int));
 	//TODO send to Nucleo to execute SIGNAL function for "identificador_semaforo"
 
 }
@@ -212,3 +214,12 @@ void serializarES(t_es *dispositivoEnviar, char *dispositivoSerializado){
 
 }
 
+
+void deserializarES(t_es* datos, char** buffer) {
+	int offset = 0;
+	memcpy(&datos->tiempo, *buffer, sizeof(datos->tiempo));
+	offset += sizeof(datos->tiempo);
+
+	memcpy(&datos->ProgramCounter, *buffer + offset, sizeof(datos->ProgramCounter));
+	offset += sizeof(datos->ProgramCounter);
+}

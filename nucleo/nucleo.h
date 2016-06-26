@@ -113,6 +113,5 @@ void startServer();
 void newClients(void *parameter);
 void processMessageReceived(void *parameter);
 void handShake(void *parameter);
-void deserializeIO(t_es*, char**);
 
 #endif /* NUCLEO_H_ */

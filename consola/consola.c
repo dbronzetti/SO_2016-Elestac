@@ -4,16 +4,14 @@
  */
 
 #include "consola.h"
-char* ip_Nucleo;
-int puertoNucleo;
 int socketNucleo=0;
 
-int main() {
+int main(int argc, char **argv) {
 	crearArchivoDeConfiguracion();
 	char* codeScript;
 	int exitCode = EXIT_SUCCESS;
 	char inputTeclado[250];
-	printf("antes de conectarme");
+	printf("antes de conectarme\n");
 	exitCode = connectTo(NUCLEO, &socketNucleo);
 	if (exitCode == EXIT_SUCCESS) {
 		printf("CONSOLA connected to NUCLEO successfully\n");
@@ -29,13 +27,12 @@ int main() {
 		char ** comando = string_split(inputTeclado, " ");
 		switch (reconocerComando(comando[0])) {
 		case 1: {
-			int* tamanioArchivo=0;
+			int* tamanioArchivo=NULL;
 			printf("Comando Reconocido.\n");
-			codeScript = leerArchivoYGuardarEnCadena(tamanioArchivo);
+			codeScript = leerArchivoYGuardarEnCadena(&tamanioArchivo);
 			fgets(inputTeclado, sizeof(inputTeclado), stdin);
 			//exitCode = sendMessage(&socketNucleo, codeScript,sizeof(codeScript));
-			printf("%i\n",*tamanioArchivo);
-
+			printf("Tamanio en el main: %d\n",tamanioArchivo);
 			break;
 		}
 
@@ -70,16 +67,17 @@ char* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
 	archivo = fopen(nombreDelArchivo, "r");
 	descriptorArchivo=fileno(archivo);
 	lseek(descriptorArchivo,0,SEEK_END);
-	tamanioDeArchivo=ftell(archivo);
-	char* textoDeArchivo=malloc(tamanioDeArchivo);
+	*tamanioDeArchivo=ftell(archivo);
+	char* textoDeArchivo=malloc(*tamanioDeArchivo);
 	lseek(descriptorArchivo,0,SEEK_SET);
 	if (archivo == NULL) {
 		printf("Error al abrir el archivo.\n");
 	} else {
 		while (!feof(archivo)) {
-			fgets(textoDeArchivo, tamanioDeArchivo, archivo);
+			fgets(textoDeArchivo, *tamanioDeArchivo, archivo);
 			printf("%s\n", textoDeArchivo);
 		}
+		printf("Tamanio adentro de la funcion: %i\n",*tamanioDeArchivo);
 	}
 	fclose(archivo);
 	return textoDeArchivo;
@@ -92,8 +90,8 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 
 	switch (processToConnect){
 	case NUCLEO:{
-		string_append(&ip,ip_Nucleo);
-		port= puertoNucleo;
+		string_append(&ip,configConsola.ip_Nucleo);
+		port= configConsola.port_Nucleo;
 		break;
 	}
 	default:{
@@ -167,8 +165,8 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 void crearArchivoDeConfiguracion(){
 	t_config* configuration;
 	configuration = config_create("/home/utnso/git/tp-2016-1c-YoNoFui/consola/configuracion.consola");
-	puertoNucleo = config_get_int_value(configuration,"PUERTO_NUCLEO");
-	ip_Nucleo = config_get_string_value(configuration,"IP_NUCLEO");
+	configConsola.port_Nucleo = config_get_int_value(configuration,"PUERTO_NUCLEO");
+	configConsola.ip_Nucleo= config_get_string_value(configuration,"IP_NUCLEO");
 }
 
 int reconocerOperacion() {

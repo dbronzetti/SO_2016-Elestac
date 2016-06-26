@@ -226,8 +226,8 @@ void processMessageReceived (void *parameter){
 			}
 			case CPU: {
 				printf("Processing CPU message received\n");
-				t_MessageNucleo_CPU *message;
-				char *messageRcv = (char*) malloc(sizeof(t_MessageNucleo_CPU));
+				t_MessageNucleo_CPU *message=malloc(sizeof(t_MessageNucleo_CPU));
+				char *messageRcv = malloc(sizeof(messageSize));
 				char *datosEntradaSalida = malloc(sizeof(t_es));
 				t_es infoES;
 				memset(messageRcv, '\0', sizeof(t_MessageNucleo_CPU));
@@ -236,7 +236,7 @@ void processMessageReceived (void *parameter){
 				switch (message->operacion) {
 					case 1: //Entrada Salida
 						recv(serverData->socketClient, (void*) datosEntradaSalida, sizeof(t_es),MSG_WAITALL);
-						deserializeIO(&infoES, &datosEntradaSalida);
+						deserializarES(&infoES, &datosEntradaSalida);
 						hacerEntradaSalida(serverData->socketClient, message->processID,infoES.ProgramCounter, infoES.tiempo);
 						break;
 					case 2: //Finaliza Proceso Bien
@@ -585,15 +585,6 @@ void actualizarPC(int PID, int ProgramCounter) {
 	} else {
 		printf("Error al cambiar el PC del proceso, proceso no encontrado en la lista.\n");
 	}
-}
-
-void deserializeIO(t_es* datos, char** buffer) {
-	int offset = 0;
-	memcpy(&datos->tiempo, *buffer, sizeof(datos->tiempo));
-	offset += sizeof(datos->tiempo);
-
-	memcpy(&datos->ProgramCounter, *buffer + offset, sizeof(datos->ProgramCounter));
-	offset += sizeof(datos->ProgramCounter);
 }
 
 void crearArchivoDeConfiguracion(char *configFile){
