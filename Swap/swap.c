@@ -1,102 +1,20 @@
-#define agregar_proceso 1
-#define finalizar_proceso 2
-#define lectura_pagina 3
-#define escritura_pagina 4
+#include "swap.h"
 
-#include <stdlib.h>
-#include <stdbool.h>
-#include "commons/string.h"
-#include <string.h>
-#include <sys/mman.h>
-#include "commons/config.h"
-#include "common-types.h"
-
-struct bloqueDeMemoria{
-	int PID;
-	int cantDePaginas;
-	int ocupado;
-	int tamanioDelBloque;
-	int paginaInicial;
-
-}typedef bloqueSwap;
-
-struct nuevoPrograma{
-	int PID;
-	int cantidadDePaginas;
-	char* contenido;
-}typedef nuevo_programa;
-
-struct escribirPagina{
-	int PID;
-	int nroPagina;
-	char* contenido;
-}typedef escribir_pagina;
-
-struct leerPagina{
-	int PID;
-	int nroPagina;
-}typedef leer_pagina;
-
-struct finPrograma{
-	int PID;
-}typedef fin_programa;
-
-
-
-typedef struct {
-	int socketServer;
-	int socketClient;
-} t_serverData;
-
-/*<----------------------------------Prototipos----------------------------------------->*/
- void* mapearArchivoEnMemoria(int offset,int tamanio);
- void destructorBloqueSwap(bloqueSwap* self);
- int agregarProceso(bloqueSwap* unBloque,t_list* unaLista);
- int compactarArchivo(t_list* unaLista);
- int condicionDeCompactacion(bloqueSwap* unBloque,bloqueSwap* otroBloque);
- void crearArchivoDeSwap();
- void handShake (void *parameter);
- void newClients (void *parameter);
- void startServer();
- void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque,t_list* listaSwap);
- int verificarEspacioDisponible(t_list* listaSwap);
- char* leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap);
- void crearArchivoDeConfiguracion();
- void processingMessages(int socketClient);
- int existeElBloqueNecesitado(t_list* listaSwap);
- bool condicionLeer(bloqueSwap* unBloque,bloqueSwap* otroBloque);
- int eliminarProceso(t_list* unaLista,bloqueSwap* unProceso);
- int elementosVacios(bloqueSwap* unElemento);
-
-
-
-
-
-
-/*>----------------------------------Prototipos-----------------------------------------<*/
-
-
-
-///////////////////////configurable trucho//////////////////////////////////
-int* puertoEscucha;
-int tamanioDePagina;
-int cantidadDePaginas;
-int retardoCompactacion;
-int retardoAcceso;
-char* nombre_swap;
-t_list* listaSwap;
-
-int setup(){
+int main(){
 crearArchivoDeConfiguracion();
 crearArchivoDeSwap();
 FILE* archivoSwap;
 char* paginaAEnviar;
-bloqueSwap* bloqueInicial;
+int socket;
+bloqueSwap* bloqueInicial=malloc(sizeof(bloqueSwap));
 bloqueInicial->PID=0;
 bloqueInicial->ocupado=0;
 bloqueInicial->tamanioDelBloque=cantidadDePaginas*tamanioDePagina;
+listaSwap=list_create();
 list_add(listaSwap,(void*)bloqueInicial);
+mapearArchivoEnMemoria(0,cantidadDePaginas*tamanioDePagina);
 startServer();
+processingMessages(socket);
 return 1;
 }
 
@@ -108,17 +26,16 @@ void processingMessages(int socketClient){
 	string_append(&mensajeDeError,"Error: No se pudo enviar los datos");
 	int operacionARealizar;
 	receiveMessage(&socketClient,operacionRecibida,sizeof(int));
-	//,deserializarOperacion(operacionARealizar,operacionRecibida);
-
-
+	memcpy(&operacionARealizar,&operacionRecibida,4);
 	switch(operacionARealizar){
 	case agregar_proceso:{
 		bloqueSwap* pedidoRecibidoYDeserializado;
 		nuevo_programa programaRecibido;
 		int valorDeError;
-
+		int tamanio;
+		char* tamanioSerializado;
+		char* codeScript;
 		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
-
 		if(valorDeError != -1){
 		//deserializarBloqueSwap(programaRecibido,mensajeRecibido);
 
@@ -126,10 +43,14 @@ void processingMessages(int socketClient){
 		pedidoRecibidoYDeserializado->cantDePaginas=programaRecibido.cantidadDePaginas;
 		if(verificarEspacioDisponible(listaSwap)>pedidoRecibidoYDeserializado->cantDePaginas){
 			if(existeElBloqueNecesitado(listaSwap)){
-				agregarProceso(pedidoRecibidoYDeserializado,listaSwap);
+				//"Recibo el tamaño de codigo del nuevo procesos"
+				receiveMessage(&socketClient,tamanioSerializado,sizeof(int));
+				memcpy(&tamanio,&tamanioSerializado,4);
+				receiveMessage(&socketClient,codeScript,tamanio);
+				agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
 			}else{
 				compactarArchivo(listaSwap);
-				agregarProceso(pedidoRecibidoYDeserializado,listaSwap);
+				agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
 			}
 		}else{
 			printf("No hay espacio disponible para agregar el bloque");
@@ -149,7 +70,7 @@ void processingMessages(int socketClient){
 
 		if(valorDeError != -1){
 
-		deserializarBloqueSwap(procesoAFinalizar,mensajeRecibido);
+		//deserializarBloqueSwap(procesoAFinalizar,mensajeRecibido);
 		pedidoRecibidoYDeserializado->PID=procesoAFinalizar.PID;
 		eliminarProceso(listaSwap,pedidoRecibidoYDeserializado);
 		}else{
@@ -166,14 +87,14 @@ void processingMessages(int socketClient){
 		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
 
 		if(valorDeError != -1){
-		deserializarBloqueSwap(lecturaNueva,mensajeRecibido);
+		//deserializarBloqueSwap(lecturaNueva,mensajeRecibido);
 		pedidoRecibidoYDeserializado->PID=lecturaNueva.PID;
 		pedidoRecibidoYDeserializado->paginaInicial=lecturaNueva.nroPagina;
 		paginaLeida=leerPagina(pedidoRecibidoYDeserializado,listaSwap);
-		int valorDeError = sendMessage(socketClient,paginaLeida,tamanioDePagina);
+		int valorDeError = sendMessage(&socketClient,paginaLeida,tamanioDePagina);
 		if(valorDeError != -1){
 			printf("Se enviaron correctamente los datos");
-			sendMessage(socketClient,mensajeDeError,string_length(mensajeDeError));
+			sendMessage(&socketClient,mensajeDeError,string_length(mensajeDeError));
 		}else{
 			printf("No se enviaron correctamente los datos");
 		}
@@ -188,7 +109,7 @@ void processingMessages(int socketClient){
 		int valorDeError;
 		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
 		if(valorDeError != -1){
-		deserializarBloqueSwap(escrituraNueva,mensajeRecibido);
+		//deserializarBloqueSwap(escrituraNueva,mensajeRecibido);
 		pedidoRecibidoYDeserializado->PID=escrituraNueva.PID;
 		pedidoRecibidoYDeserializado->paginaInicial=escrituraNueva.nroPagina;
 		escribirPagina(escrituraNueva.contenido,pedidoRecibidoYDeserializado,listaSwap);
@@ -203,15 +124,15 @@ void processingMessages(int socketClient){
 }
 
 void destructorBloqueSwap(bloqueSwap* self){
-	free(self->PID);
-	free(self->cantDePaginas);
-	free(self->ocupado);
-	free(self->paginaInicial);
-	free(self->tamanioDelBloque);
+	free(&self->PID);
+	free(&self->cantDePaginas);
+	free(&self->ocupado);
+	free(&self->paginaInicial);
+	free(&self->tamanioDelBloque);
 	free(self);
 }
 
-int agregarProceso(bloqueSwap* unBloque,t_list* unaLista){
+int agregarProceso(bloqueSwap* unBloque,t_list* unaLista,char* codeScript){
 	/*<----------------------------------------------abroElArchivo----------------------------------------------------->*/
 	void* archivoMapeado;
 	archivoMapeado=mapearArchivoEnMemoria(tamanioDePagina*unBloque->paginaInicial,cantidadDePaginas*tamanioDePagina);
@@ -234,7 +155,7 @@ int agregarProceso(bloqueSwap* unBloque,t_list* unaLista){
 	nuevoBloqueVacio->PID=0;
 	nuevoBloqueVacio->ocupado=0;
 	nuevoBloqueVacio->tamanioDelBloque=elementoEncontrado->tamanioDelBloque-unBloque->tamanioDelBloque;
-	memset(archivoMapeado,"1",tamanioDePagina*unBloque->cantDePaginas);
+	memcpy(&archivoMapeado,"1",tamanioDePagina*unBloque->cantDePaginas);
 	list_remove_and_destroy_by_condition(unaLista,(void*)posibleBloqueAEliminar,(void*)destructorBloqueSwap);
 	list_add(unaLista,(void*)nuevoBloqueVacio);
 	list_add(unaLista,(void*)unBloque);
@@ -264,7 +185,7 @@ int compactarArchivo(t_list* unaLista){
 		bloqueLleno=(bloqueSwap*)list_get(unaLista,i);
 		bloqueLlenoSiguiente=(bloqueSwap*)list_get(unaLista,i+1);
 		bloqueLlenoSiguiente->paginaInicial=bloqueLleno->cantDePaginas+1;
-		memcpy(archivoMapeado + (bloqueLleno->cantDePaginas*tamanioDePagina),archivoMapeado+(bloqueLlenoSiguiente->paginaInicial*tamanioDePagina),bloqueLlenoSiguiente->cantDePaginas*tamanioDePagina);
+		memcpy(archivoMapeado + (bloqueLleno->cantDePaginas*tamanioDePagina+1),archivoMapeado+(bloqueLlenoSiguiente->paginaInicial*tamanioDePagina),bloqueLlenoSiguiente->cantDePaginas*tamanioDePagina);
 		acum+=bloqueLlenoSiguiente->cantDePaginas;
 		}
 		if(cantidadDePaginas-acum!=0){
@@ -328,7 +249,7 @@ void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque,t_list* listaSwap
 	bloqueSwap* bloqueEncontrado;
 	bloqueEncontrado=list_find(listaSwap,(void*)condicionLeer);
 	archivoMapeado=mapearArchivoEnMemoria(tamanioDePagina*bloqueEncontrado->paginaInicial,tamanioDePagina*cantidadDePaginas);
-	memset(archivoMapeado+((bloqueEncontrado->paginaInicial+unBloque->paginaInicial)*tamanioDePagina),paginaAEscribir,tamanioDePagina);
+	memcpy(archivoMapeado+((bloqueEncontrado->paginaInicial+unBloque->paginaInicial)*tamanioDePagina),paginaAEscribir,tamanioDePagina);
 	munmap(archivoMapeado,cantidadDePaginas*tamanioDePagina);
 }
 
@@ -339,7 +260,11 @@ void* mapearArchivoEnMemoria(int offset,int tamanio){
 	void* archivoMapeado;
 	archivoSwap=fopen(nombre_swap,"a+");
 	descriptorSwap=fileno(archivoSwap);
+	fflush(stdin);
+	fflush(stdout);
+	write(descriptorSwap,"/0",tamanioDePagina*cantidadDePaginas);
 	lseek(descriptorSwap,0,SEEK_SET);
+	fsync(descriptorSwap);
 	archivoMapeado=mmap(0,tamanio,PROT_WRITE,MAP_SHARED,descriptorSwap,offset);
 	return archivoMapeado;
 
@@ -372,7 +297,7 @@ int existeElBloqueNecesitado(t_list* listaSwap){
 
 void crearArchivoDeConfiguracion(){
 	t_config* configuracionDeSwap;
-	configuracionDeSwap=config_create("/home/utnso/git/tp-2016-1c-YoNoFui/Swap/Config.swap");
+	configuracionDeSwap=config_create("/home/utnso/Escritorio/swapc.txt");
 	puertoEscucha=config_get_int_value(configuracionDeSwap,"PUERTO_ESCUCHA");
 	nombre_swap=config_get_string_value(configuracionDeSwap,"NOMBRE_SWAP");
 	retardoCompactacion=config_get_int_value(configuracionDeSwap,"RETARDO_COMPACTACION");
@@ -385,7 +310,7 @@ void startServer(){
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
 	t_serverData serverData;
 
-	exitCode = openServerConnection(&puertoEscucha, &serverData.socketServer);
+	exitCode = openServerConnection(puertoEscucha, &serverData.socketServer);
 	printf("socketServer: %d\n",serverData.socketServer);
 
 	//If exitCode == 0 the server connection is opened and listening
