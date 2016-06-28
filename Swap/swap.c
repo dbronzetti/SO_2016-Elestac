@@ -14,7 +14,9 @@ listaSwap=list_create();
 list_add(listaSwap,(void*)bloqueInicial);
 mapearArchivoEnMemoria(0,cantidadDePaginas*tamanioDePagina);
 startServer();
-processingMessages(socket);
+newClients(socketsSwap);
+handShake(socketsSwap);
+processingMessages(socketsSwap->socketClient);
 return 1;
 }
 
@@ -46,6 +48,7 @@ void processingMessages(int socketClient){
 				//"Recibo el tamaño de codigo del nuevo procesos"
 				receiveMessage(&socketClient,tamanioSerializado,sizeof(int));
 				memcpy(&tamanio,&tamanioSerializado,4);
+				//"Recibo el codigo"
 				receiveMessage(&socketClient,codeScript,tamanio);
 				agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
 			}else{
