@@ -7,12 +7,27 @@
 int socketNucleo=0;
 
 int main(int argc, char **argv) {
-	crearArchivoDeConfiguracion();
+	/*char *configurationFile = NULL;
+	crearArchivoDeConfiguracion(configurationFile);
+	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS TODO => Agregar logs con librerias
+
+	//get parameter
+	int i;
+	for( i = 0; i < argc; i++){
+		if (strcmp(argv[i], "-c") == 0){
+			configurationFile = argv[i+1];
+			printf("Configuration File: '%s'\n",configurationFile);
+		}
+	}
+
+	//ERROR if not configuration parameter was passed
+	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS TODO => Agregar logs con librerias
+	*/
 	char* codeScript;
 	int exitCode = EXIT_SUCCESS;
 	char inputTeclado[250];
 	printf("antes de conectarme\n");
-	exitCode = connectTo(NUCLEO, &socketNucleo);
+	/*exitCode = connectTo(NUCLEO, &socketNucleo);
 	if (exitCode == EXIT_SUCCESS) {
 		printf("CONSOLA connected to NUCLEO successfully\n");
 	}else{
@@ -21,6 +36,7 @@ int main(int argc, char **argv) {
 	}
 
 	printf("despues de conectarme");
+	*/
 	while (1) {
 		printf(PROMPT);
 		fgets(inputTeclado, sizeof(inputTeclado), stdin);
@@ -32,7 +48,7 @@ int main(int argc, char **argv) {
 			codeScript = leerArchivoYGuardarEnCadena(&tamanioArchivo);
 			fgets(inputTeclado, sizeof(inputTeclado), stdin);
 			//exitCode = sendMessage(&socketNucleo, codeScript,sizeof(codeScript));
-			printf("Tamanio en el main: %d\n",tamanioArchivo);
+			printf("Tamanio del archivo: %d\n",(int) tamanioArchivo);
 			break;
 		}
 
@@ -77,7 +93,7 @@ char* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
 			fgets(textoDeArchivo, *tamanioDeArchivo, archivo);
 			printf("%s\n", textoDeArchivo);
 		}
-		printf("Tamanio adentro de la funcion: %i\n",*tamanioDeArchivo);
+	//	printf("Tamanio adentro de la funcion: %i\n",*tamanioDeArchivo);
 	}
 	fclose(archivo);
 	return textoDeArchivo;
@@ -162,9 +178,9 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 	return exitcode;
 }
 
-void crearArchivoDeConfiguracion(){
+void crearArchivoDeConfiguracion(char *configFile){
 	t_config* configuration;
-	configuration = config_create("/home/utnso/git/tp-2016-1c-YoNoFui/consola/configuracion.consola");
+	configuration = config_create(configFile);
 	configConsola.port_Nucleo = config_get_int_value(configuration,"PUERTO_NUCLEO");
 	configConsola.ip_Nucleo= config_get_string_value(configuration,"IP_NUCLEO");
 }

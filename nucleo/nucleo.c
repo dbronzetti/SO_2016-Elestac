@@ -5,12 +5,29 @@
 
 #include "nucleo.h"
 
-int main(int argc, char **argv) {
-
+int main(int argc, char *argv[]) {
 	int exitCode = EXIT_FAILURE; //DEFAULT failure
+	char *configurationFile = NULL;
 	pthread_t serverThread;
+/*
+
+	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS TODO => Agregar logs con librerias
+
+		//get parameter
+		int i;
+		for( i = 0; i < argc; i++){
+			if (strcmp(argv[i], "-c") == 0){
+				configurationFile = argv[i+1];
+				printf("Configuration File: '%s'\n",configurationFile);
+			}
+		}
+
+		//ERROR if not configuration parameter was passed
+		assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS TODO => Agregar logs con librerias
+*/
+
 	//Creo archivo de configuracion
-	crearArchivoDeConfiguracion();
+		crearArchivoDeConfiguracion(configurationFile);
 	//Creo el archivo de Log
 		logNucleo = log_create("logNucleo", "TP", 0, LOG_LEVEL_TRACE);
 	//Creo la lista de CPUs
@@ -63,6 +80,19 @@ void newClients (void *parameter){
 
 	t_serverData *serverData = (t_serverData*) parameter;
 	//TODO disparar un thread para acceptar cada cliente nuevo (debido a que el accept es bloqueante) y para hacer el handshake
+/**************************************/
+	//Create thread attribute detached
+//			pthread_attr_t acceptClientThreadAttr;
+//			pthread_attr_init(&acceptClientThreadAttr);
+//			pthread_attr_setdetachstate(&acceptClientThreadAttr, PTHREAD_CREATE_DETACHED);
+//
+//			//Create thread for checking new connections in server socket
+//			pthread_t acceptClientThread;
+//			pthread_create(&acceptClientThread, &acceptClientThreadAttr, (void*) acceptClientConnection1, &serverData);
+//
+//			//Destroy thread attribute
+//			pthread_attr_destroy(&acceptClientThreadAttr);
+/************************************/
 
 	exitCode = acceptClientConnection(&serverData->socketServer, &serverData->socketClient);
 
@@ -109,12 +139,11 @@ void handShake (void *parameter){
 	if ( receivedBytes == 0 ){
 		perror("The client went down while handshaking!"); //TODO => Agregar logs con librerias
 		printf("Please check the client: %d is down!\n", serverData->socketClient);
-		log_info(logNucleo, "Se conecto la CPU %d", message->message);
-		close(serverData->socketClient);
 	}else{
 		switch ((int) message->process){
 			case CPU:{
-				printf("%s\n",message->message);
+				log_info(logNucleo, "Se conecto la CPU %d", message->message);
+				close(serverData->socketClient);
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){
@@ -231,12 +260,12 @@ void processMessageReceived (void *parameter){
 				char *datosEntradaSalida = malloc(sizeof(t_es));
 				t_es infoES;
 				memset(messageRcv, '\0', sizeof(t_MessageNucleo_CPU));
-				recv(serverData->socketClient,(void*)messageRcv,sizeof(t_MessageNucleo_CPU),0);
+				exitCode = recv(serverData->socketClient,(void*)messageRcv,sizeof(t_MessageNucleo_CPU),0);
 				deserializeCPU_Nucleo(message, messageRcv);
 				switch (message->operacion) {
 					case 1: //Entrada Salida
-						recv(serverData->socketClient, (void*) datosEntradaSalida, sizeof(t_es),MSG_WAITALL);
-						deserializarES(&infoES, &datosEntradaSalida);
+						exitCode = recv(serverData->socketClient, (void*) datosEntradaSalida, sizeof(t_es),MSG_WAITALL);
+//						deserializarES(&infoES, &datosEntradaSalida); //TODO deserializar entrada-salida
 						hacerEntradaSalida(serverData->socketClient, message->processID,infoES.ProgramCounter, infoES.tiempo);
 						break;
 					case 2: //Finaliza Proceso Bien
@@ -589,7 +618,7 @@ void actualizarPC(int PID, int ProgramCounter) {
 
 void crearArchivoDeConfiguracion(char *configFile){
 	t_config* configuration;
-	configuration = config_create("/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo");
+	configuration = config_create(configFile);
 	configNucleo.puerto_prog = config_get_int_value(configuration,"PUERTO_PROG");
 	configNucleo.puerto_cpu = config_get_int_value(configuration,"PUERTO_CPU");
 	configNucleo.quantum = config_get_int_value(configuration,"QUANTUM");

@@ -215,11 +215,21 @@ void serializarES(t_es *dispositivoEnviar, char *dispositivoSerializado){
 }
 
 
-void deserializarES(t_es* datos, char** buffer) {
-	int offset = 0;
-	memcpy(&datos->tiempo, *buffer, sizeof(datos->tiempo));
+void deserializarES(t_es* datos, char* buffer) {
+
+	memcpy(&datos->dispositivo,buffer, (strlen(datos->dispositivo)));
+	int offset = strlen(datos->dispositivo);
+
+	memcpy(&datos->tiempo, buffer+offset, sizeof(datos->tiempo));
 	offset += sizeof(datos->tiempo);
 
-	memcpy(&datos->ProgramCounter, *buffer + offset, sizeof(datos->ProgramCounter));
+	memcpy(&datos->ProgramCounter, buffer + offset, sizeof(datos->ProgramCounter));
 	offset += sizeof(datos->ProgramCounter);
+
+	/* int dispositivoLen = 0;
+	memcpy(&dispositivoLen, buffer + offset, sizeof(dispositivoLen));
+	offset += sizeof(dispositivoLen);
+	datos->dispositivo= malloc(dispositivoLen);
+	memcpy(datos->dispositivo, buffer + offset, dispositivoLen);
+*/
 }

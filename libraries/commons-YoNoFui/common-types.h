@@ -84,4 +84,4 @@ void wait(t_nombre_semaforo identificador_semaforo);
 void signal(t_nombre_semaforo identificador_semaforo);
 int condicionBuscarVarible(t_vars* variableBuscada,t_vars* otraVariable);
 void serializarES(t_es *dispositivoEnviar, char *dispositivoSerializado);
-void deserializarES(t_es*, char**);
+void deserializarES(t_es* datos, char* buffer);

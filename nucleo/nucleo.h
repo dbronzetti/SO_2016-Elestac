@@ -85,7 +85,7 @@ t_queue* colaBloqueados;
 t_queue* colaFinalizar;
 
 //Variables Globales
-int idProcesos = 0;
+int idProcesos = 1;
 int numCPU = 0;
 
 //Encabezamientos de Funciones Principales
@@ -105,7 +105,7 @@ void cambiarEstadoProceso(int, int);
 void liberarCPU(int);
 int buscarCPU(int);
 void actualizarPC(int, int);
-void crearArchivoDeConfiguracion();
+void crearArchivoDeConfiguracion(char*);
 
 //Conexiones
 
