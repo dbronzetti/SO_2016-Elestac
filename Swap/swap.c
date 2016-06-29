@@ -127,89 +127,96 @@ void processingMessages(int socketClient){
 }
 
 void destructorBloqueSwap(bloqueSwap* self){
-	free(&self->PID);
-	free(&self->cantDePaginas);
-	free(&self->ocupado);
-	free(&self->paginaInicial);
-	free(&self->tamanioDelBloque);
 	free(self);
 }
 
+
 int agregarProceso(bloqueSwap* unBloque,t_list* unaLista,char* codeScript){
-	/*<----------------------------------------------abroElArchivo----------------------------------------------------->*/
-	void* archivoMapeado;
-	archivoMapeado=mapearArchivoEnMemoria(tamanioDePagina*unBloque->paginaInicial,cantidadDePaginas*tamanioDePagina);
-	bloqueSwap* elementoEncontrado;
-	elementoEncontrado=(bloqueSwap*)malloc(sizeof(bloqueSwap));
-	bloqueSwap* nuevoBloqueVacio;
-	nuevoBloqueVacio=(bloqueSwap*)malloc(sizeof(bloqueSwap));
+		/*<----------------------------------------------abroElArchivo----------------------------------------------------->*/
+		//void* archivoMapeado;
+		//archivoMapeado=mapearArchivoEnMemoria(tamanioDePagina*unBloque->paginaInicial,cantidadDePaginas*tamanioDePagina);
+		bloqueSwap* elementoEncontrado;
+		//elementoEncontrado=(bloqueSwap*)malloc(sizeof(bloqueSwap));
+		bloqueSwap* nuevoBloqueVacio;
+		nuevoBloqueVacio=(bloqueSwap*)malloc(sizeof(bloqueSwap));
 
-
-	bool posibleBloqueParaLlenar(bloqueSwap* unBloque,bloqueSwap* posibleBloque,void* destructorBloqueSwap){
-			return (unBloque->ocupado==0 && unBloque->cantDePaginas<=posibleBloque->cantDePaginas);
+		bool posibleBloqueAEliminar(bloqueSwap* unBloqueAEliminar){
+			return unBloqueAEliminar->paginaInicial==unBloque->paginaInicial;
+		}
+		int criterioDeOrden(bloqueSwap* unBloque,bloqueSwap* otroBloque){
+			return(unBloque->paginaInicial<otroBloque->paginaInicial);
 		}
 
-	bool posibleBloqueAEliminar(bloqueSwap* unBloque,bloqueSwap posibleBloqueAEliminar){
-		return unBloque->paginaInicial==posibleBloqueAEliminar.paginaInicial;
+		elementoEncontrado=buscarBloqueALlenar(unBloque,unaLista);
+		elementoEncontrado->tamanioDelBloque=elementoEncontrado->tamanioDelBloque-unBloque->tamanioDelBloque;
+		unBloque->paginaInicial=elementoEncontrado->paginaInicial;
+		nuevoBloqueVacio->PID=0;
+		nuevoBloqueVacio->ocupado=0;
+		nuevoBloqueVacio->cantDePaginas=elementoEncontrado->cantDePaginas-unBloque->cantDePaginas;
+		nuevoBloqueVacio->tamanioDelBloque=elementoEncontrado->tamanioDelBloque-unBloque->tamanioDelBloque;
+		nuevoBloqueVacio->paginaInicial=elementoEncontrado->paginaInicial+unBloque->cantDePaginas;
+		//memcpy(&archivoMapeado,"1",tamanioDePagina*unBloque->cantDePaginas);
+		list_remove_and_destroy_by_condition(unaLista,(void*)posibleBloqueAEliminar,(void*)destructorBloqueSwap);
+		list_add(unaLista,(void*)nuevoBloqueVacio);
+		list_add(unaLista,(void*)unBloque);
+		list_sort(unaLista,(void*)criterioDeOrden);
+		//munmap(archivoMapeado,(tamanioDePagina*cantidadDePaginas));
+		return 0;
 	}
-
-	elementoEncontrado=list_find(unaLista,(void*)posibleBloqueParaLlenar);
-	elementoEncontrado->tamanioDelBloque=elementoEncontrado->tamanioDelBloque-unBloque->tamanioDelBloque;
-	nuevoBloqueVacio->PID=0;
-	nuevoBloqueVacio->ocupado=0;
-	nuevoBloqueVacio->tamanioDelBloque=elementoEncontrado->tamanioDelBloque-unBloque->tamanioDelBloque;
-	memcpy(&archivoMapeado,"1",tamanioDePagina*unBloque->cantDePaginas);
-	list_remove_and_destroy_by_condition(unaLista,(void*)posibleBloqueAEliminar,(void*)destructorBloqueSwap);
-	list_add(unaLista,(void*)nuevoBloqueVacio);
-	list_add(unaLista,(void*)unBloque);
-	munmap(archivoMapeado,(tamanioDePagina*cantidadDePaginas));
-	return 0;
-}
 
 
 
 int compactarArchivo(t_list* unaLista){
 	void* archivoMapeado;
-	archivoMapeado=mapearArchivoEnMemoria(0,cantidadDePaginas*tamanioDePagina);
+	//archivoMapeado=mapearArchivoEnMemoria(0,cantidadDePaginas*tamanioDePagina);
 	int i,acum;
-	bloqueSwap* bloqueLleno=malloc(sizeof(bloqueSwap));
-	bloqueSwap* bloqueLlenoSiguiente=malloc(sizeof(bloqueSwap));
+	acum=0;
+	int j;
+	bloqueSwap* bloqueLleno;//=malloc(sizeof(bloqueSwap));
+	bloqueSwap* bloqueLlenoSiguiente;//=malloc(sizeof(bloqueSwap));
+	bloqueSwap* unicoBloqueLleno=malloc(sizeof(bloqueSwap));
 	bloqueSwap* bloqueVacioCompacto=malloc(sizeof(bloqueSwap));
-	int bloqueVacioAEliminar(bloqueSwap unBloque){
-		return (unBloque.ocupado==0);
-		};
-	for(i=0;unaLista->elements_count<=i;i++){
-		{	list_remove_and_destroy_by_condition(unaLista,(void*)bloqueVacioAEliminar,(void*)destructorBloqueSwap);
-		}
-		bloqueLleno=(bloqueSwap*)list_get(unaLista,0);
-		bloqueLleno->paginaInicial=0;
+	int bloqueVacioAEliminar(bloqueSwap* unBloque){
+		return (unBloque->ocupado==0);
+	};
+	for(i=0;unaLista->elements_count>=i;i++){
+		list_remove_and_destroy_by_condition(unaLista,(void*)bloqueVacioAEliminar,(void*)destructorBloqueSwap);
+	}
+	if(unaLista->elements_count==1){
+		unicoBloqueLleno=(bloqueSwap*)list_get(unaLista,0);
+		unicoBloqueLleno->paginaInicial=0;
 		acum=bloqueLleno->cantDePaginas;
-	for(i=0;unaLista->elements_count>i;i++){
-		bloqueLleno=(bloqueSwap*)list_get(unaLista,i);
-		bloqueLlenoSiguiente=(bloqueSwap*)list_get(unaLista,i+1);
-		bloqueLlenoSiguiente->paginaInicial=bloqueLleno->cantDePaginas+1;
-		memcpy(archivoMapeado + (bloqueLleno->cantDePaginas*tamanioDePagina+1),archivoMapeado+(bloqueLlenoSiguiente->paginaInicial*tamanioDePagina),bloqueLlenoSiguiente->cantDePaginas*tamanioDePagina);
-		acum+=bloqueLlenoSiguiente->cantDePaginas;
+	}
+	if(unaLista->elements_count>1){
+		for(i=0;i<unaLista->elements_count;i++){
+			printf("%i\n",i);
+			bloqueSwap* bloqueObtenido=malloc(sizeof(bloqueSwap));
+			bloqueObtenido=(bloqueSwap*)list_get(unaLista,i);
+			acum=acum+bloqueObtenido->cantDePaginas;
+			printf("%i   %i   %i   %i\n",bloqueObtenido->PID,bloqueObtenido->cantDePaginas,bloqueObtenido->ocupado,bloqueObtenido->paginaInicial);
 		}
-		if(cantidadDePaginas-acum!=0){
+		for(j=1;unaLista->elements_count>j;j++){
+			int x=0;
+			bloqueLleno=(bloqueSwap*)list_get(unaLista,x);
+			printf("cantPag:%i",bloqueLleno->cantDePaginas);
+			bloqueLlenoSiguiente=(bloqueSwap*)list_get(unaLista,x+1);
+			bloqueLlenoSiguiente->paginaInicial=bloqueLleno->cantDePaginas+1;
+			//memcpy(archivoMapeado + (bloqueLleno->cantDePaginas*tamanioDePagina+1),archivoMapeado+(bloqueLlenoSiguiente->paginaInicial*tamanioDePagina),bloqueLlenoSiguiente->cantDePaginas*tamanioDePagina);
+			x++;
+		}}
+	if(cantidadDePaginas-acum!=0){
 		bloqueVacioCompacto->cantDePaginas=cantidadDePaginas-acum;
 		bloqueVacioCompacto->ocupado=0;
 		bloqueVacioCompacto->PID=0;
-		bloqueVacioCompacto->paginaInicial=acum+1;
+		bloqueVacioCompacto->paginaInicial=acum;
 		list_add(unaLista,bloqueVacioCompacto);
-		}
 	}
+
+
 	return 0;
 }
 
-int eliminarProceso(t_list* unaLista,bloqueSwap* unProceso){
-	bloqueSwap* procesoAEliminar=malloc(sizeof(bloqueSwap));
-	bool buscarPorPid(bloqueSwap unProceso,bloqueSwap otroProceso){
-		return (unProceso.PID==otroProceso.PID);
-	}
-	list_remove_and_destroy_by_condition(unaLista,(void*)buscarPorPid,(void*)destructorBloqueSwap);
-	return 1;
-}
+
 
 void crearArchivoDeSwap(){
 	int tamanioDePagina;
@@ -402,4 +409,40 @@ void handShake (void *parameter){
 	free(messageRcv);
 	free(message->message);
 	free(message);
+}
+
+bloqueSwap* buscarBloqueALlenar(bloqueSwap* unBloque,t_list* unaLista){
+	int i;
+	for(i=0;i<unaLista->elements_count;i++){
+		bloqueSwap* bloqueObtenido=malloc(sizeof(bloqueSwap));
+		bloqueObtenido=(bloqueSwap*)list_get(unaLista,i);
+		if(bloqueObtenido->cantDePaginas>=unBloque->cantDePaginas && bloqueObtenido->ocupado==0){
+			return bloqueObtenido;
+		}
+	}
+	printf("No se encontro un bloque para llenar");
+	return unBloque;
+
+}
+bloqueSwap* buscarProcesoAEliminar(int PID,t_list* unaLista){
+	int i;
+	for(i=0;i<unaLista->elements_count;i++){
+		bloqueSwap* bloqueObtenido=malloc(sizeof(bloqueSwap));
+		bloqueObtenido=(bloqueSwap*)list_get(unaLista,i);
+		if(bloqueObtenido->PID==PID){
+			return bloqueObtenido;
+		}
+	}
+	printf("No se encontro un bloque para eliminar");
+	bloqueSwap* bloqueNulo=NULL;
+	return bloqueNulo;
+
+}
+
+
+int eliminarProceso(t_list* unaLista,int PID){
+	bloqueSwap* procesoAEliminar=buscarProcesoAEliminar(PID,unaLista);
+	procesoAEliminar->PID=0;
+	procesoAEliminar->ocupado=0;
+	return 1;
 }

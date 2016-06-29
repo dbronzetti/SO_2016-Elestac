@@ -89,8 +89,8 @@ void crearArchivoDeConfiguracion();
 void processingMessages(int socketClient);
 int existeElBloqueNecesitado(t_list* listaSwap);
 bool condicionLeer(bloqueSwap* unBloque,bloqueSwap* otroBloque);
-int eliminarProceso(t_list* unaLista,bloqueSwap* unProceso);
 int elementosVacios(bloqueSwap* unElemento);
-
+bloqueSwap* buscarBloqueALlenar(bloqueSwap* unBloque,t_list* unaLista);
+int eliminarProceso(t_list* unaLista,int PID);
 
 #endif /* SWAP_H_ */
