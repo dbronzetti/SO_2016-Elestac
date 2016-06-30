@@ -267,7 +267,7 @@ bloqueSwap* buscarProcesoAEliminar(int PID,t_list* unaLista){
 char* leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap){
 	bloqueSwap* bloqueEncontrado;
 	char* cadena=string_new();
-	string_append(&cadena,"dd if=/dev/zero of=/home/utnso/workspace/Prueba/");
+	string_append(&cadena,"/home/utnso/workspace/Prueba/");
 	string_append(&cadena,nombre_swap);
 	FILE* archivoSwap;
 	archivoSwap=fopen(cadena,"r+");
