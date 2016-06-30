@@ -1,23 +1,22 @@
 #include "swap.h"
 
 int main(){
-crearArchivoDeConfiguracion();
-crearArchivoDeSwap();
-FILE* archivoSwap;
-char* paginaAEnviar;
-int socket;
-bloqueSwap* bloqueInicial=malloc(sizeof(bloqueSwap));
-bloqueInicial->PID=0;
-bloqueInicial->ocupado=0;
-bloqueInicial->tamanioDelBloque=cantidadDePaginas*tamanioDePagina;
-listaSwap=list_create();
-list_add(listaSwap,(void*)bloqueInicial);
-mapearArchivoEnMemoria(0,cantidadDePaginas*tamanioDePagina);
-startServer();
-newClients(socketsSwap);
-handShake(socketsSwap);
-processingMessages(socketsSwap->socketClient);
-return 1;
+	crearArchivoDeConfiguracion();
+	crearArchivoDeSwap();
+	FILE* archivoSwap;
+	char* paginaAEnviar;
+	int socket;
+	bloqueSwap* bloqueInicial=malloc(sizeof(bloqueSwap));
+	bloqueInicial->PID=0;
+	bloqueInicial->ocupado=0;
+	bloqueInicial->tamanioDelBloque=cantidadDePaginas*tamanioDePagina;
+	listaSwap=list_create();
+	list_add(listaSwap,(void*)bloqueInicial);
+	startServer();
+	newClients(socketsSwap);
+	handShake(socketsSwap);
+	processingMessages(socketsSwap->socketClient);
+	return 1;
 }
 
 void processingMessages(int socketClient){
@@ -39,25 +38,25 @@ void processingMessages(int socketClient){
 		char* codeScript;
 		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
 		if(valorDeError != -1){
-		//deserializarBloqueSwap(programaRecibido,mensajeRecibido);
+			//deserializarBloqueSwap(programaRecibido,mensajeRecibido);
 
-		pedidoRecibidoYDeserializado->PID=programaRecibido.PID;
-		pedidoRecibidoYDeserializado->cantDePaginas=programaRecibido.cantidadDePaginas;
-		if(verificarEspacioDisponible(listaSwap)>pedidoRecibidoYDeserializado->cantDePaginas){
-			if(existeElBloqueNecesitado(listaSwap)){
-				//"Recibo el tamaño de codigo del nuevo procesos"
-				receiveMessage(&socketClient,tamanioSerializado,sizeof(int));
-				memcpy(&tamanio,&tamanioSerializado,4);
-				//"Recibo el codigo"
-				receiveMessage(&socketClient,codeScript,tamanio);
-				agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
+			pedidoRecibidoYDeserializado->PID=programaRecibido.PID;
+			pedidoRecibidoYDeserializado->cantDePaginas=programaRecibido.cantidadDePaginas;
+			if(verificarEspacioDisponible(listaSwap)>pedidoRecibidoYDeserializado->cantDePaginas){
+				if(existeElBloqueNecesitado(listaSwap)){
+					//"Recibo el tamaño de codigo del nuevo procesos"
+					receiveMessage(&socketClient,tamanioSerializado,sizeof(int));
+					memcpy(&tamanio,&tamanioSerializado,4);
+					//"Recibo el codigo"
+					receiveMessage(&socketClient,codeScript,tamanio);
+					agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
+				}else{
+					compactarArchivo(listaSwap);
+					agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
+				}
 			}else{
-				compactarArchivo(listaSwap);
-				agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
+				printf("No hay espacio disponible para agregar el bloque");
 			}
-		}else{
-			printf("No hay espacio disponible para agregar el bloque");
-		}
 		}else{
 
 			printf("No se recibio correctamente los datos");
@@ -73,9 +72,9 @@ void processingMessages(int socketClient){
 
 		if(valorDeError != -1){
 
-		//deserializarBloqueSwap(procesoAFinalizar,mensajeRecibido);
-		pedidoRecibidoYDeserializado->PID=procesoAFinalizar.PID;
-		eliminarProceso(listaSwap,pedidoRecibidoYDeserializado);
+			//deserializarBloqueSwap(procesoAFinalizar,mensajeRecibido);
+			pedidoRecibidoYDeserializado->PID=procesoAFinalizar.PID;
+			eliminarProceso(listaSwap,pedidoRecibidoYDeserializado);
 		}else{
 			printf("No se recibio correctamente los datos");
 		}
@@ -90,17 +89,18 @@ void processingMessages(int socketClient){
 		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
 
 		if(valorDeError != -1){
-		//deserializarBloqueSwap(lecturaNueva,mensajeRecibido);
-		pedidoRecibidoYDeserializado->PID=lecturaNueva.PID;
-		pedidoRecibidoYDeserializado->paginaInicial=lecturaNueva.nroPagina;
-		paginaLeida=leerPagina(pedidoRecibidoYDeserializado,listaSwap);
-		int valorDeError = sendMessage(&socketClient,paginaLeida,tamanioDePagina);
-		if(valorDeError != -1){
-			printf("Se enviaron correctamente los datos");
-			sendMessage(&socketClient,mensajeDeError,string_length(mensajeDeError));
-		}else{
-			printf("No se enviaron correctamente los datos");
-		}
+			//deserializarBloqueSwap(lecturaNueva,mensajeRecibido);
+			pedidoRecibidoYDeserializado->PID=lecturaNueva.PID;
+			pedidoRecibidoYDeserializado->paginaInicial=lecturaNueva.nroPagina;
+			paginaLeida=leerPagina(pedidoRecibidoYDeserializado,listaSwap);
+			int valorDeError = sendMessage(&socketClient,paginaLeida,tamanioDePagina);
+			if(valorDeError != -1){
+				printf("Se enviaron correctamente los datos");
+			}else{
+				printf("No se enviaron correctamente los datos");
+				sendMessage(&socketClient,mensajeDeError,string_length(mensajeDeError));
+
+			}
 		}else{
 			printf("No se recibio correctamente los datos");
 		}
@@ -112,10 +112,10 @@ void processingMessages(int socketClient){
 		int valorDeError;
 		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
 		if(valorDeError != -1){
-		//deserializarBloqueSwap(escrituraNueva,mensajeRecibido);
-		pedidoRecibidoYDeserializado->PID=escrituraNueva.PID;
-		pedidoRecibidoYDeserializado->paginaInicial=escrituraNueva.nroPagina;
-		escribirPagina(escrituraNueva.contenido,pedidoRecibidoYDeserializado,listaSwap);
+			//deserializarBloqueSwap(escrituraNueva,mensajeRecibido);
+			pedidoRecibidoYDeserializado->PID=escrituraNueva.PID;
+			pedidoRecibidoYDeserializado->paginaInicial=escrituraNueva.nroPagina;
+			escribirPagina(escrituraNueva.contenido,pedidoRecibidoYDeserializado,listaSwap);
 		}else{
 			printf("No se recibio correctamente los datos");
 		}
@@ -132,43 +132,47 @@ void destructorBloqueSwap(bloqueSwap* self){
 
 
 int agregarProceso(bloqueSwap* unBloque,t_list* unaLista,char* codeScript){
-		/*<----------------------------------------------abroElArchivo----------------------------------------------------->*/
-		//void* archivoMapeado;
-		//archivoMapeado=mapearArchivoEnMemoria(tamanioDePagina*unBloque->paginaInicial,cantidadDePaginas*tamanioDePagina);
-		bloqueSwap* elementoEncontrado;
-		//elementoEncontrado=(bloqueSwap*)malloc(sizeof(bloqueSwap));
-		bloqueSwap* nuevoBloqueVacio;
-		nuevoBloqueVacio=(bloqueSwap*)malloc(sizeof(bloqueSwap));
-
-		bool posibleBloqueAEliminar(bloqueSwap* unBloqueAEliminar){
-			return unBloqueAEliminar->paginaInicial==unBloque->paginaInicial;
-		}
-		int criterioDeOrden(bloqueSwap* unBloque,bloqueSwap* otroBloque){
-			return(unBloque->paginaInicial<otroBloque->paginaInicial);
-		}
-
-		elementoEncontrado=buscarBloqueALlenar(unBloque,unaLista);
-		elementoEncontrado->tamanioDelBloque=elementoEncontrado->tamanioDelBloque-unBloque->tamanioDelBloque;
-		unBloque->paginaInicial=elementoEncontrado->paginaInicial;
-		nuevoBloqueVacio->PID=0;
-		nuevoBloqueVacio->ocupado=0;
-		nuevoBloqueVacio->cantDePaginas=elementoEncontrado->cantDePaginas-unBloque->cantDePaginas;
-		nuevoBloqueVacio->tamanioDelBloque=elementoEncontrado->tamanioDelBloque-unBloque->tamanioDelBloque;
-		nuevoBloqueVacio->paginaInicial=elementoEncontrado->paginaInicial+unBloque->cantDePaginas;
-		//memcpy(&archivoMapeado,"1",tamanioDePagina*unBloque->cantDePaginas);
-		list_remove_and_destroy_by_condition(unaLista,(void*)posibleBloqueAEliminar,(void*)destructorBloqueSwap);
-		list_add(unaLista,(void*)nuevoBloqueVacio);
-		list_add(unaLista,(void*)unBloque);
-		list_sort(unaLista,(void*)criterioDeOrden);
-		//munmap(archivoMapeado,(tamanioDePagina*cantidadDePaginas));
-		return 0;
+	/*<----------------------------------------------abroElArchivo----------------------------------------------------->*/
+	char* cadena=string_new();
+	string_append(&cadena,"dd if=/dev/zero of=/home/utnso/workspace/Prueba/");
+	string_append(&cadena,nombre_swap);
+	FILE* archivoSwap;
+	archivoSwap=fopen(cadena,"r+");
+	if(archivoSwap==NULL){
+		printf("No se abrio correctamente el archivo");
 	}
+	bloqueSwap* elementoEncontrado;
+	bloqueSwap* nuevoBloqueVacio;
+	nuevoBloqueVacio=(bloqueSwap*)malloc(sizeof(bloqueSwap));
+
+	bool posibleBloqueAEliminar(bloqueSwap* unBloqueAEliminar){
+		return unBloqueAEliminar->paginaInicial==unBloque->paginaInicial;
+	}
+	int criterioDeOrden(bloqueSwap* unBloque,bloqueSwap* otroBloque){
+		return(unBloque->paginaInicial<otroBloque->paginaInicial);
+	}
+
+	elementoEncontrado=buscarBloqueALlenar(unBloque,unaLista);
+	elementoEncontrado->tamanioDelBloque=elementoEncontrado->tamanioDelBloque-unBloque->tamanioDelBloque;
+	unBloque->paginaInicial=elementoEncontrado->paginaInicial;
+	nuevoBloqueVacio->PID=0;
+	nuevoBloqueVacio->ocupado=0;
+	nuevoBloqueVacio->cantDePaginas=elementoEncontrado->cantDePaginas-unBloque->cantDePaginas;
+	nuevoBloqueVacio->tamanioDelBloque=elementoEncontrado->tamanioDelBloque-unBloque->tamanioDelBloque;
+	nuevoBloqueVacio->paginaInicial=elementoEncontrado->paginaInicial+unBloque->cantDePaginas;
+	fseek(archivoSwap,elementoEncontrado->paginaInicial,SEEK_SET);
+	fwrite(codeScript,strlen(codeScript),1,archivoSwap);
+	list_remove_and_destroy_by_condition(unaLista,(void*)posibleBloqueAEliminar,(void*)destructorBloqueSwap);
+	list_add(unaLista,(void*)nuevoBloqueVacio);
+	list_add(unaLista,(void*)unBloque);
+	list_sort(unaLista,(void*)criterioDeOrden);
+	fclose(archivoSwap);
+	return 0;
+}
 
 
 
 int compactarArchivo(t_list* unaLista){
-	void* archivoMapeado;
-	//archivoMapeado=mapearArchivoEnMemoria(0,cantidadDePaginas*tamanioDePagina);
 	int i,acum;
 	acum=0;
 	int j;
@@ -184,8 +188,10 @@ int compactarArchivo(t_list* unaLista){
 	}
 	if(unaLista->elements_count==1){
 		unicoBloqueLleno=(bloqueSwap*)list_get(unaLista,0);
+		modificarArchivo(unicoBloqueLleno->paginaInicial,unicoBloqueLleno->cantDePaginas,0);
 		unicoBloqueLleno->paginaInicial=0;
 		acum=bloqueLleno->cantDePaginas;
+
 	}
 	if(unaLista->elements_count>1){
 		for(i=0;i<unaLista->elements_count;i++){
@@ -201,7 +207,7 @@ int compactarArchivo(t_list* unaLista){
 			printf("cantPag:%i",bloqueLleno->cantDePaginas);
 			bloqueLlenoSiguiente=(bloqueSwap*)list_get(unaLista,x+1);
 			bloqueLlenoSiguiente->paginaInicial=bloqueLleno->cantDePaginas+1;
-			//memcpy(archivoMapeado + (bloqueLleno->cantDePaginas*tamanioDePagina+1),archivoMapeado+(bloqueLlenoSiguiente->paginaInicial*tamanioDePagina),bloqueLlenoSiguiente->cantDePaginas*tamanioDePagina);
+			modificarArchivo(bloqueLleno->paginaInicial,bloqueLleno->cantDePaginas,bloqueLlenoSiguiente->paginaInicial);
 			x++;
 		}}
 	if(cantidadDePaginas-acum!=0){
@@ -213,6 +219,7 @@ int compactarArchivo(t_list* unaLista){
 	}
 
 
+
 	return 0;
 }
 
@@ -220,47 +227,76 @@ int compactarArchivo(t_list* unaLista){
 
 void crearArchivoDeSwap(){
 	int tamanioDePagina;
-			tamanioDePagina=256;
-			int cantidadDePaginas;
-			cantidadDePaginas=10;
+	tamanioDePagina=256;
+	int cantidadDePaginas;
+	cantidadDePaginas=10;
 
-			char* cadena=string_new();
-			string_append(&cadena,"dd if=/dev/zero of=/home/utnso/Escritorio/");
-
-
-			string_append(&cadena,nombre_swap);
-			char* segundaParteCadena=string_new();
-			string_append(&segundaParteCadena," bs=");
-			string_append(&cadena,segundaParteCadena);
-			string_append_with_format(&cadena,"%i",tamanioDePagina);
-			char* terceraParteCadena=string_new();
-			string_append(&terceraParteCadena," count=");
-			string_append(&cadena,terceraParteCadena);
-			string_append_with_format(&cadena,"%i",cantidadDePaginas);
-			system(cadena);
-	}
+	char* cadena=string_new();
+	string_append(&cadena,"dd if=/dev/zero of=/home/utnso/git/tp-2016-1c-YoNoFui/Swap/");
+	string_append(&cadena,nombre_swap);
+	char* segundaParteCadena=string_new();
+	string_append(&segundaParteCadena," bs=");
+	string_append(&cadena,segundaParteCadena);
+	string_append_with_format(&cadena,"%i",tamanioDePagina);
+	char* terceraParteCadena=string_new();
+	string_append(&terceraParteCadena," count=");
+	string_append(&cadena,terceraParteCadena);
+	string_append_with_format(&cadena,"%i",cantidadDePaginas);
+	system(cadena);
+}
 bool condicionLeer(bloqueSwap* unBloque,bloqueSwap* otroBloque){
-			return (unBloque->PID==otroBloque->PID);
-			}
+	return (unBloque->PID==otroBloque->PID);
+}
+
+bloqueSwap* buscarProcesoAEliminar(int PID,t_list* unaLista){
+	int i;
+	for(i=0;i<unaLista->elements_count;i++){
+		bloqueSwap* bloqueObtenido=malloc(sizeof(bloqueSwap));
+		bloqueObtenido=(bloqueSwap*)list_get(unaLista,i);
+		if(bloqueObtenido->PID==PID){
+			return bloqueObtenido;
+		}
+	}
+	printf("No se encontro un bloque para eliminar");
+	bloqueSwap* bloqueNulo=NULL;
+	return bloqueNulo;
+
+}
+
+
 char* leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap){
 	bloqueSwap* bloqueEncontrado;
-	void* archivoMapeado;
-	char* paginaAEnviar=malloc(sizeof(tamanioDePagina));
-	bloqueEncontrado=list_find(listaSwap,(void*)condicionLeer);
-	archivoMapeado=mapearArchivoEnMemoria(tamanioDePagina*bloqueEncontrado->paginaInicial,tamanioDePagina*cantidadDePaginas);
-	memcpy(paginaAEnviar,archivoMapeado+(tamanioDePagina*bloqueDeSwap->paginaInicial),tamanioDePagina);
-	munmap(archivoMapeado,cantidadDePaginas*tamanioDePagina);
-	return paginaAEnviar;
+	char* cadena=string_new();
+	string_append(&cadena,"dd if=/dev/zero of=/home/utnso/workspace/Prueba/");
+	string_append(&cadena,nombre_swap);
+	FILE* archivoSwap;
+	archivoSwap=fopen(cadena,"r+");
+	if(archivoSwap==NULL){
+		printf("No se abrio correctamente el archivo");
 	}
+	char* paginaAEnviar=malloc(sizeof(tamanioDePagina));
+	bloqueEncontrado=buscarProcesoAEliminar(bloqueDeSwap->PID,listaSwap);
+	fseek(archivoSwap,bloqueEncontrado->paginaInicial*tamanioDePagina+bloqueDeSwap->paginaInicial*tamanioDePagina,SEEK_SET);
+	fread(paginaAEnviar,tamanioDePagina,1,archivoSwap);
+	fclose(archivoSwap);
+	return paginaAEnviar;
+}
 
 void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque,t_list* listaSwap){
-	int descriptorSwap;
-	void* archivoMapeado;
 	bloqueSwap* bloqueEncontrado;
-	bloqueEncontrado=list_find(listaSwap,(void*)condicionLeer);
-	archivoMapeado=mapearArchivoEnMemoria(tamanioDePagina*bloqueEncontrado->paginaInicial,tamanioDePagina*cantidadDePaginas);
-	memcpy(archivoMapeado+((bloqueEncontrado->paginaInicial+unBloque->paginaInicial)*tamanioDePagina),paginaAEscribir,tamanioDePagina);
-	munmap(archivoMapeado,cantidadDePaginas*tamanioDePagina);
+	char* cadena=string_new();
+	string_append(&cadena,"/home/utnso/workspace/Prueba/");
+	string_append(&cadena,nombre_swap);
+	FILE* archivoSwap;
+	archivoSwap=fopen(cadena,"r+");
+	if(archivoSwap==NULL){
+		printf("No se abrio correctamente el archivo");
+	}
+	bloqueEncontrado=buscarProcesoAEliminar(unBloque->PID,listaSwap);
+	fseek(archivoSwap,bloqueEncontrado->paginaInicial*tamanioDePagina+unBloque->paginaInicial*tamanioDePagina,SEEK_SET);
+	fwrite(paginaAEscribir,tamanioDePagina,1,archivoSwap);
+	fclose(archivoSwap);
+
 }
 
 
@@ -383,26 +419,26 @@ void handShake (void *parameter){
 		printf("Please check the client: %d is down!\n", serverData->socketClient);
 	}else{
 		switch ((int) message->process){
-			case UMC:{
-				printf("%s\n",message->message);
+		case UMC:{
+			printf("%s\n",message->message);
 
-				exitCode = sendClientAcceptation(&serverData->socketClient);
+			exitCode = sendClientAcceptation(&serverData->socketClient);
 
-				if (exitCode == EXIT_SUCCESS){
+			if (exitCode == EXIT_SUCCESS){
 
-					//TODO start receiving request
-					processingMessages(serverData->socketClient);
+				//TODO start receiving request
+				processingMessages(serverData->socketClient);
 
-				}
-
-				break;
 			}
-			default:{
-				perror("Process not allowed to connect");//TODO => Agregar logs con librerias
-				printf("Invalid process '%d' tried to connect to UMC\n",(int) message->process);
-				close(serverData->socketClient);
-				break;
-			}
+
+			break;
+		}
+		default:{
+			perror("Process not allowed to connect");//TODO => Agregar logs con librerias
+			printf("Invalid process '%d' tried to connect to UMC\n",(int) message->process);
+			close(serverData->socketClient);
+			break;
+		}
 		}
 	}
 
@@ -424,20 +460,9 @@ bloqueSwap* buscarBloqueALlenar(bloqueSwap* unBloque,t_list* unaLista){
 	return unBloque;
 
 }
-bloqueSwap* buscarProcesoAEliminar(int PID,t_list* unaLista){
-	int i;
-	for(i=0;i<unaLista->elements_count;i++){
-		bloqueSwap* bloqueObtenido=malloc(sizeof(bloqueSwap));
-		bloqueObtenido=(bloqueSwap*)list_get(unaLista,i);
-		if(bloqueObtenido->PID==PID){
-			return bloqueObtenido;
-		}
-	}
-	printf("No se encontro un bloque para eliminar");
-	bloqueSwap* bloqueNulo=NULL;
-	return bloqueNulo;
 
-}
+
+
 
 
 int eliminarProceso(t_list* unaLista,int PID){
@@ -446,3 +471,31 @@ int eliminarProceso(t_list* unaLista,int PID){
 	procesoAEliminar->ocupado=0;
 	return 1;
 }
+
+
+
+int modificarArchivo(int marcoInicial,int cantDeMarcos,int nuevoMarcoInicial){
+	FILE* archivoSwap;
+	char* textoRelleno=malloc(tamanioDePagina*cantDeMarcos);
+	char* cadena=string_new();
+	string_append(&cadena,"/home/utnso/workspace/Prueba/");
+	string_append(&cadena,nombre_swap);
+	archivoSwap=fopen(cadena,"r+");
+	if(archivoSwap==NULL){
+		printf("no se pudo abrir el archivo");
+	}
+	int i;
+	for(i=0;i<cantDeMarcos*tamanioDePagina;i++){
+		textoRelleno[i]='\0';
+	}
+	char* lectura=malloc(tamanioDePagina*cantDeMarcos);
+	fseek(archivoSwap,marcoInicial,SEEK_SET);
+	fread(lectura,tamanioDePagina,cantDeMarcos,archivoSwap);
+	fseek(archivoSwap,marcoInicial,SEEK_SET);
+	fwrite(textoRelleno,sizeof(textoRelleno),1,archivoSwap);
+	fseek(archivoSwap,nuevoMarcoInicial,SEEK_SET);
+	fwrite(lectura,tamanioDePagina,cantDeMarcos,archivoSwap);
+	return 0;
+}
+
+

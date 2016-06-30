@@ -28,6 +28,7 @@
 #include <sys/mman.h>
 #include "commons/config.h"
 #include "common-types.h"
+#include "stdbool.h"
 
 
 struct bloqueDeMemoria{
@@ -92,5 +93,10 @@ bool condicionLeer(bloqueSwap* unBloque,bloqueSwap* otroBloque);
 int elementosVacios(bloqueSwap* unElemento);
 bloqueSwap* buscarBloqueALlenar(bloqueSwap* unBloque,t_list* unaLista);
 int eliminarProceso(t_list* unaLista,int PID);
+bloqueSwap* buscarProcesoAEliminar(int PID,t_list* unaLista);
+int modificarArchivo(int marcoInicial,int cantDeMarcos,int nuevoMarcoInicial);
+void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque,t_list* listaSwap);
+
+
 
 #endif /* SWAP_H_ */
