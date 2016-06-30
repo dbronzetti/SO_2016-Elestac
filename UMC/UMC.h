@@ -44,7 +44,8 @@ typedef struct{
 
 typedef struct{
 	int PID;
-	t_list *ptrPageTable;
+	int assignedFrames;
+	t_list *ptrPageTable;//lista con registros del tipo t_memoryAdmin
 } t_pageTablesxProc;
 
 typedef enum{
@@ -60,6 +61,13 @@ typedef enum{
 } enum_configParameters;
 
 typedef enum{
+	agregar_proceso = 1,
+	finalizar_proceso,
+	lectura_pagina,
+	escritura_pagina
+} enum_operationsUMC;
+
+typedef enum{
 	TLB = 0,
 	MAIN_MEMORY
 } enum_memoryStructure;
@@ -71,21 +79,32 @@ typedef enum{
 
 /***** Global variables *****/
 t_configFile configuration;
-void *memBlock;
-int PIDactive;
-pthread_mutex_t TLBAccessMutex;
-pthread_mutex_t memoryAccessMutex;
-t_list *TLBList = NULL;//lista con registros del tipo t_memoryAdmin
-t_list *pageTablesListxProc;//lista con registros del tipo t_pageTablesxProc
+void *memBlock = NULL;
+int activePID = -1;
 bool TLBActivated = false; //TLB use FALSE by DEFAULT
+t_list *freeFramesList = NULL;//lista con numeros de frames libres
+t_list *TLBList = NULL;//lista con registros del tipo t_memoryAdmin
+t_list *pageTablesListxProc = NULL;//lista con registros del tipo t_pageTablesxProc
+pthread_mutex_t memoryAccessMutex;
+pthread_mutex_t activeProcessMutex;
 
 /***** Prototype functions *****/
 
 //UMC operations
 void getConfiguration(char *configFile);
 void createTLB();
-void resetTLBEntries();
+void resetTLBAllEntries();
+t_memoryAdmin *getLRUCandidate();
+void resetTLBbyActivePID(t_memoryAdmin *listElement);
+void deleteContentFromMemory(t_memoryAdmin *memoryElement);
+void checkPageModification(t_memoryAdmin *memoryElement);
 void destroyElementTLB(t_memoryAdmin *elementTLB);
+void PageTable_Element_destroy(t_pageTablesxProc *self);
+bool is_PIDPageTablePresent(t_pageTablesxProc* listElement);
+bool isThereEmptyEntry(t_memoryAdmin* listElement);
+bool find_PIDEntry_PageTable(t_pageTablesxProc* listElement);
+void iteratePageTablexProc(t_pageTablesxProc *pageTablexProc);
+void markElementModified(t_memoryAdmin *pageTableElement);
 void consoleMessageUMC();
 void createAdminStructs();
 int getEnum(char *string);
@@ -102,9 +121,11 @@ void initializeProgram(int PID, int totalPagesRequired, char *programCode);
 void *requestBytesFromPage(t_memoryLocation virtualAddress);
 void writeBytesToPage(t_memoryLocation virtualAddress, void *buffer);
 void endProgram(int PID);
-int *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memoryOperations operation, t_memoryLocation virtualAddress);
-void updateMemoryStructure(enum_memoryStructure memoryStructure, t_memoryLocation virtualAddress);
-bool isPagePresent(void* pageNeeded);
+void getElementFrameNro(t_memoryLocation *virtualAddress, enum_memoryOperations operation, t_memoryAdmin *frameNro);
+t_memoryAdmin *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memoryOperations operation, t_memoryLocation *virtualAddress);
+void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *virtualAddress, t_memoryAdmin *memoryElement);
+void executeLRUAlgorithm(t_memoryAdmin *newElement, t_memoryLocation *virtualAddress);
+void *requestPageToSwap(t_memoryLocation *virtualAddress);
 void waitForResponse();
 void changeActiveProcess(int PID);
 

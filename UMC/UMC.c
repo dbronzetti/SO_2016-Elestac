@@ -26,8 +26,9 @@ int main(int argc, char *argv[]){
 	//created administration structures for UMC process
 	createAdminStructs();
 
-	pthread_mutex_init(&TLBAccessMutex, NULL);
+	//Initializing mutex
 	pthread_mutex_init(&memoryAccessMutex, NULL);
+	pthread_mutex_init(&activeProcessMutex, NULL);
 
 	//Create thread for server start
 	pthread_create(&serverThread, NULL, (void*) startServer, NULL);
@@ -200,7 +201,6 @@ void handShake (void *parameter){
 }
 
 void processMessageReceived (void *parameter){
-	int exitCode = EXIT_FAILURE; //DEFAULT Failure
 
 	t_serverData *serverData = (t_serverData*) parameter;
 
@@ -227,10 +227,22 @@ void processMessageReceived (void *parameter){
 		switch (fromProcess){
 			case CPU:{
 				printf("Processing CPU message received\n");
+				pthread_mutex_lock(&activeProcessMutex);
+				//TODO deserealize messageRcv
+				//TODO get PID from message and process
+				int PID;//TODO cambiar por el de la estructura que deserealice
+				changeActiveProcess(PID);
+				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
 			case NUCLEO:{
 				printf("Processing NUCLEO message received\n");
+				pthread_mutex_lock(&activeProcessMutex);
+				//TODO deserealize messageRcv
+				//TODO get PID from message and process
+				int PID;//TODO cambiar por el de la estructura que deserealice
+				changeActiveProcess(PID);
+				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
 			default:{
@@ -359,13 +371,16 @@ void startUMCConsole(){
 
 			if (strcmp(option, "tlb") == 0){
 				//Locking TLB access for reading
-				pthread_mutex_lock(&TLBAccessMutex);
+				pthread_mutex_lock(&memoryAccessMutex);
 				list_clean_and_destroy_elements(TLBList, (void*) destroyElementTLB);
-				resetTLBEntries();
-				pthread_mutex_unlock(&TLBAccessMutex);
+				resetTLBAllEntries();
+				pthread_mutex_unlock(&memoryAccessMutex);
 
 			}else if (strcmp(option, "memory")){
-
+				//Locking memory access for reading
+				pthread_mutex_lock(&memoryAccessMutex);
+				list_iterate(pageTablesListxProc,(void*) iteratePageTablexProc);
+				pthread_mutex_unlock(&memoryAccessMutex);
 			}
 
 			printf("The '%s' flush was completed successfully\n", option);
@@ -383,11 +398,6 @@ void startUMCConsole(){
 	//free(command);
 	//free(value);
 
-}
-
-void destroyElementTLB(t_memoryAdmin *elementTLB){
-	free(elementTLB->virtualAddress);
-	free(elementTLB);
 }
 
 int getEnum(char *string){
@@ -429,14 +439,17 @@ void consoleMessageUMC(){
 
 void createTLB(){
 	TLBList = list_create();
-	resetTLBEntries();
+	resetTLBAllEntries();
 }
 
-void resetTLBEntries(){
+void resetTLBAllEntries(){
 	int i;
 	for(i=0; i < configuration.TLB_entries; i++){
 		t_memoryAdmin *defaultTLBElement = malloc(sizeof(t_memoryAdmin));
+		defaultTLBElement->virtualAddress = malloc(sizeof(t_memoryLocation));
 		defaultTLBElement->PID = -1; //DEFAULT PID value in TLB
+		defaultTLBElement->virtualAddress->pag = -1;
+		defaultTLBElement->frameNumber = i;
 		list_add(TLBList, (void*) defaultTLBElement);
 	}
 }
@@ -444,6 +457,17 @@ void resetTLBEntries(){
 void createAdminStructs(){
 	//Creating memory block
 	memBlock = calloc(configuration.frames_max, configuration.frames_size);
+
+	//Creating list for checking free frames available
+	freeFramesList = list_create();
+	int i;
+	for(i=0; i < configuration.frames_max; i++){
+		int *frameNro = malloc(sizeof(int));
+		*frameNro = i;
+		list_add(freeFramesList, (void*)frameNro);
+	}
+
+	printf("'%d' frames created and ready for use.\n", list_size(freeFramesList));
 
 	// Checking if TLB is enable
 	if (configuration.TLB_entries != 0){
@@ -454,224 +478,387 @@ void createAdminStructs(){
 	}else{
 		printf("TLB disable!.\n");
 	}
+
+	//Creating page table list for Main Memory administration
+	pageTablesListxProc = list_create();
 }
+
+/******************* Primary functions *******************/
 
 void initializeProgram(int PID, int totalPagesRequired, char *programCode){
 
-	//** Find function by PID**//
-	bool isThereEmptyEntry(t_memoryAdmin* listElement){
-		return (listElement->PID == -1);
-	}
-
-	if(TLBActivated){//TLB is enable
-		t_memoryAdmin *PageTableElem = NULL;
-
-		PageTableElem = (t_memoryAdmin*) list_find(TLBList, (void*) isThereEmptyEntry);
-
-		if (PageTableElem != NULL){
-			//Load new program structure in empty TLB entry
-			PageTableElem->PID = PID;
-
-			//TODO Request space to Swap
-
-		}else{//No empty entry is present in TLB
-
-			//TODO Replacement algorithm LRU
-
-		}
-
-	}else{//TLB is disable
-		t_pageTablesxProc *newPageTableProc = malloc(sizeof(t_pageTablesxProc));
-
-		newPageTableProc->PID = PID;
-		newPageTableProc->ptrPageTable = NULL;//List is going to be created when the program is loaded in Main memory
-
-		//Adding new Page table entry by process
-		list_add(pageTablesListxProc,(void *)newPageTableProc);
-
-		free(newPageTableProc);
-	}
+	//TODO inform new program to swap and check if it could write it.
 
 }
 
 void endProgram(int PID){
 
-	//** Find function by PID**//
-	bool find_PIDEntryTLB(t_memoryAdmin* listElement){
-		return (listElement->PID == PID);
-	}
-
-	//** TLB Element Destroyer **//
-	void TLB_Element_destroy(t_memoryAdmin *self) {
-	    free(self->virtualAddress);
-	    free(self);
-	}
-
-	//** Find function by PID**//
-	bool find_PIDEntry_PageTable(t_pageTablesxProc* listElement){
-		return (listElement->PID == PID);
-	}
-
-	//** Page Table Element Destroyer **//
-	void PageTable_Element_destroy(t_pageTablesxProc *self) {
-		list_destroy_and_destroy_elements(self->ptrPageTable, (void*) TLB_Element_destroy);
-		free(self);
-	}
+	changeActiveProcess(PID);
 
 	if(TLBActivated){//TLB is enable
-
-		list_remove_and_destroy_by_condition(TLBList, (void*) find_PIDEntryTLB, (void*) TLB_Element_destroy);
-
-	}else{//TLB is disable
-
-		list_remove_and_destroy_by_condition(pageTablesListxProc, (void*) find_PIDEntry_PageTable, (void*) PageTable_Element_destroy);
-
+		pthread_mutex_lock(&memoryAccessMutex);
+		//Reseting to default entries from active PID in TLB
+		list_iterate(TLBList, (void*)resetTLBbyActivePID);
+		pthread_mutex_unlock(&memoryAccessMutex);
 	}
 
-	//TODO Notify to Swap for freeing space
+	//Deleting elements from main memory
+	pthread_mutex_lock(&memoryAccessMutex);
+	list_remove_and_destroy_by_condition(pageTablesListxProc, (void*) find_PIDEntry_PageTable, (void*) PageTable_Element_destroy);
+	pthread_mutex_unlock(&memoryAccessMutex);
+
+	//TODO Notify to Swap for freeing space - Se puede tirar un hilo para que lo haga mientras la UMC continua y se puede desbloquear para seguir su procesamiento de mensajes.
 
 }
 
 void *requestBytesFromPage(t_memoryLocation virtualAddress){
 	void *memoryContent;
-	int *frameNro;
+	t_memoryAdmin *memoryElement;
 	void *memoryBlockOffset = NULL;
-	enum_memoryStructure memoryStructure;
 
+	getElementFrameNro(&virtualAddress, READ, memoryElement);
 
-	if(TLBActivated){//TLB is enable
-		memoryStructure = TLB;
-		frameNro = searchFramebyPage(memoryStructure, READ,virtualAddress);
-	}else{//TLB is disable
-		memoryStructure = MAIN_MEMORY;
-		frameNro = searchFramebyPage(memoryStructure, READ, virtualAddress);
+	if (memoryElement != NULL){ //PAGE HIT and NO errors from getFrame
+		//delay memory access
+		waitForResponse();
+
+		memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + virtualAddress.offset;
+
+		pthread_mutex_lock(&memoryAccessMutex);//Checking mutex before reading
+		memcpy(memoryContent, memoryBlockOffset , virtualAddress.size);
+		pthread_mutex_unlock(&memoryAccessMutex);
 	}
-
-	if (frameNro == NULL){//PAGE FAULT
-		/*
-		memoryContent = requestPageToSwap(virtualAddress);
-		updateMemoryStructure(memoryStructure, virtualAddress);
-		*/
-	}
-
-	//delay memory access
-	waitForResponse();
-
-	memoryBlockOffset = &memBlock + (*frameNro * configuration.frames_size) + virtualAddress.offset;
-
-	pthread_mutex_lock(&memoryAccessMutex);//Checking mutex before reading
-	memcpy(memoryContent, memoryBlockOffset , virtualAddress.size);
-	pthread_mutex_unlock(&memoryAccessMutex);
 
 	return memoryContent;
 }
 
 void writeBytesToPage(t_memoryLocation virtualAddress, void *buffer){
-	int *frameNro;
+	t_memoryAdmin *memoryElement;
 	void *memoryBlockOffset = NULL;
+
+	getElementFrameNro(&virtualAddress, WRITE, memoryElement);
+
+	if (memoryElement != NULL){ //PAGE HIT and NO errors from getFrame
+		//delay memory access
+		waitForResponse();
+
+		memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + virtualAddress.offset;
+
+		pthread_mutex_lock(&memoryAccessMutex);//Locking mutex for writing memory
+		memcpy(memoryBlockOffset, buffer , virtualAddress.size);
+		pthread_mutex_unlock(&memoryAccessMutex);//unlocking mutex for writing memory
+	}
+
+}
+
+/******************* Auxiliary functions *******************/
+
+void iteratePageTablexProc(t_pageTablesxProc *pageTablexProc){
+	list_iterate(pageTablexProc->ptrPageTable, (void*) markElementModified);
+}
+
+void markElementModified(t_memoryAdmin *pageTableElement){
+	pageTableElement->dirtyBit = PAGE_MODIFIED;
+}
+
+void deleteContentFromMemory(t_memoryAdmin *memoryElement){
+	//check page status before deleting
+	checkPageModification(memoryElement);
+
+	//Deleting element from Main Memory
+	int memOffset = memoryElement->frameNumber * configuration.frames_size + memoryElement->virtualAddress->offset;
+	memset(memBlock + memOffset,'\0', memoryElement->virtualAddress->size);
+
+	//adding frame again to free frames list
+	int *frameNro = malloc(sizeof(int));
+	*frameNro = memoryElement->frameNumber;
+	list_add(freeFramesList, (void*)frameNro);
+
+}
+
+void checkPageModification(t_memoryAdmin *memoryElement){
+
+	if (memoryElement->dirtyBit == PAGE_MODIFIED){
+		//TODO overwrite page content in swap (swap out)
+	}
+}
+
+//** TLB and PageTable Element Destroyer **//
+void destroyElementTLB(t_memoryAdmin *elementTLB){
+	//Erasing memory content
+	deleteContentFromMemory(elementTLB);
+
+	//Deleting all elements from structure
+	free(elementTLB->virtualAddress);
+	free(elementTLB);
+}
+
+//** Page Table Element Destroyer **//
+void PageTable_Element_destroy(t_pageTablesxProc *self){
+	list_destroy_and_destroy_elements(self->ptrPageTable, (void*) destroyElementTLB);
+	free(self);
+}
+
+//** Find function by process**//
+bool is_PIDPageTablePresent(t_pageTablesxProc* listElement){
+	return (listElement->PID == activePID);
+}
+
+//** Find function by PID**//
+bool find_PIDEntry_PageTable(t_pageTablesxProc* listElement){
+	return (listElement->PID == activePID);
+}
+
+//** Find function by Page**//
+bool isThereEmptyEntry(t_memoryAdmin* listElement){
+	return (listElement->virtualAddress->pag == -1);
+}
+
+t_memoryAdmin *getLRUCandidate(){
+	t_memoryAdmin *elementCandidate = NULL;
+
+	pthread_mutex_lock(&memoryAccessMutex);
+	//Get memory element from last index position
+	elementCandidate = (t_memoryAdmin*) list_remove(TLBList, list_size(TLBList) - 1);
+	pthread_mutex_unlock(&memoryAccessMutex);
+
+	return elementCandidate;
+}
+
+void updateTLBPositionsbyLRU(t_memoryAdmin *elementCandidate){
+	pthread_mutex_lock(&memoryAccessMutex);
+	//add element to first position for keeping Least Recently used access updated
+	list_add_in_index(TLBList, 0, (void*)elementCandidate);
+	pthread_mutex_unlock(&memoryAccessMutex);
+}
+
+void resetTLBbyActivePID(t_memoryAdmin *listElement){
+
+	if(listElement->PID == activePID){
+		//adding frame again to free frames list
+		int *frameNro = malloc(sizeof(int));
+		*frameNro = listElement->frameNumber;
+		list_add(freeFramesList, (void*)frameNro);
+
+		//Additionally to restore PID default value, restoring all values to default just in case..
+		listElement->PID = -1;
+		listElement->dirtyBit = PAGE_NOTMODIFIED;
+		listElement->presentBit = PAGE_NOTPRESENT;
+		listElement->frameNumber = -1;
+		free(listElement->virtualAddress);
+		listElement->virtualAddress = malloc(sizeof(listElement->virtualAddress));
+	}
+}
+
+void getElementFrameNro(t_memoryLocation *virtualAddress, enum_memoryOperations operation, t_memoryAdmin *memoryElement){
 	enum_memoryStructure memoryStructure;
 
 	if(TLBActivated){//TLB is enable
 		memoryStructure = TLB;
-		frameNro = searchFramebyPage(memoryStructure, WRITE, virtualAddress);
-	}else{//TLB is disable
+		memoryElement = searchFramebyPage(memoryStructure, operation, virtualAddress);
+	}
+
+	if (memoryElement == NULL){//TLB is disable or PAGE FAULT in TLB
+
 		memoryStructure = MAIN_MEMORY;
-		frameNro = searchFramebyPage(memoryStructure, WRITE, virtualAddress);
+		memoryElement = searchFramebyPage(memoryStructure, operation, virtualAddress);
+
+		t_pageTablesxProc *pageTablexProc = NULL;
+
+		//Look for table page by active Process - (at least the list is going to have an empty entry due to its creation)
+		pthread_mutex_lock(&memoryAccessMutex);
+		pageTablexProc = (t_pageTablesxProc*) list_find(pageTablesListxProc,(void*) is_PIDPageTablePresent);
+		pthread_mutex_unlock(&memoryAccessMutex);
+
+		updateMemoryStructure(pageTablexProc, virtualAddress, memoryElement);
+
 	}
-
-	if (frameNro == NULL){//PAGE FAULT
-		/*
-			memoryContent = requestPageToSwap(virtualAddress);
-			updateMemoryStructure(memoryStructure, virtualAddress);
-		 */
-	}
-
-	//delay memory access
-	waitForResponse();
-
-	memoryBlockOffset = &memBlock + (*frameNro * configuration.frames_size) + virtualAddress.offset;
-
-	pthread_mutex_lock(&memoryAccessMutex);//Locking mutex for writing memory
-	memcpy(memoryBlockOffset, buffer , virtualAddress.size);
-	pthread_mutex_unlock(&memoryAccessMutex);//unlocking mutex for writing memory
-
 }
 
-int *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memoryOperations operation, t_memoryLocation virtualAddress){
-	int *frame = NULL; // DEFAULT VALUE
+t_memoryAdmin *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memoryOperations operation, t_memoryLocation *virtualAddress){
 	t_pageTablesxProc *pageTablexProc = NULL;
 	t_list *pageTableList = NULL;//lista con registros del tipo t_memoryAdmin
 	t_memoryAdmin* pageNeeded = NULL;
 
 	//** Find function by page**//
 	bool is_PagePresent(t_memoryAdmin* listElement){
-		return (listElement->virtualAddress->pag == virtualAddress.pag);
+		return (listElement->virtualAddress->pag == virtualAddress->pag);
 	}
 
-	//** Find function by process**//
-	bool is_PIDPageTablePresent(t_pageTablesxProc* listElement){
-		return (listElement->PID == PIDactive);
-	}
-
-	//Look for table page by active Process
-	pageTablexProc = (t_pageTablesxProc*) list_find(pageTablesListxProc,(void*) is_PIDPageTablePresent);
-
-	if (pageTablexProc != NULL){
-
-		pageTableList = pageTablexProc->ptrPageTable;
-
-		switch(deviceLocation){
-			case(TLB):{
-				//Locking TLB access for reading
-				pthread_mutex_lock(&TLBAccessMutex);
-				pageNeeded = (t_memoryAdmin*) list_find(TLBList,(void*) is_PagePresent);
-				pthread_mutex_unlock(&TLBAccessMutex);
-				break;
-			}
-			case(MAIN_MEMORY):{
-				pageNeeded = (t_memoryAdmin*) list_find(pageTableList,(void*) is_PagePresent);
-				break;
-			}
-			default:{
-				perror("Error - Device Location not recognized for searching");//TODO => Agregar logs con librerias
-				printf("Error Device Location not recognized for searching: '%d'\n",deviceLocation);
-			}
+	switch(deviceLocation){
+		case(TLB):{
+			//Locking TLB access for reading
+			pthread_mutex_lock(&memoryAccessMutex);
+			pageNeeded = (t_memoryAdmin*) list_find(TLBList,(void*) is_PagePresent);
+			pthread_mutex_unlock(&memoryAccessMutex);
+			break;
 		}
+		case(MAIN_MEMORY):{
+			//Look for table page by active Process
+			pthread_mutex_lock(&memoryAccessMutex);
+			pageTablexProc = (t_pageTablesxProc*) list_find(pageTablesListxProc,(void*) is_PIDPageTablePresent);
+			pthread_mutex_unlock(&memoryAccessMutex);
 
-		if (pageNeeded != NULL){
-			//Page found
-			*frame = pageNeeded->frameNumber;
+			pageTableList = pageTablexProc->ptrPageTable;
 
-			switch(operation){
-				case(READ):{
-					//After getting the frame needed for reading, mark memory element as present (overwrite it no matter if it was marked as present before)
-					pageNeeded->presentBit = PAGE_PRESENT;
-					break;
-				}
-				case (WRITE):{
-					//After getting the frame needed for writing, mark memory element as modified
-					pageNeeded->dirtyBit = PAGE_MODIFIED;
-					break;
-				}
-			}
+			//Locking memory access for reading
+			pthread_mutex_lock(&memoryAccessMutex);
+			pageNeeded = (t_memoryAdmin*) list_find(pageTableList,(void*) is_PagePresent);
+			pthread_mutex_unlock(&memoryAccessMutex);
+			break;
+		}
+		default:{
+			perror("Error - Device Location not recognized for searching");//TODO => Agregar logs con librerias
+			printf("Error Device Location not recognized for searching: '%d'\n",deviceLocation);
 		}
 	}
 
-	return frame;
+	if (pageNeeded != NULL){
+		//Page found
+		switch(operation){
+		case(READ):{
+			//After getting the frame needed for reading, mark memory element as present (overwrite it no matter if it was marked as present before)
+			pageNeeded->presentBit = PAGE_PRESENT;
+			break;
+		}
+		case (WRITE):{
+			//After getting the frame needed for writing, mark memory element as modified and as present as well
+			pageNeeded->presentBit = PAGE_PRESENT;
+			pageNeeded->dirtyBit = PAGE_MODIFIED;
+			break;
+		}
+		}
+	}
+
+	return pageNeeded;
 }
 
-void updateMemoryStructure(enum_memoryStructure memoryStructure, t_memoryLocation virtualAddress){
-
+void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *virtualAddress, t_memoryAdmin *memoryElement){
 	/*
-	 * 1) ver marcos disponibles
-	 * 1.1) si hay disponibles => cargo pagina en marco
-	 * 1.2) si no hay disponibles => ejecuto algoritmo reemplazo segun deviceLocation ( TLB=> LRU, MAIN_MEMORY=> Clock/mejorado)
-	 *
-	 * 2) Algoritmo de reemplazo segun deviceLocation
-	 * 2.1) Si pagina a reemplazar == MODIFIED  =>
-	 * 2.1.1) escribo en swap el contenido de memoria principal
-	 * 2.1.2) reemplazo por pagina a ser cargada
+	 * 1)busco frame libre(ver algoritmo de ubicacion - puede ser cualquiera es irrelevante para paginacion pura)
+	 * 2)agrego info en TLB (si corresponde)
+	 * 3)agrego info en estructura de Main Memory
+	 * 4)pageTablexProc->assignedFrames++;
 	 */
+
+	if (memoryElement != NULL){//PAGE HIT in Main Memory
+
+		if(TLBActivated){//TLB is enable
+			t_memoryAdmin *TLBElem = NULL;
+
+			pthread_mutex_lock(&memoryAccessMutex);
+			TLBElem = (t_memoryAdmin*) list_find(TLBList, (void*) isThereEmptyEntry);
+			pthread_mutex_unlock(&memoryAccessMutex);
+
+			if (TLBElem != NULL){
+				//Load new program structure in empty TLB entry
+				TLBElem->PID = memoryElement->PID;
+				TLBElem->dirtyBit = memoryElement->dirtyBit;
+				TLBElem->presentBit = memoryElement->presentBit;
+				TLBElem->virtualAddress = virtualAddress;
+				TLBElem->frameNumber = memoryElement->frameNumber;
+
+				//TODO Request space to Swap
+
+			}else{//No empty entry is present in TLB
+
+				//Execute LRU algorithm
+				executeLRUAlgorithm(memoryElement, virtualAddress);
+			}
+		}
+	}else{//PAGE Fault in Main Memory
+
+		if (list_size(freeFramesList) > 0){
+
+			//The main memory still has free frames available
+			printf("The main memory still has free frames to assign to process '%d'", activePID);
+
+			//Request memory content to Swap
+			void *memoryContent = requestPageToSwap(virtualAddress);
+
+			//request memory for new element
+			t_memoryAdmin *memoryElement = malloc(sizeof(t_memoryAdmin));
+
+			//By DEFAULT always take the first free frame
+			pthread_mutex_lock(&memoryAccessMutex);
+			memoryElement->frameNumber = (int) list_remove(freeFramesList,0);
+			pthread_mutex_unlock(&memoryAccessMutex);
+			memoryElement->PID = pageTablexProc->PID;
+			memoryElement->presentBit = PAGE_PRESENT;
+			memoryElement->dirtyBit = PAGE_NOTMODIFIED;
+			memoryElement->virtualAddress = virtualAddress;
+
+			//Adding new Page table entry by process
+			pthread_mutex_lock(&memoryAccessMutex);
+			list_add(pageTablexProc->ptrPageTable,(void *)memoryElement);
+			pthread_mutex_unlock(&memoryAccessMutex);
+
+			//check if process has not reached the max of frames by process
+			if (pageTablexProc->assignedFrames < configuration.frames_max_proc){
+
+				//The active process has free frames available
+				printf("The process '%d' still has free frames to assigned", activePID);
+
+				void *memoryBlockOffset = NULL;
+				memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + virtualAddress->offset;
+
+				pthread_mutex_lock(&memoryAccessMutex);//Locking mutex for writing memory
+				memcpy(memoryBlockOffset, memoryContent , virtualAddress->size);
+				pthread_mutex_unlock(&memoryAccessMutex);//unlocking mutex for writing memory
+
+			}else{
+				//The active process hasn't free frames available, replacement algorithm has to be executed
+				printf("The process '%d' hasn't more free frames available", activePID);
+
+				//  ejecuto algoritmo reemplazo segun deviceLocation ( TLB=> LRU, MAIN_MEMORY=> Clock/mejorado)
+
+				if(TLBActivated){//TLB is enable
+					//Execute LRU algorithm
+					executeLRUAlgorithm(memoryElement, virtualAddress);
+				}else{
+					//TODO execute main menory algorithm
+				}
+
+			}
+		}else{
+			//The main memory still hasn't any free frames
+			printf("The main memory is Full!");
+			//TODO inform this to upstream process
+		}
+
+	}
+
+	//increasing frames assigned to active process
+	pageTablexProc->assignedFrames++;
+
+}
+
+void executeLRUAlgorithm(t_memoryAdmin *newElement, t_memoryLocation *virtualAddress){
+	t_memoryAdmin *LRUCandidate = NULL;
+
+	//Replacement algorithm LRU
+	LRUCandidate = getLRUCandidate();
+
+	//check page status before replacing
+	checkPageModification(LRUCandidate);
+
+	//Load new program structure into candidate TLB entry
+	LRUCandidate->PID = newElement->PID;
+	LRUCandidate->dirtyBit = newElement->dirtyBit;
+	LRUCandidate->presentBit = newElement->presentBit;
+	LRUCandidate->virtualAddress = virtualAddress;
+	LRUCandidate->frameNumber = newElement->frameNumber;
+
+	//updated TLB by LRU algorithm
+	updateTLBPositionsbyLRU(LRUCandidate);
+}
+
+void *requestPageToSwap(t_memoryLocation *virtualAddress){
+	void *memoryContent = NULL;
+
+	//TODO request page content to swap
+
+	return memoryContent;
 }
 
 void waitForResponse(){
@@ -679,5 +866,5 @@ void waitForResponse(){
 }
 
 void changeActiveProcess(int PID){
-	PIDactive = PID;
+	activePID = PID;
 }
