@@ -25,7 +25,7 @@ void processingMessages(int socketClient){
 	char* paginaRecibida;
 	char* mensajeDeError = string_new();
 	string_append(&mensajeDeError,"Error: No se pudo enviar los datos");
-	int operacionARealizar;
+	enum_operationsUMC_SWAP operacionARealizar;
 	receiveMessage(&socketClient,operacionRecibida,sizeof(int));
 	memcpy(&operacionARealizar,&operacionRecibida,4);
 	switch(operacionARealizar){

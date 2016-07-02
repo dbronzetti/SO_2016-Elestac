@@ -18,7 +18,6 @@
 #include <unistd.h>
 #include "commons/log.h"
 #include "commons/config.h"
-#include "common-types.h"
 #include "sockets.h"
 
 //Encabezamiento de Funciones

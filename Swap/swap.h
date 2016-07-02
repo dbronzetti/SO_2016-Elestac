@@ -15,11 +15,12 @@
  *      Author: utnso
  */
 
-
+/*
 #define agregar_proceso 1
 #define finalizar_proceso 2
 #define lectura_pagina 3
 #define escritura_pagina 4
+*/
 
 #include <stdlib.h>
 #include <stdbool.h>
@@ -27,7 +28,6 @@
 #include <string.h>
 #include <sys/mman.h>
 #include "commons/config.h"
-#include "common-types.h"
 #include "stdbool.h"
 
 
