@@ -45,6 +45,9 @@ int main(int argc, char *argv[]) {
 
 	//Create thread for server start
 	pthread_create(&serverThread, NULL, (void*) startServer, NULL);
+	pthread_create(&serverConsolaThread, NULL, (void*) startServer, NULL);
+	exitCode = connectTo(UMC,&socketUMC);
+
 	pthread_join(serverThread, NULL);
 
 	return exitCode;
@@ -147,23 +150,10 @@ void handShake (void *parameter){
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){
+
 					t_MessageNucleo_CPU *datosCPU = malloc(sizeof(t_MessageNucleo_CPU));
-					datosCPU->processID = numCPU;
 					datosCPU->numSocket = serverData->socketClient;
 					list_add(listaCPU, (void*)datosCPU);
-					numCPU++;
-
-					//Create thread attribute detached
-					pthread_attr_t processMessageThreadAttr;
-					pthread_attr_init(&processMessageThreadAttr);
-					pthread_attr_setdetachstate(&processMessageThreadAttr, PTHREAD_CREATE_DETACHED);
-
-					//Create thread for checking new connections in server socket
-					pthread_t processMessageThread;
-					pthread_create(&processMessageThread, &processMessageThreadAttr, (void*) processMessageReceived, parameter);
-
-					//Destroy thread attribute
-					pthread_attr_destroy(&processMessageThreadAttr);
 				}
 
 				break;
@@ -254,44 +244,6 @@ void processMessageReceived (void *parameter){
 				printf("se recibio el processID #%d\n", message->processID);
 				runScript(messageRcv);
 				free(message);
-				pthread_mutex_unlock(&activeProcessMutex);
-				break;
-			}
-			case CPU: {
-				printf("Processing CPU message received\n");
-				pthread_mutex_lock(&activeProcessMutex);
-				t_MessageNucleo_CPU *message=malloc(sizeof(t_MessageNucleo_CPU));
-				char *messageRcv = malloc(sizeof(messageSize));
-				char *datosEntradaSalida = malloc(sizeof(t_es));
-				t_es infoES;
-				memset(messageRcv, '\0', sizeof(t_MessageNucleo_CPU));
-				exitCode = receiveMessage(&serverData->socketClient,(void*)messageRcv,sizeof(t_MessageNucleo_CPU));
-				//Deserializar messageRcv
-				deserializeCPU_Nucleo(message, messageRcv);
-				switch (message->operacion) {
-					case 1: //Entrada Salida
-						exitCode = recv(serverData->socketClient, (void*) datosEntradaSalida, sizeof(t_es),MSG_WAITALL);
-//						deserializarES(&infoES, &datosEntradaSalida); //TODO deserializar entrada-salida
-						hacerEntradaSalida(serverData->socketClient, message->processID,infoES.ProgramCounter, infoES.dispositivo, infoES.tiempo);
-						break;
-					case 2: //Finaliza Proceso Bien
-						finalizaProceso(serverData->socketClient, message->processID,message->operacion);
-						break;
-					case 3: //Finaliza Proceso Mal
-						finalizaProceso(serverData->socketClient, message->processID,message->operacion);
-						break;
-					case 4:	//Falla otra cosa
-						printf("Hubo un fallo.\n");
-						break;
-					case 5: //Corte por Quantum
-						printf("Corto por Quantum.\n");
-						atenderCorteQuantum(serverData->socketClient, message->processID);
-						break;
-					default:
-						printf("Mensaje recibido invalido, CPU desconectado.\n");
-						abort();
-				} //fin del switch interno
-
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
@@ -425,9 +377,9 @@ void planificarProceso() {
 		return;
 	}
 	//Veo si hay CPU libre para asignarle
-	int libre = buscarCPULibre();
+	int libreCPU = buscarCPULibre();
 
-	if (libre == -1) {
+	if (libreCPU == -1) {
 		printf("No hay CPU libre.\n");
 		return;
 	}
@@ -460,10 +412,15 @@ void planificarProceso() {
 			queue_pop(colaListos);
 			pthread_mutex_unlock(&cListos);
 
-			send(libre, bufferEnviar, sizeof(t_MessageNucleo_CPU), 0);
+			send(libreCPU, bufferEnviar, sizeof(t_MessageNucleo_CPU), 0);
+
 			//Cambio Estado del Proceso
 			int estado = 2;
 			cambiarEstadoProceso(datosPCB->PID, estado);
+			/*
+					1) recv()
+					2) procesarRespuesta
+			 */
 
 		} else {
 			printf("Proceso no encontrado en la lista.\n");
@@ -488,25 +445,78 @@ void planificarProceso() {
 			queue_pop(colaFinalizar);
 			pthread_mutex_unlock(&cFinalizar);
 
-			send(libre, bufferEnviar, sizeof(t_MessageNucleo_CPU), 0);
+			send(libreCPU, bufferEnviar, sizeof(t_MessageNucleo_CPU), 0);
 			//Cambio Estado del Proceso
 			int estado = 2;
 			cambiarEstadoProceso(datosPCB->PID, estado);
+			/*
+			1) recv(libre)
+			2) procesarRespuesta(libre,MsgRcv)
+			*/
 		}
 	}
 
 }
 
+void procesarRespuesta(socketLibre, MsgRcv){
+	printf("Processing CPU message received\n");
+
+	t_MessageNucleo_CPU *message=malloc(sizeof(t_MessageNucleo_CPU));
+	char *messageRcv = malloc(sizeof(messageSize));
+	char *datosEntradaSalida = malloc(sizeof(t_es));
+	t_es infoES;
+	memset(messageRcv, '\0', sizeof(t_MessageNucleo_CPU));
+	exitCode = receiveMessage(&serverData->socketClient,(void*)messageRcv,sizeof(t_MessageNucleo_CPU));
+	//Deserializar messageRcv
+	deserializeCPU_Nucleo(message, messageRcv);
+
+	switch (message->operacion) {
+	case 1: //Entrada Salida
+		pthread_mutex_lock(&activeProcessMutex);
+		//change active PID
+		activePID = message->processID;
+
+		exitCode = recv(serverData->socketClient, (void*) datosEntradaSalida, sizeof(t_es),MSG_WAITALL);
+		//						deserializarES(&infoES, &datosEntradaSalida); //TODO deserializar entrada-salida
+		//Libero la CPU que ocupaba el proceso
+		liberarCPU(socket);
+
+		//Cambio el PC del Proceso
+		actualizarPC(message->processID, infoES.ProgramCounter);
+		//Cambio el estado del proceso
+		int estado = 3;
+		cambiarEstadoProceso(message->processID, estado);
+
+		hacerEntradaSalida(infoES.dispositivo, infoES.tiempo);
+
+		pthread_mutex_unlock(&activeProcessMutex);
+		break;
+	case 2: //Finaliza Proceso Bien
+		finalizaProceso(serverData->socketClient, message->processID,message->operacion);
+		break;
+	case 3: //Finaliza Proceso Mal
+		finalizaProceso(serverData->socketClient, message->processID,message->operacion);
+		break;
+	case 4:	//Falla otra cosa
+		printf("Hubo un fallo.\n");
+		break;
+	case 5: //Corte por Quantum
+		printf("Corto por Quantum.\n");
+		atenderCorteQuantum(serverData->socketClient, message->processID);
+		break;
+	default:
+		printf("Mensaje recibido invalido, CPU desconectado.\n");
+		abort();
+	} //fin del switch interno
+
+}
+
 int buscarCPULibre() {
-	int cantCPU, i = 0;
-	t_MessageNucleo_CPU* datosCPU;
-	cantCPU = list_size(listaCPU);
-	for (i = 0; i < cantCPU; i++) {
-		datosCPU = (t_MessageNucleo_CPU*) list_get(listaCPU, i);
-		if (datosCPU->processStatus == NEW) {
-			datosCPU->processStatus = READY;
-			return datosCPU->numSocket;
-		}
+	if(list_size(listaCPU) != 0){
+		pthread_mutex_lock(&listadoCPU);
+		t_MessageNucleo_CPU* datosCPU = (t_MessageNucleo_CPU*) list_remove(listaCPU, 0);
+		pthread_mutex_unlock(&listadoCPU);
+		return datosCPU->numSocket;
 	}
 	return -1;
 }
@@ -537,26 +547,18 @@ int buscarCPU(int socket) {
 	return -1;
 }
 
-void hacerEntradaSalida(int socket, int PID, int ProgramCounter, t_nombre_dispositivo dispositivo, int tiempo){
+void hacerEntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 
 	t_bloqueado* infoBloqueado = malloc(sizeof(t_bloqueado));
-	//Libero la CPU que ocupaba el proceso
-	liberarCPU(socket);
-	//Cambio el estado del proceso
-	int estado = 3;
-	cambiarEstadoProceso(PID, estado);
-	//Cambio el PC del Proceso
-	actualizarPC(PID, ProgramCounter);
+
 	//Agrego a la cola de Bloqueados, y seteo el semaforo
-	infoBloqueado->PID = PID;
+	infoBloqueado->PID = activePID;
 	infoBloqueado->dispositivo = dispositivo;
 	infoBloqueado->tiempo = tiempo;
 
 	pthread_mutex_lock(&cBloqueados);
 	queue_push(colaBloqueados, (void*) infoBloqueado);
 	pthread_mutex_unlock(&cBloqueados);
-
-	sem_post(&semBloqueados);
 }
 
 void entrada_salida(t_nombre_dispositivo dispositivo, int tiempo){
@@ -694,17 +696,25 @@ int definirVariable(char* nombreVariable,t_registroStack miPrograma,int posicion
 
 void crearArchivoDeConfiguracion(char *configFile){
 	t_config* configuration;
+
 	configuration = config_create(configFile);
-	configNucleo.puerto_prog = config_get_int_value(configuration,"PUERTO_PROG");
-	configNucleo.puerto_cpu = config_get_int_value(configuration,"PUERTO_CPU");
-	configNucleo.quantum = config_get_int_value(configuration,"QUANTUM");
-	configNucleo.quantum_sleep = config_get_int_value(configuration,"QUANTUM_SLEEP");
-	configNucleo.sem_ids = (void*) config_get_array_value(configuration,"SEM_IDS");
-	configNucleo.sem_init = (void*) config_get_array_value(configuration,"SEM_INIT");
-	configNucleo.io_ids = (void*) config_get_array_value(configuration,"IO_IDS");
-	configNucleo.io_sleep = (void*) config_get_array_value(configuration,"IO_SLEEP");
-	configNucleo.shared_vars = (void*) config_get_array_value(configuration,"SHARED_VARS");
-	configNucleo.stack_size = config_get_int_value(configuration,"STACK_SIZE");
-	configNucleo.frames_size = config_get_int_value(configuration,"FRAMES_SIZE");
+	configNucleo.puerto_prog = config_get_int_value(configuration,"puerto_prog");
+	configNucleo.puerto_cpu = config_get_int_value(configuration,"puerto_cpu");
+	configNucleo.quantum = config_get_int_value(configuration,"quantum");
+	configNucleo.quantum_sleep = config_get_int_value(configuration,"quantum_sleep");
+	configNucleo.sem_ids =  config_get_array_value(configuration,"sem_ids");
+	configNucleo.sem_init = (int**) config_get_array_value(configuration,"sem_init");
+	configNucleo.io_ids =  config_get_array_value(configuration,"io_ids");
+	configNucleo.io_sleep = (int**) config_get_array_value(configuration,"io_sleep");
+	configNucleo.shared_vars = config_get_array_value(configuration,"shared_vars");
+	configNucleo.stack_size = config_get_int_value(configuration,"stack_size");
+	configNucleo.frames_size = config_get_int_value(configuration,"frames_size");
+
+	int i = 0;
+		while (configNucleo.io_sleep[i] != NULL){
+			printf("valor %d - %d\n",i,configNucleo.io_sleep[i]);
+			i++;
+		}
 }
+
 

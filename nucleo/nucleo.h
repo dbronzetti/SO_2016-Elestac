@@ -23,19 +23,18 @@
 
 // Estructuras
 typedef struct {
-	int puerto_prog;
-	int puerto_cpu;
-	int quantum;
-	int quantum_sleep;
-	char* sem_ids;
-	int* sem_init;
-	char* io_ids;
-	int* io_sleep;
-	char* shared_vars;
-	int stack_size;
-	int frames_size;
+int puerto_prog;
+int puerto_cpu;
+int quantum;
+int quantum_sleep;
+char** sem_ids;
+int** sem_init;
+char** io_ids;
+int* io_sleep;
+char** shared_vars;
+int stack_size;
+int frames_size;
 } t_configFile;
-
 typedef struct {
 	int socketServer;
 	int socketClient;
@@ -87,7 +86,8 @@ t_queue* colaFinalizar;
 
 //Variables Globales
 int idProcesos = 1;
-int numCPU = 0;
+int activePID = 0;
+int socketUMC = 0;
 pthread_mutex_t activeProcessMutex;
 
 //Encabezamientos de Funciones Principales
