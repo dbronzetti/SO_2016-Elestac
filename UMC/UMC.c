@@ -11,14 +11,23 @@ int main(int argc, char *argv[]){
 	//get parameter
 	int i;
 	for( i = 0; i < argc; i++){
+		//check Configuration file parameter
 		if (strcmp(argv[i], "-c") == 0){
 			configurationFile = argv[i+1];
 			printf("Configuration File: '%s'\n",configurationFile);
+		}
+		//check Dump file parameter
+		if (strcmp(argv[i], "-d") == 0){
+			dumpFile = argv[i+1];
+			printf("Dump File: '%s'\n",dumpFile);
 		}
 	}
 
 	//ERROR if not configuration parameter was passed
 	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS TODO => Agregar logs con librerias
+
+	//ERROR if not configuration parameter was passed
+	assert(("ERROR - NOT dump file was passed as argument", dumpFile != NULL));//Verifies if was passed the Dump file as parameter, if DONT FAILS TODO => Agregar logs con librerias
 
 	//get configuration from file
 	getConfiguration(configurationFile);
@@ -30,14 +39,14 @@ int main(int argc, char *argv[]){
 	pthread_mutex_init(&memoryAccessMutex, NULL);
 	pthread_mutex_init(&activeProcessMutex, NULL);
 
-	//Create thread for server start
-	pthread_create(&serverThread, NULL, (void*) startServer, NULL);
-
 	//Create thread for UMC console
 	pthread_create(&consolaThread, NULL, (void*) startUMCConsole, NULL);
 
-	pthread_join(serverThread, NULL);
+	//Create thread for server start
+	pthread_create(&serverThread, NULL, (void*) startServer, NULL);
+
 	pthread_join(consolaThread, NULL);
+	pthread_join(serverThread, NULL);
 
 	return exitCode;
 }
@@ -310,7 +319,7 @@ void getConfiguration(char *configFile){
 			}
 			case(ALGORITMO):{ //7
 				fscanf(file, "%s",parameterValue);
-				configuration.delay = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
+				configuration.algorithm_replace = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
 				break;
 			}
 			case(ENTRADAS_TLB):{ //8
@@ -355,17 +364,63 @@ void startUMCConsole(){
 		}
 
 		if (strcmp(command,"retardo") == 0 ){
+			pthread_mutex_lock(&delayMutex);
 			configuration.delay = atoi(option);
+			pthread_mutex_unlock(&delayMutex);
 			printf("The delay UMC was successfully changed to: %d\n", configuration.delay);
 
 		}else if (strcmp(command,"dump") == 0 ){
+			int neededPID = 0; //DEFAULT value
+
+			//Auxiliary function - Look for page table by PID
+			bool is_PIDPageTable(t_pageTablesxProc* listElement){
+				return (listElement->PID == neededPID);
+			}
+
 			printf("\nCommand entered: '%s %s'\n", command,option);
 			printf("== [VALUE]\n");
 			printf("all\t\t:: Todos los procesos\n");
-			printf("<processName>\t:: Nombre del proceso deseado\n\nPlease enter a value with the above format: ");
+			printf("<processPID>\t:: PID del proceso deseado\n\nPlease enter a value with the above format: ");
 			scanf("%s", value);
 
-			printf("A copy of this dump was saved in: \n");
+			if (strcmp(value, "all") == 0){
+				neededPID = -1; //ALL PIDs in memory
+			}else{
+				neededPID = atoi(value); //given PID in memory
+			}
+
+			if (strcmp(option, "estructuras") == 0){
+
+				dumpf = fopen(dumpFile, "w+");
+
+				if(neededPID == -1){
+					pthread_mutex_lock(&memoryAccessMutex);
+					list_iterate(pageTablesListxProc,(void*) dumpPageTablexProc);
+					pthread_mutex_unlock(&memoryAccessMutex);
+				}else{
+					//Look for table page by neededPID
+					pthread_mutex_lock(&memoryAccessMutex);
+					t_pageTablesxProc *pageTablexProc = (t_pageTablesxProc*) list_find(pageTablesListxProc,(void*) is_PIDPageTable);
+					list_iterate(pageTablexProc->ptrPageTable, (void*) showPageTableRows);
+					pthread_mutex_unlock(&memoryAccessMutex);
+				}
+
+			}else if (strcmp(option, "contenido")){
+				if(neededPID == -1){
+					pthread_mutex_lock(&memoryAccessMutex);
+					list_iterate(pageTablesListxProc,(void*) dumpMemoryxProc);
+					pthread_mutex_unlock(&memoryAccessMutex);
+				}else{
+					//Look for table page by neededPID
+					pthread_mutex_lock(&memoryAccessMutex);
+					t_pageTablesxProc *pageTablexProc = (t_pageTablesxProc*) list_find(pageTablesListxProc,(void*) is_PIDPageTable);
+					list_iterate(pageTablexProc->ptrPageTable, (void*) showMemoryRows);
+					pthread_mutex_unlock(&memoryAccessMutex);
+				}
+			}
+			//Closing file
+			fclose(dumpf);
+			printf("A copy of this dump was saved in: '%s'.\n", dumpFile);
 
 		}else if (strcmp(command,"flush") == 0 ){
 
@@ -487,13 +542,17 @@ void createAdminStructs(){
 
 void initializeProgram(int PID, int totalPagesRequired, char *programCode){
 
+	//Creating new table page by PID - NOT needed to load anything in TLB
+	t_pageTablesxProc *newPageTable = malloc(sizeof(t_pageTablesxProc));
+	newPageTable->PID = PID;
+	newPageTable->assignedFrames = 0;
+	newPageTable->ptrPageTable = list_create();
+
 	//TODO inform new program to swap and check if it could write it.
 
 }
 
 void endProgram(int PID){
-
-	changeActiveProcess(PID);
 
 	if(TLBActivated){//TLB is enable
 		pthread_mutex_lock(&memoryAccessMutex);
@@ -557,8 +616,66 @@ void iteratePageTablexProc(t_pageTablesxProc *pageTablexProc){
 	list_iterate(pageTablexProc->ptrPageTable, (void*) markElementModified);
 }
 
+//** Mark memory Element as MODIFIED**//
 void markElementModified(t_memoryAdmin *pageTableElement){
 	pageTableElement->dirtyBit = PAGE_MODIFIED;
+}
+
+//** Dumper Page Table Element **//
+void dumpPageTablexProc(t_pageTablesxProc *pageTablexProc){
+	printf("Informacion PID: '%d'.\n", pageTablexProc->PID);
+	fprintf(dumpf,"Informacion PID: '%d'.\n", pageTablexProc->PID);
+	list_iterate(pageTablexProc->ptrPageTable, (void*) showPageTableRows);
+}
+
+//** Show Page Table Element information **//
+void showPageTableRows(t_memoryAdmin *pageTableElement){
+	char *status = string_new();
+	char *presence = string_new();
+
+	if(pageTableElement->dirtyBit == PAGE_MODIFIED){
+		string_append(&status,"MODIFIED");
+	}else{
+		string_append(&status,"NOT_MODIFIED");
+	}
+
+	if(pageTableElement->presentBit == PAGE_PRESENT){
+		string_append(&presence,"PAGE_PRESENT");
+	}else{
+		string_append(&presence,"PAGE_NOT_PRESENT");
+	}
+
+	printf("\t En Frame '%d'\t--> Pagina '%d'\t--> status: '%s' and '%s'.\n", pageTableElement->frameNumber,pageTableElement->virtualAddress->pag, presence, status);
+	fprintf(dumpf,"\t En Frame '%d'\t--> Pagina '%d'\t--> status: '%s' and '%s'.\n", pageTableElement->frameNumber,pageTableElement->virtualAddress->pag, presence, status);
+
+	free(status);
+	free(presence);
+
+}
+
+//** Dumper Memory content **//
+void dumpMemoryxProc(t_pageTablesxProc *pageTablexProc){
+	printf("Contenido de memoria de PID: '%d'.\n", pageTablexProc->PID);
+	fprintf(dumpf,"Contenido de memoria de PID: '%d'.\n", pageTablexProc->PID);
+
+	list_iterate(pageTablexProc->ptrPageTable, (void*) showMemoryRows);
+}
+
+//** Show Memory content **//
+void showMemoryRows(t_memoryAdmin *pageTableElement){
+	char *content = string_new();
+
+	void *memoryBlockOffset = NULL;
+	memoryBlockOffset = &memBlock + (pageTableElement->frameNumber * configuration.frames_size) + pageTableElement->virtualAddress->offset;
+
+	content = realloc(content, pageTableElement->virtualAddress->size);
+
+	memcpy(content, memoryBlockOffset, pageTableElement->virtualAddress->size);
+
+	printf("\t Contenido en Pagina:'%d'\n\t\tContenido: '%s'.\n", pageTableElement->virtualAddress->pag, content);
+	fprintf(dumpf,"\t Contenido en Pagina:'%d'\n\t\tContenido: '%s'.\n", pageTableElement->virtualAddress->pag, content);
+
+	free(content);
 }
 
 void deleteContentFromMemory(t_memoryAdmin *memoryElement){
@@ -862,9 +979,21 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress){
 }
 
 void waitForResponse(){
+	pthread_mutex_lock(&delayMutex);
 	sleep(configuration.delay);
+	pthread_mutex_unlock(&delayMutex);
 }
 
 void changeActiveProcess(int PID){
+
+	//Ante un cambio de proceso, se realizará una limpieza (flush) en las entradas que correspondan.
+	if(TLBActivated){//TLB is enable
+		pthread_mutex_lock(&memoryAccessMutex);
+		//Reseting to default entries from previous active PID
+		list_iterate(TLBList, (void*)resetTLBbyActivePID);
+		pthread_mutex_unlock(&memoryAccessMutex);
+	}
+
+	//after flushing entries from old process change active process to the one needed
 	activePID = PID;
 }

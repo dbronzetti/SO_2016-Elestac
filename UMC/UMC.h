@@ -79,6 +79,8 @@ typedef enum{
 
 /***** Global variables *****/
 t_configFile configuration;
+char *dumpFile = NULL;
+FILE *dumpf;
 void *memBlock = NULL;
 int activePID = -1;
 bool TLBActivated = false; //TLB use FALSE by DEFAULT
@@ -87,6 +89,7 @@ t_list *TLBList = NULL;//lista con registros del tipo t_memoryAdmin
 t_list *pageTablesListxProc = NULL;//lista con registros del tipo t_pageTablesxProc
 pthread_mutex_t memoryAccessMutex;
 pthread_mutex_t activeProcessMutex;
+pthread_mutex_t delayMutex;
 
 /***** Prototype functions *****/
 
@@ -104,6 +107,10 @@ bool is_PIDPageTablePresent(t_pageTablesxProc* listElement);
 bool isThereEmptyEntry(t_memoryAdmin* listElement);
 bool find_PIDEntry_PageTable(t_pageTablesxProc* listElement);
 void iteratePageTablexProc(t_pageTablesxProc *pageTablexProc);
+void dumpPageTablexProc(t_pageTablesxProc *pageTablexProc);
+void showPageTableRows(t_memoryAdmin *pageTableElement);
+void dumpMemoryxProc(t_pageTablesxProc *pageTablexProc);
+void showMemoryRows(t_memoryAdmin *pageTableElement);
 void markElementModified(t_memoryAdmin *pageTableElement);
 void consoleMessageUMC();
 void createAdminStructs();
