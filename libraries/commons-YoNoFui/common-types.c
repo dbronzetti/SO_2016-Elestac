@@ -165,13 +165,13 @@ void imprimir(t_valor_variable valor_mostrar){
 	memcpy(valueChar,(void*) valor_mostrar, sizeof(valor_mostrar));
 	sendMessage (&socket, valueChar, sizeof(t_valor_variable));
 
-	//TODO send to Nucleo valueChar to be printed on Consola
+	//send to Nucleo valueChar to be printed on Consola
 
 }
 
 void imprimirTexto(char *texto){
 
-	sendMessage (&socket, texto, sizeof(texto));
+	sendMessage (&socket, texto, sizeof(texto)); // TODO string_lenght(texto) ??
 
 }
 
@@ -187,18 +187,18 @@ void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo) {
 }
 
 void wait(t_nombre_semaforo identificador_semaforo){
-	int semID=0;
+	enum_semaforo semID;
 	sendMessage(&socket, identificador_semaforo , strlen(identificador_semaforo));
 	sendMessage(&socket, semID, sizeof(int));
-	//TODO send to Nucleo to execute WAIT function for "identificador_semaforo"
+	//send to Nucleo to execute WAIT function for "identificador_semaforo"
 
 }
 
 void signal(t_nombre_semaforo identificador_semaforo){
-	int semID=1;
+	enum_semaforo semID;
 	sendMessage(&socket, identificador_semaforo , strlen(identificador_semaforo));
 	sendMessage(&socket, semID , sizeof(int));
-	//TODO send to Nucleo to execute SIGNAL function for "identificador_semaforo"
+	//send to Nucleo to execute SIGNAL function for "identificador_semaforo"
 
 }
 
@@ -207,10 +207,10 @@ void serializarES(t_es *dispositivoEnviar, char *dispositivoSerializado){
 	memcpy(dispositivoSerializado,dispositivoEnviar->dispositivo , (strlen(dispositivoEnviar->dispositivo)));
 	int offset = strlen(dispositivoEnviar->dispositivo);
 
-	memcpy(dispositivoSerializado + offset,dispositivoEnviar->tiempo, sizeof(int));
+	memcpy(dispositivoSerializado + offset,(void*) dispositivoEnviar->tiempo, sizeof(int));
 	offset += sizeof(int);
 
-	memcpy(dispositivoSerializado + offset,dispositivoEnviar->ProgramCounter, sizeof(int));
+	memcpy(dispositivoSerializado + offset,(void*) dispositivoEnviar->ProgramCounter, sizeof(int));
 
 }
 
@@ -224,7 +224,7 @@ void deserializarES(t_es* datos, char* buffer) {
 	offset += sizeof(datos->tiempo);
 
 	memcpy(&datos->ProgramCounter, buffer + offset, sizeof(datos->ProgramCounter));
-	offset += sizeof(datos->ProgramCounter);
+
 
 	/* int dispositivoLen = 0;
 	memcpy(&dispositivoLen, buffer + offset, sizeof(dispositivoLen));

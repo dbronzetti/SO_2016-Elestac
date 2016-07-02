@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 	//Creo cola de Procesos a Finalizar (por Finalizar PID).
 		colaFinalizar = queue_create();
 
-	pthread_mutex_init(&socketMutex, NULL);
+	pthread_mutex_init(&activeProcessMutex, NULL);
 
 	//Create thread for server start
 	pthread_create(&serverThread, NULL, (void*) startServer, NULL);
@@ -148,7 +148,7 @@ void handShake (void *parameter){
 
 				if (exitCode == EXIT_SUCCESS){
 					t_MessageNucleo_CPU *datosCPU = malloc(sizeof(t_MessageNucleo_CPU));
-					datosCPU->id = numCPU;
+					datosCPU->processID = numCPU;
 					datosCPU->numSocket = serverData->socketClient;
 					list_add(listaCPU, (void*)datosCPU);
 					numCPU++;
@@ -201,6 +201,7 @@ void handShake (void *parameter){
 
 					//After sending ACCEPTATION has to be sent the "Tamanio de pagina" information
 					exitCode = sendMessage(&serverData->socketClient, &configNucleo.frames_size , sizeof(configNucleo.frames_size));
+
 				}
 			break;
 			}
@@ -246,27 +247,32 @@ void processMessageReceived (void *parameter){
 		switch (fromProcess){
 			case CONSOLA:{
 				printf("Processing CONSOLA message received\n");
+				pthread_mutex_lock(&activeProcessMutex);
 				t_MessageNucleo_Consola *message = malloc(sizeof(t_MessageNucleo_Consola));
+				//Deserializar messageRcv
 				deserializeConsola_Nucleo(message, messageRcv);
 				printf("se recibio el processID #%d\n", message->processID);
-				free(message);
 				runScript(messageRcv);
+				free(message);
+				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
 			case CPU: {
 				printf("Processing CPU message received\n");
+				pthread_mutex_lock(&activeProcessMutex);
 				t_MessageNucleo_CPU *message=malloc(sizeof(t_MessageNucleo_CPU));
 				char *messageRcv = malloc(sizeof(messageSize));
 				char *datosEntradaSalida = malloc(sizeof(t_es));
 				t_es infoES;
 				memset(messageRcv, '\0', sizeof(t_MessageNucleo_CPU));
-				exitCode = recv(serverData->socketClient,(void*)messageRcv,sizeof(t_MessageNucleo_CPU),0);
+				exitCode = receiveMessage(&serverData->socketClient,(void*)messageRcv,sizeof(t_MessageNucleo_CPU));
+				//Deserializar messageRcv
 				deserializeCPU_Nucleo(message, messageRcv);
 				switch (message->operacion) {
 					case 1: //Entrada Salida
 						exitCode = recv(serverData->socketClient, (void*) datosEntradaSalida, sizeof(t_es),MSG_WAITALL);
 //						deserializarES(&infoES, &datosEntradaSalida); //TODO deserializar entrada-salida
-						hacerEntradaSalida(serverData->socketClient, message->processID,infoES.ProgramCounter, infoES.tiempo);
+						hacerEntradaSalida(serverData->socketClient, message->processID,infoES.ProgramCounter, infoES.dispositivo, infoES.tiempo);
 						break;
 					case 2: //Finaliza Proceso Bien
 						finalizaProceso(serverData->socketClient, message->processID,message->operacion);
@@ -285,12 +291,19 @@ void processMessageReceived (void *parameter){
 						printf("Mensaje recibido invalido, CPU desconectado.\n");
 						abort();
 				} //fin del switch interno
-				printf("Processing CPU message received\n");
+
+				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
 			case UMC:{
 				printf("Processing UMC message received\n");
+				pthread_mutex_lock(&activeProcessMutex);
 
+				// TODO solicitarle lás páginas necesarias para almacenar el codeScript y el stack.
+				// TODO enviarle el codigo completo del programa
+				//sendMessage(&serverData->socketClient, codeScript,string_length(codeScript));
+
+				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
 			default:{
@@ -318,10 +331,14 @@ void runScript(char* codeScript){
 	//Creo el PCB del proceso.
 	t_PCB* PCB = malloc(sizeof(t_PCB));
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
+	t_metadata_program* miMetaData = malloc(sizeof(t_metadata_program));
+
+	miMetaData = metadata_desde_literal(codeScript);
+	printf("%d",miMetaData->instrucciones_serializado->start);
 
 	PCB->PID = idProcesos;
 
-	strcpy(PCB->codeScript,codeScript);
+	//strcpy(PCB->codeScript,codeScript);
 	PCB->ProgramCounter = 0;
 	PCB->estado=1;
 	idProcesos++;
@@ -384,8 +401,7 @@ void finalizaProceso(int socket, int PID, int estado) {
 	if (estado == 2) {
 		estadoProceso = 4;
 		cambiarEstadoProceso(PID, estadoProceso);
-		log_info(logNucleo, "myProcess %d - Finalizo correctamente",
-				datosProceso->PID);
+		log_info(logNucleo, "myProcess %d - Finalizo correctamente",datosProceso->PID);
 	} else {
 		if (estado == 3) {
 			estadoProceso = 5;
@@ -521,18 +537,19 @@ int buscarCPU(int socket) {
 	return -1;
 }
 
-void hacerEntradaSalida(int socket, int PID, int ProgramCounter, int tiempo) {
+void hacerEntradaSalida(int socket, int PID, int ProgramCounter, t_nombre_dispositivo dispositivo, int tiempo){
 
 	t_bloqueado* infoBloqueado = malloc(sizeof(t_bloqueado));
-//Libero la CPU que ocupaba el proceso
+	//Libero la CPU que ocupaba el proceso
 	liberarCPU(socket);
-//Cambio el estado del proceso
+	//Cambio el estado del proceso
 	int estado = 3;
 	cambiarEstadoProceso(PID, estado);
-//Cambio el PC del Proceso
+	//Cambio el PC del Proceso
 	actualizarPC(PID, ProgramCounter);
-//Agrego a la cola de Bloqueados, y seteo el semaforo
+	//Agrego a la cola de Bloqueados, y seteo el semaforo
 	infoBloqueado->PID = PID;
+	infoBloqueado->dispositivo = dispositivo;
 	infoBloqueado->tiempo = tiempo;
 
 	pthread_mutex_lock(&cBloqueados);
@@ -540,6 +557,10 @@ void hacerEntradaSalida(int socket, int PID, int ProgramCounter, int tiempo) {
 	pthread_mutex_unlock(&cBloqueados);
 
 	sem_post(&semBloqueados);
+}
+
+void entrada_salida(t_nombre_dispositivo dispositivo, int tiempo){
+
 }
 
 void liberarCPU(int socket) {
@@ -615,6 +636,61 @@ void actualizarPC(int PID, int ProgramCounter) {
 		printf("Error al cambiar el PC del proceso, proceso no encontrado en la lista.\n");
 	}
 }
+
+/*
+int armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData){
+	int i;
+
+	int programOffset  = 0;
+	t_intructions * nextInstructionPointer =  NULL;
+
+	//First instruction
+	nextInstructionPointer->start = miMetaData->instrucciones_serializado->start;
+	nextInstructionPointer->offset = miMetaData->instrucciones_serializado->offset;
+
+	for (i= miMetaData->instruccion_inicio; i < miMetaData->instrucciones_size ; i++){
+
+		//unBloqueControl.indiceDeCodigo[i].inicioDeInstruccion = nextInstructionPointer->start;
+		//unBloqueControl.indiceDeCodigo[i].desplazamientoEnBytes = nextInstructionPointer->offset;
+
+		programOffset += nextInstructionPointer->start + nextInstructionPointer->offset ;
+
+		memcpy(nextInstructionPointer, (void*) programOffset, sizeof(t_intructions));//En vez de una direccion de memoria se le pasa un VALOR de direccion de memoria
+
+	}
+
+	return 0;
+}
+
+
+int armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData){
+	int i;
+	t_puntero_instruccion devolucionEtiqueta;
+
+	for( i=0; i < miMetaData->cantidad_de_etiquetas; i++ ){
+		devolucionEtiqueta = metadata_buscar_etiqueta(miMetaData->etiquetas[i],miMetaData->etiquetas,miMetaData->etiquetas_size);//TODO se tiene que agregar una validacion porque la funcion devuelve un error si no se encontro la etiqueta.
+		//TODO esto esta mal Funcion no es lo mismo que etiqueta... ver como identificar etiquetas
+		unBloqueControl.indiceDeEtiquetas.funcion = miMetaData->etiquetas;
+		unBloqueControl.indiceDeEtiquetas.posicionDeLaEtiqueta = devolucionEtiqueta;
+	}
+	return 0;
+}
+
+
+int definirVariable(char* nombreVariable,t_registroStack miPrograma,int posicion){
+	t_vars *nuevaVariable;
+
+	nuevaVariable->identificador = nombreVariable;
+	miPrograma.pos = 0;
+
+	list_add(miPrograma.vars, (void*) &nuevaVariable);
+
+	miPrograma.retPos=posicion;
+
+	return 1;
+}
+
+*/
 
 void crearArchivoDeConfiguracion(char *configFile){
 	t_config* configuration;

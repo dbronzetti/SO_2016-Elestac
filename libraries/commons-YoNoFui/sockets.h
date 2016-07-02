@@ -52,10 +52,6 @@ typedef struct{
 } t_MessageUMC_Nucleo;
 
 typedef struct{
-	enum_processStatus processStatus;
-} t_MessageNucleo_UMC;
-
-typedef struct{
 	int head;
 	int processID;
 	enum_processStatus processStatus;
@@ -64,7 +60,6 @@ typedef struct{
 	int cantInstruc;
 	int operacion;
 	int numSocket;
-	int id;
 } t_MessageNucleo_CPU;
 
 typedef struct{
@@ -72,11 +67,6 @@ typedef struct{
 	char* codeScript;
 	enum_processStatus processStatus;
 } t_MessageNucleo_Consola;
-
-typedef struct{
-	int processID;
-	enum_processStatus processStatus;
-} t_MessageCPU_Nucleo;
 
 int openServerConnection(int newSocketServerPort, int *socketServer);
 int acceptClientConnection(int *socketServer, int *socketClient);

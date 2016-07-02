@@ -13,6 +13,15 @@ typedef enum{
 
 
 
+
+
+
+
+typedef enum{
+	id_wait=0,
+	id_signal,
+}enum_semaforo;
+
 typedef struct{
 	int pag;
 	int offset;

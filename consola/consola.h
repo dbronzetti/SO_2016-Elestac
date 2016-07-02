@@ -38,7 +38,7 @@ t_configFile configConsola;
 
 char* leerArchivoYGuardarEnCadena();
 int reconocerComando(char* comando);
-void crearArchivoDeConfiguracion();
+void crearArchivoDeConfiguracion(char *configFile);
 int connectTo(enum_processes processToConnect, int *socketClient);
 int reconocerOperacion();
 

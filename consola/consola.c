@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
 	//ERROR if not configuration parameter was passed
 	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS TODO => Agregar logs con librerias
 	*/
-	char* codeScript;
+	char* codeScript = malloc(sizeof(codeScript)); //TODO string_new() en vez de malloc??
 	int exitCode = EXIT_SUCCESS;
 	char inputTeclado[250];
 	printf("antes de conectarme\n");
@@ -47,7 +47,8 @@ int main(int argc, char **argv) {
 			printf("Comando Reconocido.\n");
 			codeScript = leerArchivoYGuardarEnCadena(&tamanioArchivo);
 			fgets(inputTeclado, sizeof(inputTeclado), stdin);
-			//exitCode = sendMessage(&socketNucleo, codeScript,sizeof(codeScript));
+			//exitCode = sendMessage(&socketNucleo, codeScript,string_length(codeScript));
+			//sendMessage(&socketNucleo, tamanioArchivo,sizeof(tamanioArchivo))
 			printf("Tamanio del archivo: %d\n",(int) tamanioArchivo);
 			break;
 		}

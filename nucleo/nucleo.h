@@ -21,6 +21,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+
 // Estructuras
 typedef struct {
 	int puerto_prog;
@@ -45,6 +46,7 @@ typedef struct {
 typedef struct {
 	int PID;
 	int tiempo;
+	t_nombre_dispositivo dispositivo;
 } t_bloqueado;
 
 //Estructura Procesos en cola
@@ -87,25 +89,27 @@ t_queue* colaFinalizar;
 //Variables Globales
 int idProcesos = 1;
 int numCPU = 0;
+pthread_mutex_t activeProcessMutex;
 
 //Encabezamientos de Funciones Principales
 
-void runScript(char*);
-void planificarProceso(void);
-void finalizaProceso(int, int, int);
-void hacerEntradaSalida(int, int, int, int);
+void runScript(char* codeScript);
+void planificarProceso();
+void finalizaProceso(int socket, int PID, int estado);
+void hacerEntradaSalida(int socket, int PID, int ProgramCounter, t_nombre_dispositivo dispositivo, int tiempo);
+void entrada_salida(t_nombre_dispositivo dispositivo, int tiempo);
 void atenderBloqueados();
-void atenderCorteQuantum(int, int);
+void atenderCorteQuantum(int socket, int PID);
 
 //Encabezamiento de Funciones Secundarias
 
-int buscarCPULibre(void);
-int buscarPCB(int);
-void cambiarEstadoProceso(int, int);
-void liberarCPU(int);
-int buscarCPU(int);
-void actualizarPC(int, int);
-void crearArchivoDeConfiguracion(char*);
+int buscarCPULibre();
+int buscarPCB(int id);
+void cambiarEstadoProceso(int PID, int estado);
+void liberarCPU(int socket);
+int buscarCPU(int socket);
+void actualizarPC(int PID, int ProgramCounter);
+void crearArchivoDeConfiguracion(char* configFile);
 
 //Conexiones
 
