@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include "commons/string.h"
+#include "common-types.h"
 
 typedef enum{
 	ACCEPTED=0,
@@ -41,10 +42,9 @@ typedef struct{
 } t_MessageUMC_Swap;
 
 typedef struct{
-	int processID;
-	enum_processStatus processStatus;
-	int totalPages;
-	int pageNro;
+	int PID;
+	enum_operationsUMC_SWAP operation;
+	t_memoryLocation *virtualAddress;
 } t_MessageCPU_UMC;
 
 typedef struct{

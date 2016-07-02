@@ -9,7 +9,6 @@
 #include "sockets.h"
 #include "commons/collections/list.h"
 #include "commons/string.h"
-#include "common-types.h"
 
 #define EOL_DELIMITER ";"
 #define PAGE_PRESENT 1
@@ -61,13 +60,6 @@ typedef enum{
 } enum_configParameters;
 
 typedef enum{
-	agregar_proceso = 1,
-	finalizar_proceso,
-	lectura_pagina,
-	escritura_pagina
-} enum_operationsUMC;
-
-typedef enum{
 	TLB = 0,
 	MAIN_MEMORY
 } enum_memoryStructure;
@@ -94,6 +86,7 @@ pthread_mutex_t delayMutex;
 /***** Prototype functions *****/
 
 //UMC operations
+void procesCPUMessages(char *messageRcv, int messageSize, t_serverData* serverData);
 void getConfiguration(char *configFile);
 void createTLB();
 void resetTLBAllEntries();
@@ -125,8 +118,8 @@ void handShake (void *parameter);
 
 //UMC functions
 void initializeProgram(int PID, int totalPagesRequired, char *programCode);
-void *requestBytesFromPage(t_memoryLocation virtualAddress);
-void writeBytesToPage(t_memoryLocation virtualAddress, void *buffer);
+void *requestBytesFromPage(t_memoryLocation *virtualAddress);
+int writeBytesToPage(t_memoryLocation *virtualAddress, void *buffer);
 void endProgram(int PID);
 void getElementFrameNro(t_memoryLocation *virtualAddress, enum_memoryOperations operation, t_memoryAdmin *frameNro);
 t_memoryAdmin *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memoryOperations operation, t_memoryLocation *virtualAddress);
