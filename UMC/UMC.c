@@ -82,20 +82,20 @@ void newClients (void *parameter){
 
 	t_serverData *serverData = (t_serverData*) parameter;
 
-	//TODO disparar un thread para acceptar cada cliente nuevo (debido a que el accept es bloqueante) y para hacer el handshake
-/**************************************/
+	// disparar un thread para acceptar cada cliente nuevo (debido a que el accept es bloqueante) y para hacer el handshake
+	/**************************************/
 	//Create thread attribute detached
-//			pthread_attr_t acceptClientThreadAttr;
-//			pthread_attr_init(&acceptClientThreadAttr);
-//			pthread_attr_setdetachstate(&acceptClientThreadAttr, PTHREAD_CREATE_DETACHED);
-//
-//			//Create thread for checking new connections in server socket
-//			pthread_t acceptClientThread;
-//			pthread_create(&acceptClientThread, &acceptClientThreadAttr, (void*) acceptClientConnection1, &serverData);
-//
-//			//Destroy thread attribute
-//			pthread_attr_destroy(&acceptClientThreadAttr);
-/************************************/
+	//			pthread_attr_t acceptClientThreadAttr;
+	//			pthread_attr_init(&acceptClientThreadAttr);
+	//			pthread_attr_setdetachstate(&acceptClientThreadAttr, PTHREAD_CREATE_DETACHED);
+	//
+	//			//Create thread for checking new connections in server socket
+	//			pthread_t acceptClientThread;
+	//			pthread_create(&acceptClientThread, &acceptClientThreadAttr, (void*) acceptClientConnection1, &serverData);
+	//
+	//			//Destroy thread attribute
+	//			pthread_attr_destroy(&acceptClientThreadAttr);
+	/************************************/
 
 	exitCode = acceptClientConnection(&serverData->socketServer, &serverData->socketClient);
 
@@ -215,21 +215,20 @@ void processMessageReceived (void *parameter){
 
 	//Receive message size
 	int messageSize = 0;
+
 	char *messageRcv = malloc(sizeof(messageSize));
 	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(messageSize));
 
 	if ( receivedBytes > 0 ){
+
+		//Get Payload size
 		messageSize = atoi(messageRcv);
 
 		//Receive process from which the message is going to be interpreted
 		enum_processes fromProcess;
 		messageRcv = realloc(messageRcv, sizeof(fromProcess));
 		receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(fromProcess));
-
-		//Receive message using the size read before
 		fromProcess = (enum_processes) messageRcv;
-		messageRcv = realloc(messageRcv, messageSize);
-		receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
 		printf("bytes received: %d\n",receivedBytes);
 
@@ -237,10 +236,7 @@ void processMessageReceived (void *parameter){
 			case CPU:{
 				printf("Processing CPU message received\n");
 				pthread_mutex_lock(&activeProcessMutex);
-				//TODO deserealize messageRcv
-				//TODO get PID from message and process
-				int PID;//TODO cambiar por el de la estructura que deserealice
-				changeActiveProcess(PID);
+				procesCPUMessages(messageRcv, messageSize, serverData);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
@@ -273,6 +269,76 @@ void processMessageReceived (void *parameter){
 
 	free(messageRcv);
 
+}
+
+void procesCPUMessages(char *messageRcv, int messageSize, t_serverData* serverData){
+	int exitcode = EXIT_SUCCESS;
+
+	//Receive message using the size read before
+	messageRcv = realloc(messageRcv, messageSize);
+	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
+
+	t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
+	message->virtualAddress = (t_memoryLocation *)malloc(sizeof(t_memoryLocation));
+
+	//Deserialize messageRcv
+	deserializeUMC_CPU(message, messageRcv);
+
+	changeActiveProcess(message->PID);
+
+	void *content = NULL;
+
+	switch (message->operation){
+		case lectura_pagina:{
+
+			content = malloc(message->virtualAddress->size);
+
+			content = requestBytesFromPage(message->virtualAddress);
+
+			if(content != NULL){
+				//After getting the memory content WITHOUT issues, inform status of the operation
+				sendMessage(&serverData->socketClient, &exitcode, sizeof(exitcode));
+				//has to be sent it to upstream - on the other side the process already know the size to received
+				sendMessage(&serverData->socketClient, content, message->virtualAddress->size);
+			}else{
+				//The main memory hasn't any free frames - inform status of the operation
+				sendMessage(&serverData->socketClient, &exitcode, sizeof(exitcode));
+			}
+
+			break;
+		}
+		case escritura_pagina:{
+
+			//Receive content size
+			messageSize = 0;//reseting size to get the content size
+			receivedBytes = 0;//reseting receivedBytes to get the content size
+
+			content = malloc(sizeof(messageSize));
+			receivedBytes = receiveMessage(&serverData->socketClient, content, sizeof(messageSize));
+
+			//Receive content using the size read before
+			content = realloc(content, messageSize);
+			receivedBytes = receiveMessage(&serverData->socketClient, content, messageSize);
+
+			exitcode = writeBytesToPage(message->virtualAddress, content);
+
+			if(content != NULL){
+				//After getting the memory content WITHOUT issues, inform status of the operation
+				sendMessage(&serverData->socketClient, &exitcode, sizeof(exitcode));
+			}else{
+				//The main memory hasn't any free frames - inform status of the operation
+				sendMessage(&serverData->socketClient, &exitcode, sizeof(exitcode));
+			}
+
+			break;
+		}
+		default:{
+			perror("Process not allowed to connect");//TODO => Agregar logs con librerias
+			printf("Invalid operation for CPU messages '%d' requested to UMC \n",(int) message->operation);
+			close(serverData->socketClient);
+			break;
+		}
+	}
 }
 
 void getConfiguration(char *configFile){
@@ -319,7 +385,7 @@ void getConfiguration(char *configFile){
 			}
 			case(ALGORITMO):{ //7
 				fscanf(file, "%s",parameterValue);
-				configuration.algorithm_replace = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
+				(strcmp(parameter, EOL_DELIMITER) != 0) ? memcpy(&configuration.algorithm_replace, parameterValue, sizeof(configuration.algorithm_replace)) : "" ;
 				break;
 			}
 			case(ENTRADAS_TLB):{ //8
@@ -383,44 +449,51 @@ void startUMCConsole(){
 			printf("<processPID>\t:: PID del proceso deseado\n\nPlease enter a value with the above format: ");
 			scanf("%s", value);
 
-			if (strcmp(value, "all") == 0){
-				neededPID = -1; //ALL PIDs in memory
+			if(list_size(pageTablesListxProc) != 0){
+
+				if (strcmp(value, "all") == 0){
+					neededPID = -1; //ALL PIDs in memory
+				}else{
+					neededPID = atoi(value); //given PID in memory
+				}
+
+				if (strcmp(option, "estructuras") == 0){
+
+					dumpf = fopen(dumpFile, "w+");
+
+					if(neededPID == -1){
+						pthread_mutex_lock(&memoryAccessMutex);
+						list_iterate(pageTablesListxProc,(void*) dumpPageTablexProc);
+						pthread_mutex_unlock(&memoryAccessMutex);
+					}else{
+						//Look for table page by neededPID
+						pthread_mutex_lock(&memoryAccessMutex);
+						t_pageTablesxProc *pageTablexProc = (t_pageTablesxProc*) list_find(pageTablesListxProc,(void*) is_PIDPageTable);
+						list_iterate(pageTablexProc->ptrPageTable, (void*) showPageTableRows);
+						pthread_mutex_unlock(&memoryAccessMutex);
+					}
+
+				}else if (strcmp(option, "contenido")){
+
+					if(neededPID == -1){
+						pthread_mutex_lock(&memoryAccessMutex);
+						list_iterate(pageTablesListxProc,(void*) dumpMemoryxProc);
+						pthread_mutex_unlock(&memoryAccessMutex);
+					}else{
+						//Look for table page by neededPID
+						pthread_mutex_lock(&memoryAccessMutex);
+						t_pageTablesxProc *pageTablexProc = (t_pageTablesxProc*) list_find(pageTablesListxProc,(void*) is_PIDPageTable);
+						list_iterate(pageTablexProc->ptrPageTable, (void*) showMemoryRows);
+						pthread_mutex_unlock(&memoryAccessMutex);
+					}
+
+				}
+				//Closing file
+				fclose(dumpf);
+				printf("A copy of this dump was saved in: '%s'.\n", dumpFile);
 			}else{
-				neededPID = atoi(value); //given PID in memory
+				printf("Sorry! There is not information to show you now =(\n");
 			}
-
-			if (strcmp(option, "estructuras") == 0){
-
-				dumpf = fopen(dumpFile, "w+");
-
-				if(neededPID == -1){
-					pthread_mutex_lock(&memoryAccessMutex);
-					list_iterate(pageTablesListxProc,(void*) dumpPageTablexProc);
-					pthread_mutex_unlock(&memoryAccessMutex);
-				}else{
-					//Look for table page by neededPID
-					pthread_mutex_lock(&memoryAccessMutex);
-					t_pageTablesxProc *pageTablexProc = (t_pageTablesxProc*) list_find(pageTablesListxProc,(void*) is_PIDPageTable);
-					list_iterate(pageTablexProc->ptrPageTable, (void*) showPageTableRows);
-					pthread_mutex_unlock(&memoryAccessMutex);
-				}
-
-			}else if (strcmp(option, "contenido")){
-				if(neededPID == -1){
-					pthread_mutex_lock(&memoryAccessMutex);
-					list_iterate(pageTablesListxProc,(void*) dumpMemoryxProc);
-					pthread_mutex_unlock(&memoryAccessMutex);
-				}else{
-					//Look for table page by neededPID
-					pthread_mutex_lock(&memoryAccessMutex);
-					t_pageTablesxProc *pageTablexProc = (t_pageTablesxProc*) list_find(pageTablesListxProc,(void*) is_PIDPageTable);
-					list_iterate(pageTablexProc->ptrPageTable, (void*) showMemoryRows);
-					pthread_mutex_unlock(&memoryAccessMutex);
-				}
-			}
-			//Closing file
-			fclose(dumpf);
-			printf("A copy of this dump was saved in: '%s'.\n", dumpFile);
 
 		}else if (strcmp(command,"flush") == 0 ){
 
@@ -570,44 +643,53 @@ void endProgram(int PID){
 
 }
 
-void *requestBytesFromPage(t_memoryLocation virtualAddress){
+void *requestBytesFromPage(t_memoryLocation *virtualAddress){
 	void *memoryContent;
 	t_memoryAdmin *memoryElement;
 	void *memoryBlockOffset = NULL;
 
-	getElementFrameNro(&virtualAddress, READ, memoryElement);
+	getElementFrameNro(virtualAddress, READ, memoryElement);
 
 	if (memoryElement != NULL){ //PAGE HIT and NO errors from getFrame
 		//delay memory access
 		waitForResponse();
 
-		memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + virtualAddress.offset;
+		memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + virtualAddress->offset;
 
 		pthread_mutex_lock(&memoryAccessMutex);//Checking mutex before reading
-		memcpy(memoryContent, memoryBlockOffset , virtualAddress.size);
+		memcpy(memoryContent, memoryBlockOffset , virtualAddress->size);
 		pthread_mutex_unlock(&memoryAccessMutex);
+	}else{
+		//The main memory hasn't any free frames - inform this to upstream process
+		memoryContent = NULL;
 	}
 
 	return memoryContent;
 }
 
-void writeBytesToPage(t_memoryLocation virtualAddress, void *buffer){
+int writeBytesToPage(t_memoryLocation *virtualAddress, void *buffer){
+	int exitCode = EXIT_SUCCESS;
 	t_memoryAdmin *memoryElement;
 	void *memoryBlockOffset = NULL;
 
-	getElementFrameNro(&virtualAddress, WRITE, memoryElement);
+	getElementFrameNro(virtualAddress, WRITE, memoryElement);
 
 	if (memoryElement != NULL){ //PAGE HIT and NO errors from getFrame
 		//delay memory access
 		waitForResponse();
 
-		memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + virtualAddress.offset;
+		memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + virtualAddress->offset;
 
 		pthread_mutex_lock(&memoryAccessMutex);//Locking mutex for writing memory
-		memcpy(memoryBlockOffset, buffer , virtualAddress.size);
+		memcpy(memoryBlockOffset, buffer , virtualAddress->size);
 		pthread_mutex_unlock(&memoryAccessMutex);//unlocking mutex for writing memory
+	}else{
+		//The main memory hasn't any free frames
+		//inform this to upstream process
+		exitCode = EXIT_FAILURE;
 	}
 
+	return exitCode;
 }
 
 /******************* Auxiliary functions *******************/
@@ -833,17 +915,17 @@ t_memoryAdmin *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memor
 	if (pageNeeded != NULL){
 		//Page found
 		switch(operation){
-		case(READ):{
-			//After getting the frame needed for reading, mark memory element as present (overwrite it no matter if it was marked as present before)
-			pageNeeded->presentBit = PAGE_PRESENT;
-			break;
-		}
-		case (WRITE):{
-			//After getting the frame needed for writing, mark memory element as modified and as present as well
-			pageNeeded->presentBit = PAGE_PRESENT;
-			pageNeeded->dirtyBit = PAGE_MODIFIED;
-			break;
-		}
+			case(READ):{
+				//After getting the frame needed for reading, mark memory element as present (overwrite it no matter if it was marked as present before)
+				pageNeeded->presentBit = PAGE_PRESENT;
+				break;
+			}
+			case (WRITE):{
+				//After getting the frame needed for writing, mark memory element as modified and as present as well
+				pageNeeded->presentBit = PAGE_PRESENT;
+				pageNeeded->dirtyBit = PAGE_MODIFIED;
+				break;
+			}
 		}
 	}
 
@@ -894,7 +976,7 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 			void *memoryContent = requestPageToSwap(virtualAddress);
 
 			//request memory for new element
-			t_memoryAdmin *memoryElement = malloc(sizeof(t_memoryAdmin));
+			memoryElement = malloc(sizeof(t_memoryAdmin));
 
 			//By DEFAULT always take the first free frame
 			pthread_mutex_lock(&memoryAccessMutex);
@@ -933,14 +1015,17 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 					//Execute LRU algorithm
 					executeLRUAlgorithm(memoryElement, virtualAddress);
 				}else{
-					//TODO execute main menory algorithm
+					//TODO execute main memory algorithm
 				}
 
 			}
 		}else{
 			//The main memory still hasn't any free frames
 			printf("The main memory is Full!");
-			//TODO inform this to upstream process
+			//inform this to upstream process
+			memoryElement = NULL;
+			//exit function immediately
+			return;
 		}
 
 	}

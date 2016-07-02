@@ -8,7 +8,6 @@
 #include <parser/parser.h>
 #include <commons/collections/list.h>
 #include "commons/config.h"
-#include "common-types.h"
 #include "sockets.h"
 
 typedef struct {

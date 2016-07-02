@@ -7,7 +7,6 @@
 #define NUCLEO_H_
 #define EOL_DELIMITER ";"
 
-#include "common-types.h"
 #include "sockets.h"
 #include "commons/log.h"
 #include "commons/temporal.h"

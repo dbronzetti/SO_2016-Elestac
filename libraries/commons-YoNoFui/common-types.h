@@ -10,8 +10,12 @@ typedef enum{
 	DISCO = 0//TODO definir enum_dispositivos
 } enum_dispositivos;
 
-
-
+typedef enum{
+	agregar_proceso = 1,
+	finalizar_proceso,
+	lectura_pagina,
+	escritura_pagina
+} enum_operationsUMC_SWAP;
 
 
 
