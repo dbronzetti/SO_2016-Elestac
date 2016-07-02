@@ -75,6 +75,7 @@ char *dumpFile = NULL;
 FILE *dumpf;
 void *memBlock = NULL;
 int activePID = -1;
+int socketSwap;
 bool TLBActivated = false; //TLB use FALSE by DEFAULT
 t_list *freeFramesList = NULL;//lista con numeros de frames libres
 t_list *TLBList = NULL;//lista con registros del tipo t_memoryAdmin

@@ -35,10 +35,8 @@ typedef struct{
 } t_MessageGenericHandshake;
 
 typedef struct{
-	int processID;
-	enum_processStatus processStatus;
-	int totalPages;
-	int pageNro;
+	enum_operationsUMC_SWAP operation;
+	t_memoryLocation *virtualAddress;
 } t_MessageUMC_Swap;
 
 typedef struct{

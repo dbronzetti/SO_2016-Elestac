@@ -778,8 +778,73 @@ void deleteContentFromMemory(t_memoryAdmin *memoryElement){
 void checkPageModification(t_memoryAdmin *memoryElement){
 
 	if (memoryElement->dirtyBit == PAGE_MODIFIED){
-		//TODO overwrite page content in swap (swap out)
+		int bufferSize = 0;
+		int payloadSize = 0;
+		void *memoryBlockOffset = NULL;
+		char *content = string_new();
+
+		//overwrite page content in swap (swap out)
+		t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
+		message->virtualAddress = (t_memoryLocation *)malloc(sizeof(t_memoryLocation));
+		message->operation = escritura_pagina;
+		memcpy(message->virtualAddress, memoryElement->virtualAddress,sizeof(memoryElement->virtualAddress));
+
+		payloadSize = sizeof(message->operation) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) ;
+		bufferSize = sizeof(bufferSize) + payloadSize ;
+
+		char *buffer = malloc(bufferSize);
+		//Serialize messageRcv
+		serializeUMC_Swap(message, buffer, payloadSize);
+
+		//Send message serialized with virtualAddress information
+		send(socketSwap, (void*) buffer, bufferSize,0);
+
+		//Send memory content to overwrite with the virtualAddress->size - On the other side is going to be waiting it with that size sent previously
+		memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + memoryElement->virtualAddress->offset;
+		content = realloc(content, memoryElement->virtualAddress->size);
+		memcpy(content, memoryBlockOffset, memoryElement->virtualAddress->size);
+		send(socketSwap, (void*) content, memoryElement->virtualAddress->size,0);
+
+		free(message->virtualAddress);
+		free(message);
+		free(buffer);
+		free(content);
 	}
+}
+
+void *requestPageToSwap(t_memoryLocation *virtualAddress){
+	void *memoryContent = NULL;
+	int bufferSize = 0;
+	int payloadSize = 0;
+	char *buffer = malloc(bufferSize);
+	char *messageRcv = malloc(sizeof(virtualAddress->size));
+
+	// request page content to swap
+	t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
+	message->virtualAddress = (t_memoryLocation *)malloc(sizeof(t_memoryLocation));
+	message->operation = lectura_pagina;
+	memcpy(message->virtualAddress, virtualAddress,sizeof(virtualAddress));
+
+	payloadSize = sizeof(message->operation) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) ;
+	bufferSize = sizeof(bufferSize) + payloadSize ;
+
+	//Serialize messageRcv
+	serializeUMC_Swap(message, buffer, payloadSize);
+
+	//Send message serialized with virtualAddress information
+	send(socketSwap, (void*) buffer, bufferSize,0);
+
+	//Receive memory content from SWAP with the virtualAddress->size - On the other side is going to be sending it with that size requested previously
+	int receivedBytes = receiveMessage(&socketSwap, messageRcv, virtualAddress->size);
+	memoryContent = malloc(virtualAddress->size);
+	memcpy(memoryContent, messageRcv, virtualAddress->size);
+
+	free(message->virtualAddress);
+	free(message);
+	free(buffer);
+	free(messageRcv);
+
+	return memoryContent;
 }
 
 //** TLB and PageTable Element Destroyer **//
@@ -1053,14 +1118,6 @@ void executeLRUAlgorithm(t_memoryAdmin *newElement, t_memoryLocation *virtualAdd
 
 	//updated TLB by LRU algorithm
 	updateTLBPositionsbyLRU(LRUCandidate);
-}
-
-void *requestPageToSwap(t_memoryLocation *virtualAddress){
-	void *memoryContent = NULL;
-
-	//TODO request page content to swap
-
-	return memoryContent;
 }
 
 void waitForResponse(){
