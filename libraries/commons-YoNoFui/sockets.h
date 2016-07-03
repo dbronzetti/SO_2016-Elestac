@@ -37,6 +37,8 @@ typedef struct{
 typedef struct{
 	enum_operationsUMC_SWAP operation;
 	t_memoryLocation *virtualAddress;
+	int PID;
+	int cantPages;
 } t_MessageUMC_Swap;
 
 typedef struct{
@@ -46,8 +48,10 @@ typedef struct{
 } t_MessageCPU_UMC;
 
 typedef struct{
-	enum_processStatus processStatus;
-} t_MessageUMC_Nucleo;
+	int PID;
+	int cantPages;
+	enum_operationsUMC_SWAP operation;
+} t_MessageNucleo_UMC;
 
 typedef struct{
 	int head;
@@ -84,8 +88,8 @@ char *getProcessString (enum_processes process);
 void serializeUMC_Swap(t_MessageUMC_Swap *value, char *buffer, int valueSize);
 void deserializeSwap_UMC(t_MessageUMC_Swap *value, char *bufferReceived);
 
-void serializeUMC_Nucleo(t_MessageUMC_Nucleo *value, char *buffer, int valueSize);
-void deserializeNucleo_UMC(t_MessageUMC_Nucleo *value, char *bufferReceived);
+void serializeNucleo_UMC(t_MessageNucleo_UMC *value, char *buffer, int valueSize);
+void deserializeUMC_Nucleo(t_MessageNucleo_UMC *value, char *bufferReceived);
 
 void serializeCPU_UMC(t_MessageCPU_UMC *value, char *buffer, int valueSize);
 void deserializeUMC_CPU(t_MessageCPU_UMC *value, char *bufferReceived);

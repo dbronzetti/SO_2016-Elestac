@@ -88,6 +88,7 @@ pthread_mutex_t delayMutex;
 
 //UMC operations
 void procesCPUMessages(char *messageRcv, int messageSize, t_serverData* serverData);
+void procesNucleoMessages(char *messageRcv, int messageSize, t_serverData* serverData);
 void getConfiguration(char *configFile);
 void createTLB();
 void resetTLBAllEntries();
@@ -126,7 +127,7 @@ void getElementFrameNro(t_memoryLocation *virtualAddress, enum_memoryOperations 
 t_memoryAdmin *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memoryOperations operation, t_memoryLocation *virtualAddress);
 void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *virtualAddress, t_memoryAdmin *memoryElement);
 void executeLRUAlgorithm(t_memoryAdmin *newElement, t_memoryLocation *virtualAddress);
-void *requestPageToSwap(t_memoryLocation *virtualAddress);
+void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID);
 void waitForResponse();
 void changeActiveProcess(int PID);
 

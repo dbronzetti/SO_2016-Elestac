@@ -252,10 +252,7 @@ void processMessageReceived (void *parameter){
 			case NUCLEO:{
 				printf("Processing NUCLEO message received\n");
 				pthread_mutex_lock(&activeProcessMutex);
-				//TODO deserealize messageRcv
-				//TODO get PID from message and process
-				int PID;//TODO cambiar por el de la estructura que deserealice
-				changeActiveProcess(PID);
+				procesNucleoMessages(messageRcv, messageSize, serverData);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
@@ -324,8 +321,7 @@ void procesCPUMessages(char *messageRcv, int messageSize, t_serverData* serverDa
 			messageSize = 0;//reseting size to get the content size
 			receivedBytes = 0;//reseting receivedBytes to get the content size
 
-			content = malloc(sizeof(messageSize));
-			receivedBytes = receiveMessage(&serverData->socketClient, content, sizeof(messageSize));
+			receivedBytes = receiveMessage(&serverData->socketClient, (void*) messageSize, sizeof(messageSize));
 
 			//Receive content using the size read before
 			content = realloc(content, messageSize);
@@ -340,6 +336,54 @@ void procesCPUMessages(char *messageRcv, int messageSize, t_serverData* serverDa
 				//The main memory hasn't any free frames - inform status of the operation
 				sendMessage(&serverData->socketClient, &exitcode, sizeof(exitcode));
 			}
+
+			break;
+		}
+		default:{
+			perror("Process not allowed to connect");//TODO => Agregar logs con librerias
+			printf("Invalid operation for CPU messages '%d' requested to UMC \n",(int) message->operation);
+			close(serverData->socketClient);
+			break;
+		}
+	}
+}
+
+void procesNucleoMessages(char *messageRcv, int messageSize, t_serverData* serverData){
+	int exitcode = EXIT_SUCCESS;
+
+	//Receive message using the size read before
+	messageRcv = realloc(messageRcv, messageSize);
+	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
+
+	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
+
+	//Deserialize messageRcv
+	deserializeUMC_Nucleo(message, messageRcv);
+
+	changeActiveProcess(message->PID);
+
+	void *content = NULL;
+
+	switch (message->operation){
+		case agregar_proceso:{
+
+			//Receive content size
+			messageSize = 0;//reseting size to get the content size
+			receivedBytes = 0;//reseting receivedBytes to get the content size
+
+			receivedBytes = receiveMessage(&serverData->socketClient, (void*) messageSize, sizeof(messageSize));
+
+			//Receive content using the size read before
+			content = realloc(content, messageSize);
+			receivedBytes = receiveMessage(&serverData->socketClient, content, messageSize);
+
+			initializeProgram(message->PID, message->cantPages, content);
+
+			break;
+		}
+		case finalizar_proceso:{
+
+			endProgram(message->PID);
 
 			break;
 		}
@@ -403,7 +447,6 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 						switch(processToConnect){
 							case SWAP:{
 								printf("%s\n",message->message);
-
 								printf("Conectado a NUCLEO\n");
 								break;
 							}
@@ -728,7 +771,41 @@ void initializeProgram(int PID, int totalPagesRequired, char *programCode){
 	newPageTable->assignedFrames = 0;
 	newPageTable->ptrPageTable = list_create();
 
-	//TODO inform new program to swap and check if it could write it.
+	// inform new program to swap and check if it could write it.
+	int bufferSize = 0;
+	int payloadSize = 0;
+	void *memoryBlockOffset = NULL;
+	char *content = string_new();
+
+	//overwrite page content in swap (swap out)
+	t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
+	message->virtualAddress = (t_memoryLocation *)malloc(sizeof(t_memoryLocation));
+	message->operation = agregar_proceso;
+	message->PID = PID;
+	message->cantPages = totalPagesRequired;
+	message->virtualAddress->pag = -1;//DEFAULT value when the operation doesn't need it
+	message->virtualAddress->offset = -1;//DEFAULT value when the operation doesn't need it
+	message->virtualAddress->size = -1;//DEFAULT value when the operation doesn't need it
+
+	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) ;
+	bufferSize = sizeof(bufferSize) + payloadSize ;
+
+	char *buffer = malloc(bufferSize);
+	//Serialize messageRcv
+	serializeUMC_Swap(message, buffer, payloadSize);
+
+	//Send information to swap - message serialized with virtualAddress information
+	sendMessage(&socketSwap, buffer, bufferSize);
+
+	//After sending information have to be sent the program code
+
+	//1) Send program size to swap
+	string_append(&programCode,"\0");//ALWAYS put \0 for finishing the string
+	int programCodeLen = strlen(programCode) + 1;//+1 because of '\0'
+	sendMessage(&socketSwap, (void*) programCodeLen, sizeof(programCodeLen));
+
+	//2) Send program to swap
+	sendMessage(&socketSwap, content, programCodeLen);
 
 }
 
@@ -746,7 +823,32 @@ void endProgram(int PID){
 	list_remove_and_destroy_by_condition(pageTablesListxProc, (void*) find_PIDEntry_PageTable, (void*) PageTable_Element_destroy);
 	pthread_mutex_unlock(&memoryAccessMutex);
 
-	//TODO Notify to Swap for freeing space - Se puede tirar un hilo para que lo haga mientras la UMC continua y se puede desbloquear para seguir su procesamiento de mensajes.
+	// Notify to Swap for freeing space
+	// inform new program to swap and check if it could write it.
+	int bufferSize = 0;
+	int payloadSize = 0;
+	void *memoryBlockOffset = NULL;
+	char *content = string_new();
+
+	//overwrite page content in swap (swap out)
+	t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
+	message->virtualAddress = (t_memoryLocation *)malloc(sizeof(t_memoryLocation));
+	message->operation = finalizar_proceso;
+	message->PID = PID;
+	message->cantPages = -1; //DEFAULT value when the operation doesn't need it
+	message->virtualAddress->pag = -1;//DEFAULT value when the operation doesn't need it
+	message->virtualAddress->offset = -1;//DEFAULT value when the operation doesn't need it
+	message->virtualAddress->size = -1;//DEFAULT value when the operation doesn't need it
+
+	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) ;
+	bufferSize = sizeof(bufferSize) + payloadSize ;
+
+	char *buffer = malloc(bufferSize);
+	//Serialize messageRcv
+	serializeUMC_Swap(message, buffer, payloadSize);
+
+	//Send information to swap - message serialized with virtualAddress information
+	sendMessage(&socketSwap, buffer, bufferSize);
 
 }
 
@@ -894,9 +996,11 @@ void checkPageModification(t_memoryAdmin *memoryElement){
 		t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
 		message->virtualAddress = (t_memoryLocation *)malloc(sizeof(t_memoryLocation));
 		message->operation = escritura_pagina;
+		message->PID = memoryElement->PID;
+		message->cantPages = -1; //DEFAULT value when the operation doesnt need it
 		memcpy(message->virtualAddress, memoryElement->virtualAddress,sizeof(memoryElement->virtualAddress));
 
-		payloadSize = sizeof(message->operation) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) ;
+		payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) ;
 		bufferSize = sizeof(bufferSize) + payloadSize ;
 
 		char *buffer = malloc(bufferSize);
@@ -919,7 +1023,7 @@ void checkPageModification(t_memoryAdmin *memoryElement){
 	}
 }
 
-void *requestPageToSwap(t_memoryLocation *virtualAddress){
+void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID){
 	void *memoryContent = NULL;
 	int bufferSize = 0;
 	int payloadSize = 0;
@@ -930,9 +1034,11 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress){
 	t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
 	message->virtualAddress = (t_memoryLocation *)malloc(sizeof(t_memoryLocation));
 	message->operation = lectura_pagina;
+	message->PID = PID;
+	message->cantPages = -1; //DEFAULT value when the operation doesnt need it
 	memcpy(message->virtualAddress, virtualAddress,sizeof(virtualAddress));
 
-	payloadSize = sizeof(message->operation) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) ;
+	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) ;
 	bufferSize = sizeof(bufferSize) + payloadSize ;
 
 	//Serialize messageRcv
@@ -1145,7 +1251,7 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 			printf("The main memory still has free frames to assign to process '%d'", activePID);
 
 			//Request memory content to Swap
-			void *memoryContent = requestPageToSwap(virtualAddress);
+			void *memoryContent = requestPageToSwap(virtualAddress, pageTablexProc->PID);
 
 			//request memory for new element
 			memoryElement = malloc(sizeof(t_memoryAdmin));

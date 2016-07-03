@@ -261,17 +261,25 @@ void serializeUMC_Swap(t_MessageUMC_Swap *value, char *buffer, int valueSize){
 	memcpy(buffer + offset, &value->operation, sizeof(value->operation));
 	offset += sizeof(value->operation);
 
-	//3)pageNro
+	//3)PID
+	memcpy(buffer + offset, &value->PID, sizeof(value->PID));
+	offset += sizeof(value->PID);
+
+	//4)pageNro
 	memcpy(buffer, &value->virtualAddress->pag, sizeof(value->virtualAddress->pag));
 	offset += sizeof(value->virtualAddress->pag);
 
-	//4)offset
+	//5)offset
 	memcpy(buffer, &value->virtualAddress->offset, sizeof(value->virtualAddress->offset));
 	offset += sizeof(value->virtualAddress->offset);
 
-	//5)size
+	//6)size
 	memcpy(buffer, &value->virtualAddress->size, sizeof(value->virtualAddress->size));
 	offset += sizeof(value->virtualAddress->size);
+
+	//7)page quantity
+	memcpy(buffer, &value->cantPages, sizeof(value->cantPages));
+	offset += sizeof(value->cantPages);
 }
 
 void deserializeSwap_UMC(t_MessageUMC_Swap *value, char *bufferReceived){
@@ -281,17 +289,67 @@ void deserializeSwap_UMC(t_MessageUMC_Swap *value, char *bufferReceived){
 	memcpy(&value->operation, bufferReceived, sizeof(value->operation));
 	offset += sizeof(value->operation);
 
-	//3)pageNro
+	//3)PID
+	memcpy(&value->PID, bufferReceived, sizeof(value->PID));
+	offset += sizeof(value->PID);
+
+	//4)pageNro
 	memcpy(&value->virtualAddress->pag, bufferReceived + offset, sizeof(value->virtualAddress->pag));
 	offset += sizeof(value->virtualAddress->pag);
 
-	//4)offset
+	//5)offset
 	memcpy(&value->virtualAddress->offset, bufferReceived + offset, sizeof(value->virtualAddress->offset));
 	offset += sizeof(value->virtualAddress->offset);
 
-	//5)size
+	//6)size
 	memcpy(&value->virtualAddress->size, bufferReceived + offset, sizeof(value->virtualAddress->size));
 	offset += sizeof(value->virtualAddress->size);
+
+	//7)page quantity
+	memcpy(&value->cantPages, bufferReceived + offset, sizeof(value->cantPages));
+	offset += sizeof(value->cantPages);
+}
+
+
+void serializeNucleo_UMC(t_MessageNucleo_UMC *value, char *buffer, int valueSize){
+	int offset = 0;
+	enum_processes process = NUCLEO;
+
+	//0)valueSize
+	memcpy(buffer, &valueSize, sizeof(valueSize));
+	offset += sizeof(valueSize);
+
+	//1)From process
+	memcpy(buffer, &process, sizeof(process));
+	offset += sizeof(process);
+
+	//2)operation
+	memcpy(buffer + offset, &value->operation, sizeof(value->operation));
+	offset += sizeof(value->operation);
+
+	//3)PID
+	memcpy(buffer + offset, &value->PID, sizeof(value->PID));
+	offset += sizeof(value->PID);
+
+	//4)page quantity
+	memcpy(buffer, &value->cantPages, sizeof(value->cantPages));
+	offset += sizeof(value->cantPages);
+}
+
+void deserializeUMC_Nucleo(t_MessageNucleo_UMC *value, char *bufferReceived){
+	int offset = 0;
+
+	//2)operation
+	memcpy(&value->operation, bufferReceived, sizeof(value->operation));
+	offset += sizeof(value->operation);
+
+	//3)PID
+	memcpy(&value->PID, bufferReceived, sizeof(value->PID));
+	offset += sizeof(value->PID);
+
+	//4)page quantity
+	memcpy(&value->cantPages, bufferReceived + offset, sizeof(value->cantPages));
+	offset += sizeof(value->cantPages);
 }
 
 void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize) {
