@@ -912,6 +912,11 @@ void markElementModified(t_memoryAdmin *pageTableElement){
 	pageTableElement->dirtyBit = PAGE_MODIFIED;
 }
 
+//** Mark memory Element as NOTPRESENT**//
+void markElementNOTPResent(t_memoryAdmin *pageTableElement){
+	pageTableElement->presentBit = PAGE_NOTPRESENT;
+}
+
 //** Dumper Page Table Element **//
 void dumpPageTablexProc(t_pageTablesxProc *pageTablexProc){
 	printf("Informacion PID: '%d'.\n", pageTablexProc->PID);
@@ -1091,6 +1096,11 @@ bool isThereEmptyEntry(t_memoryAdmin* listElement){
 	return (listElement->virtualAddress->pag == -1);
 }
 
+//** Find Page with presence bit disable**//
+bool isPageNOTPresent(t_memoryAdmin* listElement){
+	return (listElement->presentBit == PAGE_NOTPRESENT);
+}
+
 t_memoryAdmin *getLRUCandidate(){
 	t_memoryAdmin *elementCandidate = NULL;
 
@@ -1176,6 +1186,7 @@ t_memoryAdmin *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memor
 			pageTablexProc = (t_pageTablesxProc*) list_find(pageTablesListxProc,(void*) is_PIDPageTablePresent);
 			pthread_mutex_unlock(&memoryAccessMutex);
 
+			//By default in program initialization ptrPageTable is going to be NULL
 			pageTableList = pageTablexProc->ptrPageTable;
 
 			//Locking memory access for reading
@@ -1235,8 +1246,6 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 				TLBElem->virtualAddress = virtualAddress;
 				TLBElem->frameNumber = memoryElement->frameNumber;
 
-				//TODO Request space to Swap
-
 			}else{//No empty entry is present in TLB
 
 				//Execute LRU algorithm
@@ -1294,6 +1303,7 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 					executeLRUAlgorithm(memoryElement, virtualAddress);
 				}else{
 					//TODO execute main memory algorithm
+					executeMainMemoryAlgorithm(pageTablexProc, memoryElement, memoryContent);
 				}
 
 			}
@@ -1331,6 +1341,48 @@ void executeLRUAlgorithm(t_memoryAdmin *newElement, t_memoryLocation *virtualAdd
 
 	//updated TLB by LRU algorithm
 	updateTLBPositionsbyLRU(LRUCandidate);
+}
+
+void executeMainMemoryAlgorithm(t_pageTablesxProc *pageTablexProc, t_memoryAdmin *newElement, void *memoryContent){
+
+	t_memoryAdmin *clockCandidate = NULL;
+
+	pthread_mutex_lock(&memoryAccessMutex);
+	clockCandidate = (t_memoryAdmin*) list_find(pageTablexProc->ptrPageTable, (void*) isPageNOTPresent);
+
+	bool find_ClockCandidateToRemove(t_memoryAdmin* listElement){
+		return (listElement->virtualAddress->pag == clockCandidate->virtualAddress->pag);
+	}
+
+	bool find_freeFrameToRemove (int freeFrame){
+		return (freeFrame == clockCandidate->frameNumber);
+	}
+
+	if(clockCandidate == NULL){
+		//Look for candidate after first pass - THIS ENSURES A CANDIDATE
+		clockCandidate = (t_memoryAdmin*) list_find(pageTablexProc->ptrPageTable, (void*) isPageNOTPresent);
+	}
+
+	//Candidate found
+	newElement->frameNumber = clockCandidate->frameNumber;
+	newElement->presentBit = PAGE_PRESENT;
+
+	//Removing candidate from page table list
+	list_remove_and_destroy_by_condition(pageTablexProc->ptrPageTable, (void*) find_ClockCandidateToRemove, (void*) destroyElementTLB);
+
+	//Removing the frame added to free frames list when the candidate was destroyed
+	list_remove_and_destroy_by_condition(freeFramesList, (void*) find_freeFrameToRemove, (void*) free);
+
+	//Add new element to the end of the list
+	list_add_in_index(pageTablexProc->ptrPageTable, list_size(pageTablexProc->ptrPageTable) - 1, newElement);
+
+	void *memoryBlockOffset = NULL;
+	memoryBlockOffset = &memBlock + (newElement->frameNumber * configuration.frames_size) + newElement->virtualAddress->offset;
+
+	//writing memory
+	memcpy(memoryBlockOffset, memoryContent , newElement->virtualAddress->size);
+
+	pthread_mutex_unlock(&memoryAccessMutex);
 }
 
 void waitForResponse(){
