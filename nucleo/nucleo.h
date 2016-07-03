@@ -59,6 +59,7 @@ pthread_mutex_t cListos;
 pthread_mutex_t cBloqueados;
 pthread_mutex_t cFinalizar;
 pthread_mutex_t socketMutex;
+pthread_mutex_t activeProcessMutex;
 
 //Semaforo Contador
 sem_t semBloqueados;
@@ -88,15 +89,14 @@ t_queue* colaFinalizar;
 int idProcesos = 1;
 int activePID = 0;
 int socketUMC = 0;
-pthread_mutex_t activeProcessMutex;
+int frameSize = 0;
 
 //Encabezamientos de Funciones Principales
 
 void runScript(char* codeScript);
 void planificarProceso();
 void finalizaProceso(int socket, int PID, int estado);
-void hacerEntradaSalida(int socket, int PID, int ProgramCounter, t_nombre_dispositivo dispositivo, int tiempo);
-void entrada_salida(t_nombre_dispositivo dispositivo, int tiempo);
+void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
 void atenderBloqueados();
 void atenderCorteQuantum(int socket, int PID);
 
@@ -116,5 +116,6 @@ void startServer();
 void newClients(void *parameter);
 void processMessageReceived(void *parameter);
 void handShake(void *parameter);
+int connectTo(enum_processes processToConnect, int *socketClient);
 
 #endif /* NUCLEO_H_ */

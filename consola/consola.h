@@ -20,8 +20,7 @@
 #include "commons/config.h"
 #include "sockets.h"
 
-//Encabezamiento de Funciones
-
+//Var Globlal
 int frameSize = 0;
 
 typedef struct {
@@ -34,6 +33,8 @@ t_log* logConsola;
 
 //Configuracion
 t_configFile configConsola;
+
+//Encabezamiento de Funciones
 
 char* leerArchivoYGuardarEnCadena();
 int reconocerComando(char* comando);
