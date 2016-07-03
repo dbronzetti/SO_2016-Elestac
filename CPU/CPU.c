@@ -3,8 +3,6 @@
 int main(int argc, char *argv[]){
 	int exitCode = EXIT_SUCCESS;
 	char *configurationFile = NULL;
-	int socketUMC = 0;
-	int socketNucleo = 0;
 	t_PCB *PCB = NULL;
 
 	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS TODO => Agregar logs con librerias
@@ -70,7 +68,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 		}
 		default:{
 			perror("Process not identified!");//TODO => Agregar logs con librerias
-			printf("Process '%s' NOT VALID to connected by CPU.\n",getProcessString(processToConnect));
+			printf("Process '%s' NOT VALID to be connected by CPU.\n",getProcessString(processToConnect));
 			break;
 		}
 	}
@@ -105,7 +103,6 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 
 				switch (message->process){
 					case ACCEPTED:{
-
 						switch(processToConnect){
 							case UMC:{
 								printf("%s\n",message->message);
@@ -124,15 +121,20 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 								break;
 							}
 							default:{
-
+								perror("Handshake not accepted");//TODO => Agregar logs con librerias
+								printf("Handshake not accepted when tried to connect your '%s' with '%s'\n",getProcessString(processToConnect),getProcessString(message->process));
+								close(*socketClient);
+								exitcode = EXIT_FAILURE;
+								break;
 							}
-							}
+						}
 
 						break;
 					}
 					default:{
 						perror("Process couldn't connect to SERVER");//TODO => Agregar logs con librerias
 						printf("Not able to connect to server %s. Please check if it's down.\n",ip);
+						close(*socketClient);
 						break;
 					}
 				}
@@ -141,15 +143,18 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 				//The client is down when bytes received are 0
 				perror("One of the clients is down!"); //TODO => Agregar logs con librerias
 				printf("Please check the client: %d is down!\n", *socketClient);
+				close(*socketClient);
 			}else{
 				perror("Error - No able to received");//TODO => Agregar logs con librerias
 				printf("Error receiving from socket '%d', with error: %d\n",*socketClient,errno);
+				close(*socketClient);
 			}
 		}
 
 	}else{
 		perror("no me pude conectar al server!"); //
 		printf("mi socket es: %d\n", *socketClient);
+		close(*socketClient);
 	}
 
 	return exitcode;

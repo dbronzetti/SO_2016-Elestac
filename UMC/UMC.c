@@ -35,18 +35,25 @@ int main(int argc, char *argv[]){
 	//created administration structures for UMC process
 	createAdminStructs();
 
-	//Initializing mutex
-	pthread_mutex_init(&memoryAccessMutex, NULL);
-	pthread_mutex_init(&activeProcessMutex, NULL);
+	//Connecting to SWAP before starting everything else
+	exitCode = connectTo(SWAP,&socketSwap);
 
-	//Create thread for UMC console
-	pthread_create(&consolaThread, NULL, (void*) startUMCConsole, NULL);
+	if(exitCode == EXIT_SUCCESS){
+		printf("UMC connected to SWAP successfully\n");
 
-	//Create thread for server start
-	pthread_create(&serverThread, NULL, (void*) startServer, NULL);
+		//Initializing mutex
+		pthread_mutex_init(&memoryAccessMutex, NULL);
+		pthread_mutex_init(&activeProcessMutex, NULL);
 
-	pthread_join(consolaThread, NULL);
-	pthread_join(serverThread, NULL);
+		//Create thread for UMC console
+		pthread_create(&consolaThread, NULL, (void*) startUMCConsole, NULL);
+
+		//Create thread for server start
+		pthread_create(&serverThread, NULL, (void*) startServer, NULL);
+
+		pthread_join(consolaThread, NULL);
+		pthread_join(serverThread, NULL);
+	}
 
 	return exitCode;
 }
@@ -101,6 +108,7 @@ void newClients (void *parameter){
 
 	if (exitCode == EXIT_FAILURE){
 		printf("There was detected an attempt of wrong connection\n");//TODO => Agregar logs con librerias
+		close(serverData->socketClient);
 	}else{
 
 		//Create thread attribute detached
@@ -142,6 +150,7 @@ void handShake (void *parameter){
 	if ( receivedBytes == 0 ){
 		perror("The client went down while handshaking!"); //TODO => Agregar logs con librerias
 		printf("Please check the client: %d is down!\n", serverData->socketClient);
+		close(serverData->socketClient);
 	}else{
 		switch ((int) message->process){
 			case CPU:{
@@ -197,7 +206,7 @@ void handShake (void *parameter){
 			}
 			default:{
 				perror("Process not allowed to connect");//TODO => Agregar logs con librerias
-				printf("Invalid process '%d' tried to connect to UMC\n",(int) message->process);
+				printf("Invalid process '%s' tried to connect to UMC\n",getProcessString(message->process));
 				close(serverData->socketClient);
 				break;
 			}
@@ -252,7 +261,7 @@ void processMessageReceived (void *parameter){
 			}
 			default:{
 				perror("Process not allowed to connect");//TODO => Agregar logs con librerias
-				printf("Invalid process '#%d' tried to connect to UMC\n",(int) fromProcess);
+				printf("Invalid process '#%s' tried to connect to UMC\n",getProcessString(fromProcess));
 				close(serverData->socketClient);
 				break;
 			}
@@ -262,9 +271,11 @@ void processMessageReceived (void *parameter){
 		//The client is down when bytes received are 0
 		perror("One of the clients is down!"); //TODO => Agregar logs con librerias
 		printf("Please check the client: %d is down!\n", serverData->socketClient);
+		close(serverData->socketClient);
 	}else{
 		perror("Error - No able to received");//TODO => Agregar logs con librerias
 		printf("Error receiving from socket '%d', with error: %d\n",serverData->socketClient,errno);
+		close(serverData->socketClient);
 	}
 
 	free(messageRcv);
@@ -339,6 +350,102 @@ void procesCPUMessages(char *messageRcv, int messageSize, t_serverData* serverDa
 			break;
 		}
 	}
+}
+
+int connectTo(enum_processes processToConnect, int *socketClient){
+	int exitcode = EXIT_FAILURE;//DEFAULT VALUE
+	int port = 0;
+	char *ip = string_new();
+
+	switch (processToConnect){
+		case SWAP:{
+			 string_append(&ip,configuration.ip_swap);
+			 port= configuration.port_swap;
+			break;
+		}
+		default:{
+			perror("Process not identified!");//TODO => Agregar logs con librerias
+			printf("Process '%s' NOT VALID to be connected by UMC.\n",getProcessString(processToConnect));
+			break;
+		}
+	}
+
+	exitcode = openClientConnection(ip, port, socketClient);
+
+	//If exitCode == 0 the client could connect to the server
+	if (exitcode == EXIT_SUCCESS){
+
+		// ***1) Send handshake
+		exitcode = sendClientHandShake(socketClient,CPU);
+
+		if (exitcode == EXIT_SUCCESS){
+
+			// ***2)Receive handshake response
+			//Receive message size
+			int messageSize = 0;
+			char *messageRcv = malloc(sizeof(messageSize));
+			int receivedBytes = receiveMessage(socketClient, messageRcv, sizeof(messageSize));
+
+			if ( receivedBytes > 0 ){
+				//Receive message using the size read before
+				memcpy(&messageSize, messageRcv, sizeof(int));
+				messageRcv = realloc(messageRcv,messageSize);
+				receivedBytes = receiveMessage(socketClient, messageRcv, messageSize);
+
+				//starting handshake with client connected
+				t_MessageGenericHandshake *message = malloc(sizeof(t_MessageGenericHandshake));
+				deserializeHandShake(message, messageRcv);
+
+				free(messageRcv);
+
+				switch (message->process){
+					case ACCEPTED:{
+						switch(processToConnect){
+							case SWAP:{
+								printf("%s\n",message->message);
+
+								printf("Conectado a NUCLEO\n");
+								break;
+							}
+							default:{
+								perror("Handshake not accepted");//TODO => Agregar logs con librerias
+								printf("Handshake not accepted when tried to connect your '%s' with '%s'\n",getProcessString(processToConnect),getProcessString(message->process));
+								close(*socketClient);
+								exitcode = EXIT_FAILURE;
+								break;
+							}
+						}
+
+						break;
+					}
+					default:{
+						perror("Process couldn't connect to SERVER");//TODO => Agregar logs con librerias
+						printf("Not able to connect to server %s. Please check if it's down.\n",ip);
+						close(*socketClient);
+						break;
+						break;
+					}
+				}
+
+			}else if (receivedBytes == 0 ){
+				//The client is down when bytes received are 0
+				perror("One of the clients is down!"); //TODO => Agregar logs con librerias
+				printf("Please check the client: %d is down!\n", *socketClient);
+				close(*socketClient);
+			}else{
+				perror("Error - No able to received");//TODO => Agregar logs con librerias
+				printf("Error receiving from socket '%d', with error: %d\n",*socketClient,errno);
+				close(*socketClient);
+			}
+		}
+
+	}else{
+		perror("no me pude conectar al server!"); //
+		printf("mi socket es: %d\n", *socketClient);
+		close(*socketClient);
+	}
+
+	return exitcode;
 }
 
 void getConfiguration(char *configFile){

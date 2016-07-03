@@ -23,6 +23,8 @@ t_configFile configuration;
 AnSISOP_funciones* funciones;
 AnSISOP_kernel* funciones_kernel;
 int frameSize = 0;
+int socketUMC = 0;
+int socketNucleo = 0;
 
 int ejecutarPrograma(t_PCB *PCB);
 int connectTo(enum_processes processToConnect, int *socketClient);
