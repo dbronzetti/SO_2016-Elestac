@@ -3,10 +3,11 @@
 int main(int argc, char *argv[]){
 	int exitCode = EXIT_FAILURE ; //DEFAULT failure
 	char *configurationFile = NULL;
+	char *logFile = NULL;
 	pthread_t serverThread;
 	pthread_t consolaThread;
 
-	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS TODO => Agregar logs con librerias
+	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS
 
 	//get parameter
 	int i;
@@ -21,13 +22,24 @@ int main(int argc, char *argv[]){
 			dumpFile = argv[i+1];
 			printf("Dump File: '%s'\n",dumpFile);
 		}
+		//check log file parameter
+		if (strcmp(argv[i], "-l") == 0){
+			logFile = argv[i+1];
+			printf("Log File: '%s'\n",logFile);
+		}
 	}
 
 	//ERROR if not configuration parameter was passed
-	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS TODO => Agregar logs con librerias
+	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS
 
-	//ERROR if not configuration parameter was passed
-	assert(("ERROR - NOT dump file was passed as argument", dumpFile != NULL));//Verifies if was passed the Dump file as parameter, if DONT FAILS TODO => Agregar logs con librerias
+	//ERROR if not dump parameter was passed
+	assert(("ERROR - NOT dump file was passed as argument", dumpFile != NULL));//Verifies if was passed the Dump file as parameter, if DONT FAILS
+
+	//ERROR if not log parameter was passed
+	assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the Dump file as parameter, if DONT FAILS
+
+	//Creating log file
+	UMCLog = log_create(logFile, "UMC", 0, LOG_LEVEL_TRACE);
 
 	//get configuration from file
 	getConfiguration(configurationFile);
@@ -39,7 +51,7 @@ int main(int argc, char *argv[]){
 	exitCode = connectTo(SWAP,&socketSwap);
 
 	if(exitCode == EXIT_SUCCESS){
-		printf("UMC connected to SWAP successfully\n");
+		log_info(UMCLog, "UMC connected to SWAP successfully\n");
 
 		//Initializing mutex
 		pthread_mutex_init(&memoryAccessMutex, NULL);
@@ -63,16 +75,16 @@ void startServer(){
 	t_serverData serverData;
 
 	exitCode = openServerConnection(configuration.port, &serverData.socketServer);
-	printf("socketServer: %d\n",serverData.socketServer);
+	log_info(UMCLog, "SocketServer: %d\n", serverData.socketServer);
 
 	//If exitCode == 0 the server connection is opened and listening
 	if (exitCode == 0) {
-		puts ("The server is opened.");
+		log_info(UMCLog, "The server is opened.");
 
 		exitCode = listen(serverData.socketServer, SOMAXCONN);
 
 		if (exitCode < 0 ){
-			perror("Failed to listen server Port"); //TODO => Agregar logs con librerias
+			log_error(UMCLog,"Failed to listen server Port.");
 			return;
 		}
 
@@ -107,7 +119,7 @@ void newClients (void *parameter){
 	exitCode = acceptClientConnection(&serverData->socketServer, &serverData->socketClient);
 
 	if (exitCode == EXIT_FAILURE){
-		printf("There was detected an attempt of wrong connection\n");//TODO => Agregar logs con librerias
+		log_warning(UMCLog,"There was detected an attempt of wrong connection\n");
 		close(serverData->socketClient);
 	}else{
 
@@ -148,13 +160,12 @@ void handShake (void *parameter){
 
 	//Now it's checked that the client is not down
 	if ( receivedBytes == 0 ){
-		perror("The client went down while handshaking!"); //TODO => Agregar logs con librerias
-		printf("Please check the client: %d is down!\n", serverData->socketClient);
+		log_error(UMCLog,"The client went down while handshaking! - Please check the client '%d' is down!\n", serverData->socketClient);
 		close(serverData->socketClient);
 	}else{
 		switch ((int) message->process){
 			case CPU:{
-				printf("%s\n",message->message);
+				log_info(UMCLog,"Message from '%s': %s\n", getProcessString(message->process), message->message);
 
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
@@ -179,7 +190,8 @@ void handShake (void *parameter){
 				break;
 			}
 			case NUCLEO:{
-				printf("%s\n",message->message);
+				log_info(UMCLog,"Message from '%s': %s\n", getProcessString(message->process), message->message);
+
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){
@@ -205,8 +217,7 @@ void handShake (void *parameter){
 				break;
 			}
 			default:{
-				perror("Process not allowed to connect");//TODO => Agregar logs con librerias
-				printf("Invalid process '%s' tried to connect to UMC\n",getProcessString(message->process));
+				log_error(UMCLog,"Process not allowed to connect - Invalid process '%s' tried to connect to UMC\n", getProcessString(message->process));
 				close(serverData->socketClient);
 				break;
 			}
@@ -239,26 +250,25 @@ void processMessageReceived (void *parameter){
 		receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(fromProcess));
 		fromProcess = (enum_processes) messageRcv;
 
-		printf("bytes received: %d\n",receivedBytes);
+		log_info(UMCLog,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
 
 		switch (fromProcess){
 			case CPU:{
-				printf("Processing CPU message received\n");
+				log_info(UMCLog, "Processing CPU message received\n");
 				pthread_mutex_lock(&activeProcessMutex);
 				procesCPUMessages(messageRcv, messageSize, serverData);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
 			case NUCLEO:{
-				printf("Processing NUCLEO message received\n");
+				log_info(UMCLog, "Processing NUCLEO message received\n");
 				pthread_mutex_lock(&activeProcessMutex);
 				procesNucleoMessages(messageRcv, messageSize, serverData);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
 			default:{
-				perror("Process not allowed to connect");//TODO => Agregar logs con librerias
-				printf("Invalid process '#%s' tried to connect to UMC\n",getProcessString(fromProcess));
+				log_error(UMCLog,"Process not allowed to connect - Invalid process '%s' send a message to UMC\n", getProcessString(fromProcess));
 				close(serverData->socketClient);
 				break;
 			}
@@ -266,12 +276,10 @@ void processMessageReceived (void *parameter){
 
 	}else if (receivedBytes == 0 ){
 		//The client is down when bytes received are 0
-		perror("One of the clients is down!"); //TODO => Agregar logs con librerias
-		printf("Please check the client: %d is down!\n", serverData->socketClient);
+		log_error(UMCLog,"The client went down while receiving! - Please check the client '%d' is down!\n", serverData->socketClient);
 		close(serverData->socketClient);
 	}else{
-		perror("Error - No able to received");//TODO => Agregar logs con librerias
-		printf("Error receiving from socket '%d', with error: %d\n",serverData->socketClient,errno);
+		log_error(UMCLog, "Error - No able to received - Error receiving from socket '%d', with error: %d\n",serverData->socketClient,errno);
 		close(serverData->socketClient);
 	}
 
@@ -340,9 +348,7 @@ void procesCPUMessages(char *messageRcv, int messageSize, t_serverData* serverDa
 			break;
 		}
 		default:{
-			perror("Process not allowed to connect");//TODO => Agregar logs con librerias
-			printf("Invalid operation for CPU messages '%d' requested to UMC \n",(int) message->operation);
-			close(serverData->socketClient);
+			log_error(UMCLog,"Process not allowed to connect - Invalid operation for CPU messages '%d' requested to UMC \n",(int) message->operation);
 			break;
 		}
 	}
@@ -388,8 +394,7 @@ void procesNucleoMessages(char *messageRcv, int messageSize, t_serverData* serve
 			break;
 		}
 		default:{
-			perror("Process not allowed to connect");//TODO => Agregar logs con librerias
-			printf("Invalid operation for CPU messages '%d' requested to UMC \n",(int) message->operation);
+			log_error(UMCLog, "Process not allowed to connect - Invalid operation for CPU messages '%d' requested to UMC \n",(int) message->operation);
 			close(serverData->socketClient);
 			break;
 		}
@@ -408,8 +413,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 			break;
 		}
 		default:{
-			perror("Process not identified!");//TODO => Agregar logs con librerias
-			printf("Process '%s' NOT VALID to be connected by UMC.\n",getProcessString(processToConnect));
+			log_info(UMCLog,"Process '%s' NOT VALID to be connected by UMC.\n", getProcessString(processToConnect));
 			break;
 		}
 	}
@@ -446,13 +450,11 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 					case ACCEPTED:{
 						switch(processToConnect){
 							case SWAP:{
-								printf("%s\n",message->message);
-								printf("Conectado a NUCLEO\n");
+								log_info(UMCLog, "Conectado a NUCLEO - Messsage: %s\n",message->message);
 								break;
 							}
 							default:{
-								perror("Handshake not accepted");//TODO => Agregar logs con librerias
-								printf("Handshake not accepted when tried to connect your '%s' with '%s'\n",getProcessString(processToConnect),getProcessString(message->process));
+								log_error(UMCLog, "Handshake not accepted when tried to connect your '%s' with '%s'\n",getProcessString(processToConnect),getProcessString(message->process));
 								close(*socketClient);
 								exitcode = EXIT_FAILURE;
 								break;
@@ -462,8 +464,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 						break;
 					}
 					default:{
-						perror("Process couldn't connect to SERVER");//TODO => Agregar logs con librerias
-						printf("Not able to connect to server %s. Please check if it's down.\n",ip);
+						log_error(UMCLog, "Process couldn't connect to SERVER - Not able to connect to server %s. Please check if it's down.\n",ip);
 						close(*socketClient);
 						break;
 						break;
@@ -472,19 +473,16 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 
 			}else if (receivedBytes == 0 ){
 				//The client is down when bytes received are 0
-				perror("One of the clients is down!"); //TODO => Agregar logs con librerias
-				printf("Please check the client: %d is down!\n", *socketClient);
+				log_error(UMCLog,"The client went down while receiving! - Please check the client '%d' is down!\n", *socketClient);
 				close(*socketClient);
 			}else{
-				perror("Error - No able to received");//TODO => Agregar logs con librerias
-				printf("Error receiving from socket '%d', with error: %d\n",*socketClient,errno);
+				log_error(UMCLog, "Error - No able to received - Error receiving from socket '%d', with error: %d\n",*socketClient,errno);
 				close(*socketClient);
 			}
 		}
 
 	}else{
-		perror("no me pude conectar al server!"); //
-		printf("mi socket es: %d\n", *socketClient);
+		log_error(UMCLog, "I'm not able to connect to the server! - My socket is: '%d'\n", *socketClient);
 		close(*socketClient);
 	}
 
@@ -495,7 +493,7 @@ void getConfiguration(char *configFile){
 
 	FILE *file = fopen(configFile, "r");
 
-	assert(("ERROR - Could not open the configuration file", file != 0));// ERROR - Could not open file TODO => Agregar logs con librerias
+	assert(("ERROR - Could not open the configuration file", file != 0));// ERROR - Could not open file
 
 	char parameter[12]; //[12] is the max paramenter's name size
 	char parameterValue[20];
@@ -550,8 +548,7 @@ void getConfiguration(char *configFile){
 			}
 			default:{
 				if (strcmp(parameter, EOL_DELIMITER) != 0){
-					perror("Error - Parameter read not recognized");//TODO => Agregar logs con librerias
-					printf("Error Parameter read not recognized '%s'\n",parameter);
+					log_error(UMCLog, "Error Parameter read not recognized '%s'\n",parameter);
 				}
 				break;
 			}
@@ -584,6 +581,7 @@ void startUMCConsole(){
 			configuration.delay = atoi(option);
 			pthread_mutex_unlock(&delayMutex);
 			printf("The delay UMC was successfully changed to: %d\n", configuration.delay);
+			log_info(UMCLog, "The delay UMC was successfully changed to: %d\n", configuration.delay);
 
 		}else if (strcmp(command,"dump") == 0 ){
 			int neededPID = 0; //DEFAULT value
@@ -641,8 +639,10 @@ void startUMCConsole(){
 				//Closing file
 				fclose(dumpf);
 				printf("A copy of this dump was saved in: '%s'.\n", dumpFile);
+				log_info(UMCLog, "A copy of this dump was saved in: '%s'.\n", dumpFile);
 			}else{
 				printf("Sorry! There is not information to show you now =(\n");
+				log_info(UMCLog, "Sorry! There is not information to show you now =(\n");
 			}
 
 		}else if (strcmp(command,"flush") == 0 ){
@@ -662,6 +662,7 @@ void startUMCConsole(){
 			}
 
 			printf("The '%s' flush was completed successfully\n", option);
+			log_info(UMCLog, "The '%s' flush was completed successfully\n", option);
 
 		}else{
 
@@ -745,16 +746,16 @@ void createAdminStructs(){
 		list_add(freeFramesList, (void*)frameNro);
 	}
 
-	printf("'%d' frames created and ready for use.\n", list_size(freeFramesList));
+	log_info(UMCLog, "'%d' frames created and ready for use.\n", list_size(freeFramesList));
 
 	// Checking if TLB is enable
 	if (configuration.TLB_entries != 0){
 		//TLB enable
 		createTLB();
 		TLBActivated = true;
-		printf("TLB enable. Size '%d'\n", list_size(TLBList));
+		log_info(UMCLog, "TLB enable. Size '%d'\n", list_size(TLBList));
 	}else{
-		printf("TLB disable!.\n");
+		log_info(UMCLog, "TLB disable!.\n");
 	}
 
 	//Creating page table list for Main Memory administration
@@ -921,6 +922,7 @@ void markElementNOTPResent(t_memoryAdmin *pageTableElement){
 void dumpPageTablexProc(t_pageTablesxProc *pageTablexProc){
 	printf("Informacion PID: '%d'.\n", pageTablexProc->PID);
 	fprintf(dumpf,"Informacion PID: '%d'.\n", pageTablexProc->PID);
+
 	list_iterate(pageTablexProc->ptrPageTable, (void*) showPageTableRows);
 }
 
@@ -982,10 +984,14 @@ void deleteContentFromMemory(t_memoryAdmin *memoryElement){
 	int memOffset = memoryElement->frameNumber * configuration.frames_size + memoryElement->virtualAddress->offset;
 	memset(memBlock + memOffset,'\0', memoryElement->virtualAddress->size);
 
+	log_info(UMCLog, "From PID '%d' - Content in page '#%d' DELETED from memory\n",memoryElement->PID, memoryElement->virtualAddress->pag);
+
 	//adding frame again to free frames list
 	int *frameNro = malloc(sizeof(int));
 	*frameNro = memoryElement->frameNumber;
 	list_add(freeFramesList, (void*)frameNro);
+
+	log_info(UMCLog, "NEW free frame '%d' available\n", memoryElement->frameNumber);
 
 }
 
@@ -1020,6 +1026,8 @@ void checkPageModification(t_memoryAdmin *memoryElement){
 		content = realloc(content, memoryElement->virtualAddress->size);
 		memcpy(content, memoryBlockOffset, memoryElement->virtualAddress->size);
 		send(socketSwap, (void*) content, memoryElement->virtualAddress->size,0);
+
+		log_info(UMCLog, "From PID '%d' - Content in page '#%d' swapped OUT\n",memoryElement->PID, memoryElement->virtualAddress->pag);
 
 		free(message->virtualAddress);
 		free(message);
@@ -1056,6 +1064,8 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID){
 	int receivedBytes = receiveMessage(&socketSwap, messageRcv, virtualAddress->size);
 	memoryContent = malloc(virtualAddress->size);
 	memcpy(memoryContent, messageRcv, virtualAddress->size);
+
+	log_info(UMCLog, "From PID '%d' - Content in page '#%d' swapped IN\n",PID, virtualAddress->pag);
 
 	free(message->virtualAddress);
 	free(message);
@@ -1215,8 +1225,7 @@ t_memoryAdmin *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memor
 			break;
 		}
 		default:{
-			perror("Error - Device Location not recognized for searching");//TODO => Agregar logs con librerias
-			printf("Error Device Location not recognized for searching: '%d'\n",deviceLocation);
+			log_error(UMCLog, "Error Device Location not recognized for searching: '%d'\n",deviceLocation);
 		}
 	}
 
@@ -1250,6 +1259,8 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 
 	if (memoryElement != NULL){//PAGE HIT in Main Memory
 
+		log_info(UMCLog, "PID '%d': PAGE HIT in Main Memory - Page #%d\n", pageTablexProc->PID, virtualAddress->pag);
+
 		if(TLBActivated){//TLB is enable
 			t_memoryAdmin *TLBElem = NULL;
 
@@ -1273,10 +1284,12 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 		}
 	}else{//PAGE Fault in Main Memory
 
+		log_info(UMCLog, "PID '%d': PAGE Fault in Main Memory - Page #%d\n", pageTablexProc->PID, virtualAddress->pag);
+
 		if (list_size(freeFramesList) > 0){
 
 			//The main memory still has free frames available
-			printf("The main memory still has free frames to assign to process '%d'", activePID);
+			log_info(UMCLog, "The main memory still has free frames to assign to process '%d'\n", activePID);
 
 			//Request memory content to Swap
 			void *memoryContent = requestPageToSwap(virtualAddress, pageTablexProc->PID);
@@ -1302,7 +1315,7 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 			if (pageTablexProc->assignedFrames < configuration.frames_max_proc){
 
 				//The active process has free frames available
-				printf("The process '%d' still has free frames to assigned", activePID);
+				log_info(UMCLog, "The process '%d' still has free frames to assigned\n", activePID);
 
 				void *memoryBlockOffset = NULL;
 				memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + virtualAddress->offset;
@@ -1313,7 +1326,7 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 
 			}else{
 				//The active process hasn't free frames available, replacement algorithm has to be executed
-				printf("The process '%d' hasn't more free frames available", activePID);
+				log_info(UMCLog, "The process '%d' hasn't more free frames available \n", activePID);
 
 				//  ejecuto algoritmo reemplazo segun deviceLocation ( TLB=> LRU, MAIN_MEMORY=> Clock/mejorado)
 
@@ -1321,14 +1334,14 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 					//Execute LRU algorithm
 					executeLRUAlgorithm(memoryElement, virtualAddress);
 				}else{
-					//TODO execute main memory algorithm
+					//execute main memory algorithm
 					executeMainMemoryAlgorithm(pageTablexProc, memoryElement, memoryContent);
 				}
 
 			}
 		}else{
 			//The main memory still hasn't any free frames
-			printf("The main memory is Full!");
+			log_warning(UMCLog, "The main memory is FULL!\n");
 			//inform this to upstream process
 			memoryElement = NULL;
 			//exit function immediately
@@ -1347,7 +1360,7 @@ void executeLRUAlgorithm(t_memoryAdmin *newElement, t_memoryLocation *virtualAdd
 
 	//Replacement algorithm LRU
 	LRUCandidate = getLRUCandidate();
-
+	log_info(UMCLog, "PID: '%d' - New page needed '%d' -> LRU candidate page #%d\n", newElement->PID, newElement->virtualAddress->pag, LRUCandidate->virtualAddress->pag);
 	//check page status before replacing
 	checkPageModification(LRUCandidate);
 
@@ -1356,7 +1369,6 @@ void executeLRUAlgorithm(t_memoryAdmin *newElement, t_memoryLocation *virtualAdd
 	LRUCandidate->dirtyBit = newElement->dirtyBit;
 	LRUCandidate->presentBit = newElement->presentBit;
 	LRUCandidate->virtualAddress = virtualAddress;
-	LRUCandidate->frameNumber = newElement->frameNumber;
 
 	//updated TLB by LRU algorithm
 	updateTLBPositionsbyLRU(LRUCandidate);
@@ -1386,6 +1398,8 @@ void executeMainMemoryAlgorithm(t_pageTablesxProc *pageTablexProc, t_memoryAdmin
 			clockCandidate = (t_memoryAdmin*) list_find(pageTablexProc->ptrPageTable, (void*) isPageNOTPresent);
 		}
 
+		log_info(UMCLog, "PID: '%d' - New page needed '%d' -> CLOCK candidate page #%d\n", pageTablexProc->PID, newElement->virtualAddress->pag, clockCandidate->virtualAddress->pag);
+
 		//Candidate found
 		newElement->frameNumber = clockCandidate->frameNumber;
 		newElement->presentBit = PAGE_PRESENT;
@@ -1402,6 +1416,8 @@ void executeMainMemoryAlgorithm(t_pageTablesxProc *pageTablexProc, t_memoryAdmin
 				clockCandidate = (t_memoryAdmin*) list_find(pageTablexProc->ptrPageTable, (void*) isPageNOTPresentModified);
 			}
 		}
+
+		log_info(UMCLog, "PID: '%d' - New page needed '%d' -> ENCAHNCED CLOCK candidate page #%d\n", pageTablexProc->PID, newElement->virtualAddress->pag, clockCandidate->virtualAddress->pag);
 
 		//Candidate found
 		newElement->frameNumber = clockCandidate->frameNumber;
@@ -1444,5 +1460,6 @@ void changeActiveProcess(int PID){
 	}
 
 	//after flushing entries from old process change active process to the one needed
+	log_info(UMCLog, "Changing to active PID: '#%d'\n", PID);
 	activePID = PID;
 }

@@ -9,6 +9,7 @@
 #include "sockets.h"
 #include "commons/collections/list.h"
 #include "commons/string.h"
+#include "commons/log.h"
 
 #define EOL_DELIMITER ";"
 #define PAGE_PRESENT 1
@@ -73,6 +74,7 @@ typedef enum{
 t_configFile configuration;
 char *dumpFile = NULL;
 FILE *dumpf;
+t_log* UMCLog;
 void *memBlock = NULL;
 int activePID = -1;
 int socketSwap = 0;
