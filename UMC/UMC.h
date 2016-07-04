@@ -9,6 +9,7 @@
 #include "sockets.h"
 #include "commons/collections/list.h"
 #include "commons/string.h"
+#include "commons/log.h"
 
 #define EOL_DELIMITER ";"
 #define PAGE_PRESENT 1
@@ -73,6 +74,7 @@ typedef enum{
 t_configFile configuration;
 char *dumpFile = NULL;
 FILE *dumpf;
+t_log* UMCLog;
 void *memBlock = NULL;
 int activePID = -1;
 int socketSwap = 0;
@@ -101,6 +103,7 @@ void PageTable_Element_destroy(t_pageTablesxProc *self);
 bool is_PIDPageTablePresent(t_pageTablesxProc* listElement);
 bool isThereEmptyEntry(t_memoryAdmin* listElement);
 bool isPageNOTPresent(t_memoryAdmin* listElement);
+bool isPageNOTPresentNOTModified(t_memoryAdmin* listElement);
 bool find_PIDEntry_PageTable(t_pageTablesxProc* listElement);
 void iteratePageTablexProc(t_pageTablesxProc *pageTablexProc);
 void dumpPageTablexProc(t_pageTablesxProc *pageTablexProc);
