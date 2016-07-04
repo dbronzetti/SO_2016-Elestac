@@ -101,6 +101,7 @@ void PageTable_Element_destroy(t_pageTablesxProc *self);
 bool is_PIDPageTablePresent(t_pageTablesxProc* listElement);
 bool isThereEmptyEntry(t_memoryAdmin* listElement);
 bool isPageNOTPresent(t_memoryAdmin* listElement);
+bool isPageNOTPresentNOTModified(t_memoryAdmin* listElement);
 bool find_PIDEntry_PageTable(t_pageTablesxProc* listElement);
 void iteratePageTablexProc(t_pageTablesxProc *pageTablexProc);
 void dumpPageTablexProc(t_pageTablesxProc *pageTablexProc);

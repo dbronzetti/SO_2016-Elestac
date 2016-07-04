@@ -1101,6 +1101,25 @@ bool isPageNOTPresent(t_memoryAdmin* listElement){
 	return (listElement->presentBit == PAGE_NOTPRESENT);
 }
 
+//** Find Page with presence bit disable and not modified**//
+bool isPageNOTPresentNOTModified(t_memoryAdmin* listElement){
+	return ((listElement->presentBit == PAGE_NOTPRESENT) & (listElement->presentBit == PAGE_NOTMODIFIED));
+}
+
+//** Find Page with presence bit disable and  modified**//
+bool isPageNOTPresentModified(t_memoryAdmin* listElement){
+	bool exitCode;
+
+	exitCode = ((listElement->presentBit == PAGE_NOTPRESENT) & (listElement->presentBit == PAGE_MODIFIED));
+
+	if (exitCode == false){
+		listElement->presentBit = PAGE_NOTPRESENT;
+	}
+
+	return exitCode;
+}
+
+
 t_memoryAdmin *getLRUCandidate(){
 	t_memoryAdmin *elementCandidate = NULL;
 
@@ -1344,11 +1363,7 @@ void executeLRUAlgorithm(t_memoryAdmin *newElement, t_memoryLocation *virtualAdd
 }
 
 void executeMainMemoryAlgorithm(t_pageTablesxProc *pageTablexProc, t_memoryAdmin *newElement, void *memoryContent){
-
 	t_memoryAdmin *clockCandidate = NULL;
-
-	pthread_mutex_lock(&memoryAccessMutex);
-	clockCandidate = (t_memoryAdmin*) list_find(pageTablexProc->ptrPageTable, (void*) isPageNOTPresent);
 
 	bool find_ClockCandidateToRemove(t_memoryAdmin* listElement){
 		return (listElement->virtualAddress->pag == clockCandidate->virtualAddress->pag);
@@ -1358,14 +1373,41 @@ void executeMainMemoryAlgorithm(t_pageTablesxProc *pageTablexProc, t_memoryAdmin
 		return (freeFrame == clockCandidate->frameNumber);
 	}
 
-	if(clockCandidate == NULL){
-		//Look for candidate after first pass - THIS ENSURES A CANDIDATE
-		clockCandidate = (t_memoryAdmin*) list_find(pageTablexProc->ptrPageTable, (void*) isPageNOTPresent);
-	}
+	pthread_mutex_lock(&memoryAccessMutex);
 
-	//Candidate found
-	newElement->frameNumber = clockCandidate->frameNumber;
-	newElement->presentBit = PAGE_PRESENT;
+	if (string_equals_ignore_case(configuration.algorithm_replace,"clock")){
+		//*** Algorithm CLOCK ***//
+
+		//First seek
+		clockCandidate = (t_memoryAdmin*) list_find(pageTablexProc->ptrPageTable, (void*) isPageNOTPresent);
+
+		if(clockCandidate == NULL){
+			//Second seek for candidate after first pass - THIS ENSURES A CANDIDATE
+			clockCandidate = (t_memoryAdmin*) list_find(pageTablexProc->ptrPageTable, (void*) isPageNOTPresent);
+		}
+
+		//Candidate found
+		newElement->frameNumber = clockCandidate->frameNumber;
+		newElement->presentBit = PAGE_PRESENT;
+
+	}else{
+		//*** Algorithm ENHANCED CLOCK***//
+
+		while (clockCandidate == NULL){
+			//First seek
+			clockCandidate = (t_memoryAdmin*) list_find(pageTablexProc->ptrPageTable, (void*) isPageNOTPresentNOTModified);
+
+			if(clockCandidate == NULL){
+				//Second seek for candidate after first pass
+				clockCandidate = (t_memoryAdmin*) list_find(pageTablexProc->ptrPageTable, (void*) isPageNOTPresentModified);
+			}
+		}
+
+		//Candidate found
+		newElement->frameNumber = clockCandidate->frameNumber;
+		newElement->presentBit = PAGE_PRESENT;
+
+	}
 
 	//Removing candidate from page table list
 	list_remove_and_destroy_by_condition(pageTablexProc->ptrPageTable, (void*) find_ClockCandidateToRemove, (void*) destroyElementTLB);
