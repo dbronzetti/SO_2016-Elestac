@@ -16,6 +16,7 @@
 #include "commons/collections/dictionary.h"
 #include "commons/collections/queue.h"
 #include "commons/config.h"
+#include "commons/log.h"
 #include <sys/types.h>
 #include <pthread.h>
 #include <semaphore.h>
@@ -25,16 +26,19 @@
 typedef struct {
 int puerto_prog;
 int puerto_cpu;
+int puerto_umc;
+char* ip_umc;
 int quantum;
 int quantum_sleep;
 char** sem_ids;
-int** sem_init;
+int* sem_init;
 char** io_ids;
 int* io_sleep;
 char** shared_vars;
 int stack_size;
-int frames_size;
+int pageSize;
 } t_configFile;
+
 typedef struct {
 	int socketServer;
 	int socketClient;
@@ -110,12 +114,20 @@ int buscarCPU(int socket);
 void actualizarPC(int PID, int ProgramCounter);
 void crearArchivoDeConfiguracion(char* configFile);
 
-//Conexiones
+int armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData);
+int armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData);
+int definirVar(char* nombreVariable,t_registroStack miPrograma,int posicion);
+
+//Conexiones y Funciones para los mensajes
 
 void startServer();
 void newClients(void *parameter);
 void processMessageReceived(void *parameter);
 void handShake(void *parameter);
 int connectTo(enum_processes processToConnect, int *socketClient);
+int procesarRespuesta(int libre);
+void procesarOperacionesUMC();
+void iniciarPrograma(int PID, char* codeScript);
+void finalizarPrograma(int PID);
 
 #endif /* NUCLEO_H_ */

@@ -1,5 +1,7 @@
 puerto_prog=5000
 puerto_cpu=5001
+puerto_UMC=5002
+ip_UMC=127.0.0.1
 quantum=3
 quantum_sleep=500
 io_ids=[Disco, Impresora, Scanner]
@@ -8,3 +10,4 @@ sem_ids=[SEM1, SEM2, SEM3]
 sem_init=[0, 0, 5]
 shared_vars=[!Global, !UnaVar, !tiempo3]
 stack_size=2
+page_size=0

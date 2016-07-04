@@ -8,8 +8,10 @@ int socketNucleo=0;
 
 int main(int argc, char **argv) {
 	/*char *configurationFile = NULL;
+	 char *logFile = NULL;
+
 	crearArchivoDeConfiguracion(configurationFile);
-	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS TODO => Agregar logs con librerias
+	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS
 
 	//get parameter
 	int i;
@@ -18,12 +20,26 @@ int main(int argc, char **argv) {
 			configurationFile = argv[i+1];
 			printf("Configuration File: '%s'\n",configurationFile);
 		}
+		//check log file parameter
+		if (strcmp(argv[i], "-l") == 0){
+			logFile = argv[i+1];
+			printf("Log File: '%s'\n",logFile);
+		}
 	}
 
 	//ERROR if not configuration parameter was passed
-	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS TODO => Agregar logs con librerias
+	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS
+
+	//ERROR if not Log parameter was passed
+	assert(("ERROR - NOT log file was passed as argument", logNucleo != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
+
+	//Creo archivo de configuracion
+		crearArchivoDeConfiguracion(configurationFile);
+
+	//Creo el archivo de Log
+		logConsola= log_create(logFile, "NUCLEO", 0, LOG_LEVEL_TRACE);
 	*/
-	char* codeScript = malloc(sizeof(codeScript)); //TODO string_new() en vez de malloc??
+	char* codeScript = string_new(); //TODO string_new() en vez de malloc??
 	int exitCode = EXIT_SUCCESS;
 	char inputTeclado[250];
 	printf("antes de conectarme\n");
@@ -47,13 +63,19 @@ int main(int argc, char **argv) {
 			printf("Comando Reconocido.\n");
 			codeScript = leerArchivoYGuardarEnCadena(&tamanioArchivo);
 			fgets(inputTeclado, sizeof(inputTeclado), stdin);
-			//exitCode = sendMessage(&socketNucleo, codeScript,string_length(codeScript));
+			exitCode = sendMessage(&socketNucleo, codeScript,string_length(codeScript));
 			//sendMessage(&socketNucleo, tamanioArchivo,sizeof(tamanioArchivo))
 			printf("Tamanio del archivo: %d\n",(int) tamanioArchivo);
 			break;
 		}
-
-		case 2: {
+		case 2:{
+			printf("Comando Reconocido.\n");
+			int finalizar = 1;
+			exitCode = sendMessage(&socketNucleo, finalizar, sizeof(int));
+			break;
+		}
+		case 3: {
+			printf("Comando Reconocido.\n");
 			exit(-1);
 			break;
 		}
@@ -67,9 +89,10 @@ int main(int argc, char **argv) {
 int reconocerComando(char* comando) {
 	if (!strcmp("ejecutar\n", comando)) {
 		return 1;
-	}
-	if (!strcmp("salir\n", comando)) {
+	}else if(!strcmp("finalizar\n", comando)){
 		return 2;
+	}else if (!strcmp("salir\n", comando)) {
+		return 3;
 	}
 	return -1;
 }
@@ -112,8 +135,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 		break;
 	}
 	default:{
-		perror("Process not identified!");//TODO => Agregar logs con librerias
-		printf("Process '%s' NOT VALID to connected by CONSOLA.\n",getProcessString(processToConnect));
+		 log_info(logConsola,"Process '%s' NOT VALID to be connected by UMC.\n", getProcessString(processToConnect));
 		break;
 	}
 	}
@@ -147,33 +169,31 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 
 				switch (message->process) {
 				case ACCEPTED: {
-					printf("%s\n", message->message);
-					printf("Receiving frame size\n");
-					//After receiving ACCEPTATION has to be received the "Tamanio de pagina" information
-					receivedBytes = receiveMessage(socketClient, &frameSize,sizeof(messageSize));
-
-					printf("Tamanio de pagina: %d\n", frameSize);
+					log_info(logConsola, "Conectado a NUCLEO - Messsage: %s\n",	message->message);
 					break;
 				}
 				default:{
-					perror("Process couldn't connect to SERVER");//TODO => Agregar logs con librerias
-					printf("Not able to connect to server %s. Please check if it's down.\n",ip);
+					log_error(logConsola,
+							"Process couldn't connect to SERVER - Not able to connect to server %s. Please check if it's down.\n",ip);
+					close(*socketClient);
 					break;
 				}
 				}
 			}else if (receivedBytes == 0 ){
 				//The client is down when bytes received are 0
-				perror("One of the clients is down!"); //TODO => Agregar logs con librerias
-				printf("Please check the client: %d is down!\n", *socketClient);
+				log_error(logConsola,
+						"The client went down while receiving! - Please check the client '%d' is down!\n",*socketClient);
+				close(*socketClient);
 			}else{
-				perror("Error - No able to received");//TODO => Agregar logs con librerias
-				printf("Error receiving from socket '%d', with error: %d\n",*socketClient,errno);
+				log_error(logConsola,
+						"Error - No able to received - Error receiving from socket '%d', with error: %d\n",*socketClient, errno);
+				close(*socketClient);
 			}
 		}
 
 	}else{
-		perror("no me pude conectar al server!"); //
-		printf("mi socket es: %d\n", *socketClient);
+		log_error(logConsola, "I'm not able to connect to the server! - My socket is: '%d'\n", *socketClient);
+		close(*socketClient);
 	}
 
 	return exitcode;
@@ -184,6 +204,7 @@ void crearArchivoDeConfiguracion(char *configFile){
 	configuration = config_create(configFile);
 	configConsola.port_Nucleo = config_get_int_value(configuration,"PUERTO_NUCLEO");
 	configConsola.ip_Nucleo= config_get_string_value(configuration,"IP_NUCLEO");
+
 }
 
 int reconocerOperacion() {
@@ -191,7 +212,7 @@ int reconocerOperacion() {
 	int tamanio;
 	int operacion;
 	char* operacionSerializada=malloc(sizeof(int));
-	int exitCode = EXIT_SUCCESS;
+	int exitCode = EXIT_FAILURE;
 	exitCode = receiveMessage(&socketNucleo, operacionSerializada, sizeof(int));
 	memcpy(&operacion, &operacionSerializada, sizeof(int));
 	switch (operacion) {
@@ -201,6 +222,7 @@ int reconocerOperacion() {
 		char* textoImprimir=malloc(tamanio);
 		exitCode = receiveMessage(&socketNucleo, (void*) textoImprimir,sizeof(tamanio));
 		printf("Texto: %s", textoImprimir);
+		free(textoImprimir);
 		break;
 	}
 	case 2: {
@@ -209,6 +231,7 @@ int reconocerOperacion() {
 		exitCode = receiveMessage(&socketNucleo, valorAMostrarSerializado,sizeof(int));
 		memcpy(&valorAMostrar, &valorAMostrarSerializado, sizeof(int));
 		printf("Valor Recibido:%i", valorAMostrar);
+		free(valorAMostrarSerializado);
 		break;
 	}
 	case 3: {
@@ -216,5 +239,7 @@ int reconocerOperacion() {
 		break;
 	}
 	}
+	free(tamanioSerializado);
+	free(operacionSerializada);
 	return exitCode;
 }

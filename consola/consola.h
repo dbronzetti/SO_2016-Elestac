@@ -20,9 +20,6 @@
 #include "commons/config.h"
 #include "sockets.h"
 
-//Var Globlal
-int frameSize = 0;
-
 typedef struct {
 	int port_Nucleo;
 	char* ip_Nucleo;

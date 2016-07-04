@@ -58,16 +58,15 @@ typedef struct{
 	int head;
 	int processID;
 	enum_processStatus processStatus;
-	char* codeScript;
 	int ProgramCounter;
 	int cantInstruc;
 	int operacion;
 	int numSocket;
+	int estadoCPU;
 } t_MessageNucleo_CPU;
 
 typedef struct{
 	int processID;
-	char* codeScript;
 	enum_processStatus processStatus;
 } t_MessageNucleo_Consola;
 
