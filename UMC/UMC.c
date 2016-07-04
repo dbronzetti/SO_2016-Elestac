@@ -79,12 +79,12 @@ void startServer(){
 
 	//If exitCode == 0 the server connection is opened and listening
 	if (exitCode == 0) {
-		log_info(UMCLog, "The server is opened.");
+		log_info(UMCLog, "The server is opened.\n");
 
 		exitCode = listen(serverData.socketServer, SOMAXCONN);
 
 		if (exitCode < 0 ){
-			log_error(UMCLog,"Failed to listen server Port.");
+			log_error(UMCLog,"Failed to listen server Port.\n");
 			return;
 		}
 
@@ -450,7 +450,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 					case ACCEPTED:{
 						switch(processToConnect){
 							case SWAP:{
-								log_info(UMCLog, "Conectado a NUCLEO - Messsage: %s\n",message->message);
+								log_info(UMCLog, "Connected to NUCLEO - Message: %s\n",message->message);
 								break;
 							}
 							default:{
@@ -621,7 +621,7 @@ void startUMCConsole(){
 						pthread_mutex_unlock(&memoryAccessMutex);
 					}
 
-				}else if (strcmp(option, "contenido")){
+				}else if (strcmp(option, "contenido") == 0){
 
 					if(neededPID == -1){
 						pthread_mutex_lock(&memoryAccessMutex);
@@ -642,27 +642,46 @@ void startUMCConsole(){
 				log_info(UMCLog, "A copy of this dump was saved in: '%s'.\n", dumpFile);
 			}else{
 				printf("Sorry! There is not information to show you now =(\n");
-				log_info(UMCLog, "Sorry! There is not information to show you now =(\n");
+				log_info(UMCLog, "COMMAND: '%s %s %s' - Sorry! There is not information to show you now =(\n", command, option, value);
 			}
 
 		}else if (strcmp(command,"flush") == 0 ){
 
 			if (strcmp(option, "tlb") == 0){
-				//Locking TLB access for reading
-				pthread_mutex_lock(&memoryAccessMutex);
-				list_clean_and_destroy_elements(TLBList, (void*) destroyElementTLB);
-				resetTLBAllEntries();
-				pthread_mutex_unlock(&memoryAccessMutex);
 
-			}else if (strcmp(option, "memory")){
-				//Locking memory access for reading
-				pthread_mutex_lock(&memoryAccessMutex);
-				list_iterate(pageTablesListxProc,(void*) iteratePageTablexProc);
-				pthread_mutex_unlock(&memoryAccessMutex);
+				if(list_all_satisfy(TLBList, (void*)isThereEmptyEntry) == false){
+					//Locking TLB access for reading
+					pthread_mutex_lock(&memoryAccessMutex);
+					list_clean_and_destroy_elements(TLBList, (void*) destroyElementTLB);
+					resetTLBAllEntries();
+					pthread_mutex_unlock(&memoryAccessMutex);
+
+					printf("The '%s' flush was completed successfully\n", option);
+					log_info(UMCLog, "The '%s' flush was completed successfully\n", option);
+
+				}else{
+					printf("Sorry! There is not information in TLB for flushing =(\n");
+					log_info(UMCLog, "COMMAND: '%s %s' - Sorry! There is not information in TLB for flushing =(\n", command, option);
+				}
+
+			}else if (strcmp(option, "memory") == 0){
+
+				if(list_size(pageTablesListxProc) != 0){
+					//Locking memory access for reading
+					pthread_mutex_lock(&memoryAccessMutex);
+					list_iterate(pageTablesListxProc,(void*) iteratePageTablexProc);
+					pthread_mutex_unlock(&memoryAccessMutex);
+
+					printf("The '%s' flush was completed successfully\n", option);
+					log_info(UMCLog, "The '%s' flush was completed successfully\n", option);
+
+				}else{
+					printf("Sorry! There is not information in MEMORY for flushing =(\n");
+					log_info(UMCLog, "COMMAND: '%s %s' - Sorry! There is not information in MEMORY for flushing =(\n", command, option);
+				}
 			}
 
-			printf("The '%s' flush was completed successfully\n", option);
-			log_info(UMCLog, "The '%s' flush was completed successfully\n", option);
+
 
 		}else{
 
