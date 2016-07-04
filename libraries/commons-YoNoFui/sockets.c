@@ -320,7 +320,7 @@ void serializeNucleo_UMC(t_MessageNucleo_UMC *value, char *buffer, int valueSize
 	offset += sizeof(valueSize);
 
 	//1)From process
-	memcpy(buffer, &process, sizeof(process));
+	memcpy(buffer + offset, &process, sizeof(process));
 	offset += sizeof(process);
 
 	//2)operation
@@ -332,8 +332,12 @@ void serializeNucleo_UMC(t_MessageNucleo_UMC *value, char *buffer, int valueSize
 	offset += sizeof(value->PID);
 
 	//4)page quantity
-	memcpy(buffer, &value->cantPages, sizeof(value->cantPages));
+	memcpy(buffer + offset, &value->cantPages, sizeof(value->cantPages));
 	offset += sizeof(value->cantPages);
+
+	//5)codeScript
+	strcpy(buffer + offset, value->codeScript);
+
 }
 
 void deserializeUMC_Nucleo(t_MessageNucleo_UMC *value, char *bufferReceived){
@@ -344,12 +348,16 @@ void deserializeUMC_Nucleo(t_MessageNucleo_UMC *value, char *bufferReceived){
 	offset += sizeof(value->operation);
 
 	//3)PID
-	memcpy(&value->PID, bufferReceived, sizeof(value->PID));
+	memcpy(&value->PID, bufferReceived + offset, sizeof(value->PID));
 	offset += sizeof(value->PID);
 
 	//4)page quantity
 	memcpy(&value->cantPages, bufferReceived + offset, sizeof(value->cantPages));
 	offset += sizeof(value->cantPages);
+
+	//5)codeScript
+	strcpy(value->codeScript, bufferReceived + offset);
+
 }
 
 void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize) {
@@ -361,7 +369,7 @@ void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize
 	offset += sizeof(valueSize);
 
 	//1)From process
-	memcpy(buffer, &process, sizeof(process));
+	memcpy(buffer + offset, &process, sizeof(process));
 	offset += sizeof(process);
 
 	//2)head
@@ -377,8 +385,8 @@ void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize
 	offset += sizeof(value->processStatus);
 
 	//5)codeScript
-	memcpy(buffer + offset, &value->codeScript, (strlen(value->codeScript)));
-	offset += strlen(value->codeScript);
+	strcpy(buffer + offset, value->codeScript);
+	offset += sizeof(value->codeScript);
 
 	//6)pc
 	memcpy(buffer + offset, &value->ProgramCounter, sizeof(value->ProgramCounter));
@@ -413,8 +421,8 @@ void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char * bufferReceived) {
 	offset += sizeof(value->processStatus);
 
 	//5)codeScript
-	memcpy(&value->codeScript, bufferReceived + offset,(strlen(value->codeScript)));
-	offset += strlen(value->codeScript);
+	strcpy(value->codeScript, bufferReceived + offset);
+	offset += sizeof(value->codeScript);
 
 	//6)ProgramCounter
 	memcpy(&value->ProgramCounter, bufferReceived + offset, sizeof(value->ProgramCounter));
@@ -437,8 +445,8 @@ void deserializeConsola_Nucleo(t_MessageNucleo_Consola *value, char *bufferRecei
 	int offset = 0;
 
 	//1)codeScript
-	memcpy(&value->codeScript, bufferReceived + offset,(strlen(value->codeScript)));
-	offset += strlen(value->codeScript);
+	strcpy(value->codeScript, bufferReceived);
+	offset += sizeof(value->codeScript);
 
 	//2)processID
 	memcpy(&value->processID, bufferReceived + offset, sizeof(value->processID));

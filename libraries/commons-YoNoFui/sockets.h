@@ -50,6 +50,7 @@ typedef struct{
 typedef struct{
 	int PID;
 	int cantPages;
+	char* codeScript;
 	enum_operationsUMC_SWAP operation;
 } t_MessageNucleo_UMC;
 
