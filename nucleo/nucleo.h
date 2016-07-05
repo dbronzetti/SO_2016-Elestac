@@ -17,6 +17,7 @@
 #include "commons/collections/queue.h"
 #include "commons/config.h"
 #include "commons/log.h"
+#include <math.h>
 #include <sys/types.h>
 #include <pthread.h>
 #include <semaphore.h>
@@ -37,6 +38,7 @@ int* io_sleep;
 char** shared_vars;
 int stack_size;
 int pageSize;
+int* valor_sem;
 } t_configFile;
 
 typedef struct {
@@ -64,6 +66,7 @@ pthread_mutex_t cBloqueados;
 pthread_mutex_t cFinalizar;
 pthread_mutex_t socketMutex;
 pthread_mutex_t activeProcessMutex;
+pthread_mutex_t mutex_config;
 
 //Semaforo Contador
 sem_t semBloqueados;
@@ -118,15 +121,16 @@ int armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData)
 int armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData);
 int definirVar(char* nombreVariable,t_registroStack miPrograma,int posicion);
 
+
 //Conexiones y Funciones para los mensajes
 
-void startServer();
+void startServerProg();
+void startServerCPU();
 void newClients(void *parameter);
 void processMessageReceived(void *parameter);
 void handShake(void *parameter);
 int connectTo(enum_processes processToConnect, int *socketClient);
 int procesarRespuesta(int libre);
-void procesarOperacionesUMC();
 void iniciarPrograma(int PID, char* codeScript);
 void finalizarPrograma(int PID);
 

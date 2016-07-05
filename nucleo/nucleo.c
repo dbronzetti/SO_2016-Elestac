@@ -57,8 +57,8 @@ int main(int argc, char *argv[]) {
 	pthread_mutex_init(&activeProcessMutex, NULL);
 
 	//Create thread for server start
-	pthread_create(&serverThread, NULL, (void*) startServer, NULL);
-	pthread_create(&serverConsolaThread, NULL, (void*) startServer, NULL);
+	pthread_create(&serverThread, NULL, (void*) startServerProg, NULL);
+	pthread_create(&serverConsolaThread, NULL, (void*) startServerCPU, NULL);
 	//Create thread for blocked processes
 	pthread_create(&hiloBloqueados, NULL, (void*)atenderBloqueados, NULL);
 
@@ -80,11 +80,36 @@ int main(int argc, char *argv[]) {
 	return exitCode;
 }
 
-void startServer(){
+void startServerProg(){
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
 	t_serverData serverData;
 
 	exitCode = openServerConnection(configNucleo.puerto_prog, &serverData.socketServer);
+	log_info(logNucleo, "SocketServer: %d\n",serverData.socketServer);
+
+	//If exitCode == 0 the server connection is opened and listening
+	if (exitCode == 0) {
+		log_info(logNucleo, "the server is opened\n");
+
+		exitCode = listen(serverData.socketServer, SOMAXCONN);
+
+		if (exitCode < 0 ){
+			log_error(logNucleo,"Failed to listen server Port.\n");
+			return;
+		}
+
+		while (1){
+			newClients((void*) &serverData);
+		}
+	}
+
+}
+
+void startServerCPU(){
+	int exitCode = EXIT_FAILURE; //DEFAULT Failure
+	t_serverData serverData;
+
+	exitCode = openServerConnection(configNucleo.puerto_cpu, &serverData.socketServer);
 	log_info(logNucleo, "SocketServer: %d\n",serverData.socketServer);
 
 	//If exitCode == 0 the server connection is opened and listening
@@ -551,6 +576,9 @@ void finalizaProceso(int socket, int PID, int estado) {
 					datosProceso->PID);
 		}
 	}
+
+	//TODO enviarle el mensaje del log a la Consola asociada y destruir PCB
+
 	//Libero la CPU
 	liberarCPU(socket);
 
@@ -764,80 +792,80 @@ int definirVar(char* nombreVariable, t_registroStack miPrograma, int posicion) {
 	return 1;
 }
 
-void procesarOperacionesUMC(char *messageRcv, int messageSize) {
-
-	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
-
-	switch (message->operation) {
-	case agregar_proceso: {
-
-		iniciarPrograma(message->PID, message->codeScript);
-
-		break;
-	}
-	case finalizar_proceso: {
-
-		finalizarPrograma(message->PID);
-
-		break;
-	}
-	default: {
-		log_error(logNucleo,"Process not allowed to connect - Invalid operation '%d'  \n",(int) message->operation);
-		close(socketUMC);
-		break;
-	}
-	}
-	free(message);
-}
-
+//TODO invocar al recibir un script
 void iniciarPrograma(int PID, char *codeScript) {
 
-	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
+	int bufferSize = 0;
+	int payloadSize = 0;
+	char *content = string_new();//TODO falta asignarle algo mas adelante??
 
 	int cantPages = sizeof(codeScript) / configNucleo.pageSize;
-	int stackSize = sizeof(configNucleo.stack_size);
-	char *bufferEnviar = malloc(sizeof(t_MessageNucleo_UMC));
+	int stackSize = configNucleo.stack_size;
+
+	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
 
 	message->operation = agregar_proceso;
 	message->PID = PID;
 	message->cantPages = cantPages;
-	strcpy(message->codeScript, codeScript);
 
-	int bufferSize = sizeof(t_MessageNucleo_UMC) + sizeof(codeScript)
-			+ stackSize;
+	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->cantPages);//TODO sizeof(content)??
+	bufferSize = sizeof(bufferSize) + payloadSize;
+	char *buffer = malloc(bufferSize);
 
 	//Serializar mensaje
-	serializeNucleo_UMC(message, bufferEnviar, bufferSize);
+	serializeNucleo_UMC(message, buffer, payloadSize);
 
 	//1) Enviar info a la UMC - message serializado
-	sendMessage(&socketUMC, bufferEnviar, sizeof(t_MessageNucleo_UMC));
+	sendMessage(&socketUMC, buffer, bufferSize);
 
-	//2) Enviar programa a la umc
-	sendMessage(&socketUMC, codeScript, sizeof(codeScript));
+	//2) Despues de enviar la info, Enviar el tamanio del contenido
+	string_append(&codeScript, "\0");	//ALWAYS put \0 for finishing the string
+	int contentLen = strlen(codeScript) + 1;	//+1 because of '\0'
+	contentLen += stackSize;
+	sendMessage(&socketUMC, (void*) contentLen, sizeof(contentLen));
+
+	char* progAndStack = malloc(contentLen);
+	memcpy(&contentLen, progAndStack, contentLen);//TODO verificar que este bien
+
+	//TODO que es el content?? Igual a progAndStack ??
+
+	//3) Enviar programa y el stack
+	sendMessage(&socketUMC, progAndStack, contentLen);
 
 	free(message);
-	free(bufferEnviar);
 
 }
 
+//TODO invocar al procesar estado exit
 void finalizarPrograma(int PID) {
+
+	int bufferSize = 0;
+	int payloadSize = 0;
+	char *content = string_new();
+
 	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
-	char *bufferEnviar = malloc(sizeof(t_MessageNucleo_UMC));
 
 	message->operation = finalizar_proceso;
 	message->PID = PID;
+	message->cantPages = -1; //DEFAULT value when the operation doesn't need it
+
+	payloadSize = sizeof(message->operation) + sizeof(message->PID);
+	bufferSize = sizeof(bufferSize) + payloadSize ;
+
+	char *buffer = malloc(bufferSize);
 
 	//Serializar mensaje
-	serializeNucleo_UMC(message, bufferEnviar, sizeof(t_MessageNucleo_UMC));
+	serializeNucleo_UMC(message, buffer, payloadSize);
 
 	//1) Enviar info a la UMC - message serializado
-	sendMessage(&socketUMC, bufferEnviar, sizeof(t_MessageNucleo_UMC));
+	sendMessage(&socketUMC, buffer, bufferSize);
 
 	free(message);
-	free(bufferEnviar);
 }
 
 void crearArchivoDeConfiguracion(char *configFile){
+	pthread_mutex_lock(&mutex_config);
+
 	t_config* configuration;
 
 	configuration = config_create(configFile);
@@ -859,6 +887,8 @@ void crearArchivoDeConfiguracion(char *configFile){
 		printf("valor %d - %d\n",i,configNucleo.io_sleep[i]);
 		i++;
 	}
+	pthread_mutex_unlock(&mutex_config);
+
 }
 
 

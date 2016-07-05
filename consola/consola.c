@@ -39,8 +39,8 @@ int main(int argc, char **argv) {
 	//Creo el archivo de Log
 		logConsola= log_create(logFile, "NUCLEO", 0, LOG_LEVEL_TRACE);
 	*/
-	char* codeScript = string_new(); //TODO string_new() en vez de malloc??
-	int exitCode = EXIT_SUCCESS;
+	char* codeScript = string_new();
+	int exitCode = EXIT_FAILURE;//por default EXIT_FAILURE
 	char inputTeclado[250];
 	printf("antes de conectarme\n");
 	/*exitCode = connectTo(NUCLEO, &socketNucleo);
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
 		case 2:{
 			printf("Comando Reconocido.\n");
 			int finalizar = 1;
-			exitCode = sendMessage(&socketNucleo, finalizar, sizeof(int));
+			exitCode = sendMessage(&socketNucleo, (void*)finalizar, sizeof(int));//TODO verificar que sea correcto
 			break;
 		}
 		case 3: {
@@ -207,6 +207,7 @@ void crearArchivoDeConfiguracion(char *configFile){
 
 }
 
+//TODO invocar la siguiente funcion en el main
 int reconocerOperacion() {
 	char* tamanioSerializado=malloc(sizeof(int));
 	int tamanio;
