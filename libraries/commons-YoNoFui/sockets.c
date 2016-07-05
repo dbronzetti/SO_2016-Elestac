@@ -195,7 +195,7 @@ void serializeCPU_UMC(t_MessageCPU_UMC *value, char *buffer, int valueSize){
 	offset += sizeof(valueSize);
 
 	//1)From process
-	memcpy(buffer, &process, sizeof(process));
+	memcpy(buffer + offset, &process, sizeof(process));
 	offset += sizeof(process);
 
 	//2)operation
@@ -207,15 +207,15 @@ void serializeCPU_UMC(t_MessageCPU_UMC *value, char *buffer, int valueSize){
 	offset += sizeof(value->PID);
 
 	//4)pageNro
-	memcpy(buffer, &value->virtualAddress->pag, sizeof(value->virtualAddress->pag));
+	memcpy(buffer + offset, &value->virtualAddress->pag, sizeof(value->virtualAddress->pag));
 	offset += sizeof(value->virtualAddress->pag);
 
 	//5)offset
-	memcpy(buffer, &value->virtualAddress->offset, sizeof(value->virtualAddress->offset));
+	memcpy(buffer + offset, &value->virtualAddress->offset, sizeof(value->virtualAddress->offset));
 	offset += sizeof(value->virtualAddress->offset);
 
 	//6)size
-	memcpy(buffer, &value->virtualAddress->size, sizeof(value->virtualAddress->size));
+	memcpy(buffer + offset, &value->virtualAddress->size, sizeof(value->virtualAddress->size));
 	offset += sizeof(value->virtualAddress->size);
 
 }
@@ -228,7 +228,7 @@ void deserializeUMC_CPU(t_MessageCPU_UMC *value, char *bufferReceived){
 	offset += sizeof(value->operation);
 
 	//3)processID
-	memcpy(&value->PID, bufferReceived, sizeof(value->PID));
+	memcpy(&value->PID, bufferReceived + offset, sizeof(value->PID));
 	offset += sizeof(value->PID);
 
 	//4)pageNro
@@ -254,7 +254,7 @@ void serializeUMC_Swap(t_MessageUMC_Swap *value, char *buffer, int valueSize){
 	offset += sizeof(valueSize);
 
 	//1)From process
-	memcpy(buffer, &process, sizeof(process));
+	memcpy(buffer + offset, &process, sizeof(process));
 	offset += sizeof(process);
 
 	//2)operation
@@ -266,19 +266,19 @@ void serializeUMC_Swap(t_MessageUMC_Swap *value, char *buffer, int valueSize){
 	offset += sizeof(value->PID);
 
 	//4)pageNro
-	memcpy(buffer, &value->virtualAddress->pag, sizeof(value->virtualAddress->pag));
+	memcpy(buffer + offset, &value->virtualAddress->pag, sizeof(value->virtualAddress->pag));
 	offset += sizeof(value->virtualAddress->pag);
 
 	//5)offset
-	memcpy(buffer, &value->virtualAddress->offset, sizeof(value->virtualAddress->offset));
+	memcpy(buffer + offset, &value->virtualAddress->offset, sizeof(value->virtualAddress->offset));
 	offset += sizeof(value->virtualAddress->offset);
 
 	//6)size
-	memcpy(buffer, &value->virtualAddress->size, sizeof(value->virtualAddress->size));
+	memcpy(buffer + offset, &value->virtualAddress->size, sizeof(value->virtualAddress->size));
 	offset += sizeof(value->virtualAddress->size);
 
 	//7)page quantity
-	memcpy(buffer, &value->cantPages, sizeof(value->cantPages));
+	memcpy(buffer + offset, &value->cantPages, sizeof(value->cantPages));
 	offset += sizeof(value->cantPages);
 }
 
@@ -290,7 +290,7 @@ void deserializeSwap_UMC(t_MessageUMC_Swap *value, char *bufferReceived){
 	offset += sizeof(value->operation);
 
 	//3)PID
-	memcpy(&value->PID, bufferReceived, sizeof(value->PID));
+	memcpy(&value->PID, bufferReceived + offset, sizeof(value->PID));
 	offset += sizeof(value->PID);
 
 	//4)pageNro
