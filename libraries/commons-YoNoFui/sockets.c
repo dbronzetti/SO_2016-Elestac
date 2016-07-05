@@ -333,22 +333,14 @@ void serializeNucleo_UMC(t_MessageNucleo_UMC *value, char *buffer, int valueSize
 
 	//4)page quantity
 	memcpy(buffer + offset, &value->cantPages, sizeof(value->cantPages));
-	offset += sizeof(value->cantPages);
-
-	//5)codeScript
-	strcpy(buffer + offset, value->codeScript);
 
 }
 
 void deserializeUMC_Nucleo(t_MessageNucleo_UMC *value, char *bufferReceived){
 	int offset = 0;
 
-	//1)codeScript
-	memcpy(&value->codeScript, bufferReceived, sizeof(value->codeScript));
-	offset += sizeof(value->codeScript);
-
 	//2)operation
-	memcpy(&value->operation, bufferReceived + offset, sizeof(value->operation));
+	memcpy(&value->operation, bufferReceived, sizeof(value->operation));
 	offset += sizeof(value->operation);
 
 	//3)PID
@@ -357,7 +349,6 @@ void deserializeUMC_Nucleo(t_MessageNucleo_UMC *value, char *bufferReceived){
 
 	//4)page quantity
 	memcpy(&value->cantPages, bufferReceived + offset, sizeof(value->cantPages));
-	offset += sizeof(value->cantPages);
 
 }
 
