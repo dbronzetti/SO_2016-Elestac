@@ -216,7 +216,6 @@ void serializeCPU_UMC(t_MessageCPU_UMC *value, char *buffer, int valueSize){
 
 	//6)size
 	memcpy(buffer + offset, &value->virtualAddress->size, sizeof(value->virtualAddress->size));
-	offset += sizeof(value->virtualAddress->size);
 
 }
 
@@ -241,7 +240,6 @@ void deserializeUMC_CPU(t_MessageCPU_UMC *value, char *bufferReceived){
 
 	//6)size
 	memcpy(&value->virtualAddress->size, bufferReceived + offset, sizeof(value->virtualAddress->size));
-	offset += sizeof(value->virtualAddress->size);
 }
 
 
@@ -279,7 +277,7 @@ void serializeUMC_Swap(t_MessageUMC_Swap *value, char *buffer, int valueSize){
 
 	//7)page quantity
 	memcpy(buffer + offset, &value->cantPages, sizeof(value->cantPages));
-	offset += sizeof(value->cantPages);
+
 }
 
 void deserializeSwap_UMC(t_MessageUMC_Swap *value, char *bufferReceived){
@@ -307,7 +305,7 @@ void deserializeSwap_UMC(t_MessageUMC_Swap *value, char *bufferReceived){
 
 	//7)page quantity
 	memcpy(&value->cantPages, bufferReceived + offset, sizeof(value->cantPages));
-	offset += sizeof(value->cantPages);
+
 }
 
 
@@ -357,7 +355,6 @@ void deserializeUMC_Nucleo(t_MessageNucleo_UMC *value, char *bufferReceived){
 
 	//4)page quantity
 	memcpy(&value->cantPages, bufferReceived + offset, sizeof(value->cantPages));
-	offset += sizeof(value->cantPages);
 
 }
 
