@@ -3,6 +3,7 @@
 int main(int argc, char *argv[]){
 	int exitCode = EXIT_SUCCESS;
 	char *configurationFile = NULL;
+	char *logFile = NULL;
 	t_PCB *PCB = NULL;
 
 	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS TODO => Agregar logs con librerias
@@ -14,13 +15,24 @@ int main(int argc, char *argv[]){
 			configurationFile = argv[i+1];
 			printf("Configuration File: '%s'\n",configurationFile);
 		}
+		//check log file parameter
+		if (strcmp(argv[i], "-l") == 0){
+			logFile = argv[i+1];
+			printf("Log File: '%s'\n",logFile);
+		}
 	}
 
 	//ERROR if not configuration parameter was passed
 	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS TODO => Agregar logs con librerias
 
+	//ERROR if not log parameter was passed
+	assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the log file as parameter, if DONT FAILS
+
 	//get configuration from file
 	crearArchivoDeConfiguracion(configurationFile);
+
+	//Creo Archivo de Log
+	logCPU = log_create(logFile,"CPU",0,LOG_LEVEL_TRACE);
 
 	//CPU 1 - Conectarse a la UMC y setear tamaño de paginas
 
@@ -204,3 +216,173 @@ void crearArchivoDeConfiguracion(char *configFile){
 	configuration.ip_UMC = config_get_string_value(configurationFile,"IP_UMC");
 	configuration.port_UMC = config_get_int_value(configurationFile,"PUERTO_UMC");
 }
+
+
+/*
+//TODO incluir parametros del mensaje recibido de ser necesario
+void ejecutarCPU(){
+
+	 void *content = NULL;
+
+	//Receive content size
+		int messageSize = 0;//reseting size to get the content size
+		int receivedBytes = 0;//reseting receivedBytes to get the content size
+
+		receivedBytes = receiveMessage(&socketNucleo, (void*) messageSize, sizeof(messageSize));
+
+	//Receive content using the size read before
+		content = realloc(content, messageSize);
+		receivedBytes = receiveMessage(&socketNucleo, content, messageSize);
+
+	//TODO Recibir el tamaño del contexto
+
+	//Recibo contexto
+	 	t_MessageNucleo_CPU contexto;
+	 	int banderaFinQuantum=0;
+		char* message = (char*)malloc(sizeof(t_MessageNucleo_CPU));
+
+		int exitCode = EXIT_FAILURE; // por default
+		while (exitCode != EXIT_SUCCESS){
+			//Recibo contexto de NUCLEO y deserializo
+			exitCode =receiveMessage(&socketNucleo, (void*)message, sizeof(t_MessageNucleo_CPU));
+			printf ("Contexto de ejecucion recibido.\n");
+			deserializeCPU_Nucleo(&contexto, message);
+			//pcActualizado para tener el pc actual de las instrucciones a ejecutar
+		int pcActualizado=contexto.ProgramCounter;
+
+		log_info(logCPU,
+				"Contexto de ejecucion recibido - Process ID : %d - PC : %d",
+				contexto.processID, contexto.ProgramCounter);
+
+			switch(contexto.head){					// HEAD = 1 SIN desalojo HEAD = 2 CON desalojo
+			case 1:// Ejecutar Funcion sin Desalojo
+					ejecutarSinDesalojo(contexto.ProgramCounter,contexto.processID,pcActualizado);
+					break;
+			case 2: //Ejecutar Funcion Con Desalojo
+					ejecutarConDesalojo(contexto.ProgramCounter ,contexto.processID,contexto.cantInstruc,pcActualizado);
+					break;
+			case 3: //Finalizar PID
+					finalizar(contexto.processID, &banderaFinQuantum);
+					break;
+			default:
+					printf("Contexto de Ejecucion no valido\n");
+			}
+
+		}
+
+		free(message);
+
+	}
+
+void ejecutarSinDesalojo(int pc,int pid, int pcActualizado){
+
+	pcActualizado++ ;
+
+	// TODO procesarAnalizadorLinea
+}
+
+void ejecutarConDesalojo(int pc,int pid, int cantInstr, int pcActualizado){
+
+	int banderaFinQuantum=0;
+	pcActualizado++;
+
+	if(pcActualizado-pc==cantInstr && banderaFinQuantum==0){
+		//Envia aviso que fallo la iniciacion del proceso a NUCLEO
+
+		t_MessageNucleo_CPU* respuestaFQuantum = malloc(sizeof(t_MessageNucleo_CPU));
+		respuestaFQuantum->operacion=5;
+		respuestaFQuantum->processID=pid;
+
+		char* bufferRespuesta = malloc(sizeof(t_MessageNucleo_CPU));
+		serializeNucleo_CPU(respuestaFQuantum, bufferRespuesta, sizeof(respuestaFQuantum));
+		send(socketNucleo,bufferRespuesta, sizeof(t_MessageNucleo_CPU),0);
+
+		free(bufferRespuesta);
+	}
+
+}
+
+*/
+
+/*
+
+typedef struct {
+	int operacion;
+	int pid;
+	int pagina;
+	int tamanio;
+} t_datosPedido;
+
+
+void finalizar(int pid, int* banderaFinQuantum) {
+
+	printf("FINALIZAR...\n");
+	*banderaFinQuantum = 1;
+	t_datosPedido pedido;
+
+	pedido.operacion = 4;
+	pedido.pagina = 0;
+	pedido.pid = pid;
+	pedido.tamanio = 0;
+
+	char* buffer = malloc(sizeof(t_datosPedido));
+	//serializarPedido(pedido, &buffer);
+	//usleep(retardo);
+	send(socketUMC, buffer, sizeof(t_datosPedido), 0);
+
+	char* respuestaS = malloc(1);	// Maneja el status de los receive.
+	recv(socketUMC, (void*)respuestaS, 1, 0);
+	char respuesta = *respuestaS;
+
+	printf("Respuesta: %c\n.", respuesta);
+	if (respuesta == 'B') {
+		log_info(logCPU, "Proceso %d - Finalizado correctamente", pid);
+
+		//Envia aviso que finaliza correctamente el proceso a NUCLEO
+		t_MessageNucleo_CPU* respuestaFinOK = malloc(
+				sizeof(t_MessageNucleo_CPU));
+		respuestaFinOK->operacion = 2;
+		respuestaFinOK->processID = pid;
+
+		char* bufferRespuesta = malloc(sizeof(t_MessageNucleo_CPU));
+		serializeNucleo_CPU(respuestaFinOK, bufferRespuesta,
+				sizeof(respuestaFinOK));
+		send(socketNucleo, bufferRespuesta, sizeof(t_MessageNucleo_CPU), 0);
+
+		free(bufferRespuesta);
+
+	} else {
+		if (respuesta == 'M') {
+			log_error(logCPU, "Proceso %d - Error al finalizar", pid);
+
+			//Envia aviso que finaliza incorrectamente el proceso a NUCLEO
+			t_MessageNucleo_CPU* respuestaFinFalla = malloc( sizeof(t_MessageNucleo_CPU));
+			respuestaFinFalla->operacion = 4;
+			respuestaFinFalla->processID = pid;
+
+			char* bufferRespuesta = malloc(sizeof(t_MessageNucleo_CPU));
+			serializeNucleo_CPU(respuestaFinFalla, bufferRespuesta, sizeof(respuestaFinFalla));
+
+			send(socketNucleo, bufferRespuesta, sizeof(t_MessageNucleo_CPU), 0);
+
+			free(bufferRespuesta);
+
+		} else {
+			printf("Respuesta Invalida.\n");
+		}
+	}
+
+	free(buffer);
+
+}
+
+char recibirRespuesta(){
+	char* respuesta = malloc(1);	// Maneja el status de los receive.
+
+	recv(socketUMC, (void*)respuesta, 1, 0);
+
+	return *respuesta;   //B = BIEN M = MAL
+}
+
+*/
+

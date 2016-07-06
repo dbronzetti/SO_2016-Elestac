@@ -17,7 +17,6 @@
 #include "commons/collections/queue.h"
 #include "commons/config.h"
 #include "commons/log.h"
-#include <math.h>
 #include <sys/types.h>
 #include <pthread.h>
 #include <semaphore.h>
@@ -38,7 +37,6 @@ int* io_sleep;
 char** shared_vars;
 int stack_size;
 int pageSize;
-int* valor_sem;
 } t_configFile;
 
 typedef struct {
@@ -103,7 +101,8 @@ int frameSize = 0;
 void runScript(char* codeScript);
 void planificarProceso();
 void finalizaProceso(int socket, int PID, int estado);
-void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
+void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
+void deserializarES(t_es* datos, char* buffer);
 void atenderBloqueados();
 void atenderCorteQuantum(int socket, int PID);
 

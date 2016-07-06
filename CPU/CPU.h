@@ -8,6 +8,7 @@
 #include <parser/parser.h>
 #include <commons/collections/list.h>
 #include "commons/config.h"
+#include "commons/log.h"
 #include "sockets.h"
 
 typedef struct {
@@ -19,6 +20,8 @@ typedef struct {
 } t_configFile;
 
 t_configFile configuration;
+
+t_log* logCPU;
 
 AnSISOP_funciones* funciones;
 AnSISOP_kernel* funciones_kernel;

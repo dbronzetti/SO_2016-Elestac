@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
 	//Creo el archivo de Log
 		logConsola= log_create(logFile, "NUCLEO", 0, LOG_LEVEL_TRACE);
 	*/
-	char* codeScript = string_new();
+	char* codeScript = malloc();//TODO verificar si hay que usar malloc
 	int exitCode = EXIT_FAILURE;//por default EXIT_FAILURE
 	char inputTeclado[250];
 	printf("antes de conectarme\n");

@@ -290,7 +290,7 @@ void processMessageReceived (void *parameter){
 				printf("se recibio el processID #%d\n", message->processID);
 
 				runScript(messageRcv);
-
+				//TODO se puede agregar un campo de operacion
 				//Recibo operacion para finalizar
 				exitCode = receiveMessage(&serverData->socketClient, messageRcv, sizeof(fromProcess));
 				memcpy(&opFinalizar, &operacionSerializada, sizeof(int));
@@ -376,7 +376,7 @@ void planificarProceso() {
 
 	//Le envio la informacion a la CPU
 	t_PCB* datosPCB;
-	t_MessageNucleo_CPU* contextoProceso;
+	t_MessageNucleo_CPU* contextoProceso = malloc(sizeof(t_MessageNucleo_CPU));
 	t_proceso* datosProceso;
 	contextoProceso->head = 0;
 	contextoProceso->cantInstruc = 0;
@@ -456,9 +456,9 @@ void planificarProceso() {
 
 			free(bufferEnviar);
 		}
-
 	}
 
+	free(contextoProceso);
 }
 
 int procesarRespuesta(int socketLibre){
@@ -484,7 +484,7 @@ int procesarRespuesta(int socketLibre){
 		activePID = message->processID;
 
 		exitCode = recv(socketLibre, (void*) datosEntradaSalida, sizeof(t_es),0);
-		//deserializarES(&infoES, &datosEntradaSalida); //TODO deserializar entrada-salida
+		deserializarES(&infoES, datosEntradaSalida); //TODO deserializar entrada-salida
 
 		//Libero la CPU que ocupaba el proceso
 		liberarCPU(socketLibre);
@@ -496,20 +496,31 @@ int procesarRespuesta(int socketLibre){
 		int estado = 3;
 		cambiarEstadoProceso(message->processID, estado);
 
-		entradaSalida(infoES.dispositivo, infoES.tiempo);
+		EntradaSalida(infoES.dispositivo, infoES.tiempo);
 
 		free(datosEntradaSalida);
 		pthread_mutex_unlock(&activeProcessMutex);
 		break;
-	case 2://obtener valor
+	case 2: //Finaliza Proceso Bien
+		finalizaProceso(socketLibre, message->processID,message->operacion);
 		break;
-	case 3://grabar_valor
+
+	case 3: //Finaliza Proceso Mal
+		finalizaProceso(socketLibre, message->processID,message->operacion);
 		break;
-	case 4:	//wait o signal
+
+	case 4:	//Falla otra cosa
+		printf("Hubo un fallo.\n");
 		break;
-	case 5: //Corte por Quantum
-		printf("Corto por Quantum.\n");
-		atenderCorteQuantum(socketLibre, message->processID);
+	case 5 : //Corte por Quantum
+			printf("Corto por Quantum.\n");
+			atenderCorteQuantum(socketLibre, message->processID);
+			break;
+	case 6://obtener valor
+		break;
+	case 7://grabar_valor
+		break;
+	case 8:	//wait o signal
 		break;
 	default:
 		printf("Mensaje recibido invalido, CPU desconectado.\n");
@@ -631,7 +642,7 @@ int buscarCPU(int socket) {
 	return -1;
 }
 
-void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
+void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 
 	t_bloqueado* infoBloqueado = malloc(sizeof(t_bloqueado));
 
@@ -797,10 +808,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 
 	int bufferSize = 0;
 	int payloadSize = 0;
-	char *content = string_new();//TODO falta asignarle algo mas adelante??
-
 	int cantPages = sizeof(codeScript) / configNucleo.pageSize;
-	int stackSize = configNucleo.stack_size;
 
 	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
 
@@ -808,7 +816,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 	message->PID = PID;
 	message->cantPages = cantPages;
 
-	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->cantPages);//TODO sizeof(content)??
+	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->cantPages);
 	bufferSize = sizeof(bufferSize) + payloadSize;
 	char *buffer = malloc(bufferSize);
 
@@ -818,19 +826,19 @@ void iniciarPrograma(int PID, char *codeScript) {
 	//1) Enviar info a la UMC - message serializado
 	sendMessage(&socketUMC, buffer, bufferSize);
 
-	//2) Despues de enviar la info, Enviar el tamanio del contenido
+	//2) Despues de enviar la info, Enviar el tamanio del prgrama
 	string_append(&codeScript, "\0");	//ALWAYS put \0 for finishing the string
 	int contentLen = strlen(codeScript) + 1;	//+1 because of '\0'
-	contentLen += stackSize;
 	sendMessage(&socketUMC, (void*) contentLen, sizeof(contentLen));
 
-	char* progAndStack = malloc(contentLen);
-	memcpy(&contentLen, progAndStack, contentLen);//TODO verificar que este bien
+	//3) Enviar programa
+	char* content = malloc(contentLen);
+	strcpy(content,codeScript);
+	sendMessage(&socketUMC, content, contentLen);
 
-	//TODO que es el content?? Igual a progAndStack ??
-
-	//3) Enviar programa y el stack
-	sendMessage(&socketUMC, progAndStack, contentLen);
+	//4) Enviar tamanio de stack
+	int stackSize = configNucleo.stack_size;
+	sendMessage(&socketUMC, (void*) stackSize, sizeof(stackSize));
 
 	free(message);
 
@@ -861,6 +869,25 @@ void finalizarPrograma(int PID) {
 	sendMessage(&socketUMC, buffer, bufferSize);
 
 	free(message);
+}
+
+void deserializarES(t_es* datos, char* buffer) {
+
+	memcpy(&datos->dispositivo,buffer, (strlen(datos->dispositivo)));
+	int offset = strlen(datos->dispositivo);
+
+	memcpy(&datos->tiempo, buffer+offset, sizeof(datos->tiempo));
+	offset += sizeof(datos->tiempo);
+
+	memcpy(&datos->ProgramCounter, buffer + offset, sizeof(datos->ProgramCounter));
+
+
+	/* int dispositivoLen = 0;
+	memcpy(&dispositivoLen, buffer + offset, sizeof(dispositivoLen));
+	offset += sizeof(dispositivoLen);
+	datos->dispositivo= malloc(dispositivoLen);
+	memcpy(datos->dispositivo, buffer + offset, dispositivoLen);
+*/
 }
 
 void crearArchivoDeConfiguracion(char *configFile){
@@ -904,7 +931,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 		break;
 	}
 	default:{
-		log_info(logNucleo,"Process '%s' NOT VALID to be connected by UMC.\n", getProcessString(processToConnect));
+		log_info(logNucleo,"Process '%s' NOT VALID to be connected by NUCLEO.\n", getProcessString(processToConnect));
 		break;
 	}
 	}
@@ -982,3 +1009,4 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 
 	return exitcode;
 }
+
