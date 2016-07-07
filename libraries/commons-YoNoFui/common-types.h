@@ -1,5 +1,5 @@
 /****************************************************
-* Common Types for all the processes 
+* Common Types for all the processes
 ***************************************************/
 #include <commons/collections/list.h>
 #include <stdio.h>
@@ -29,6 +29,11 @@ typedef struct{
 } t_memoryLocation;
 
 typedef struct{
+	char nombreVariable;
+	t_memoryLocation* posicionEnMemoria;
+}t_memoryAndName;
+
+typedef struct{
 	char *identificador;
 	t_memoryLocation direccionValorDeVariable; //
 } t_vars;
@@ -43,7 +48,7 @@ typedef struct{
 	t_list *args; // List of address memory position for function arguments with format t_memoryLocation
 	t_list *vars; // List of vars with format t_vars
 	int retPos; // si hay una funcion se deberia cargar con el valor "t_registroIndiceCodigo.inicioDeInstruccion" de esa instruccion
-	t_memoryLocation retVar;
+	t_memoryLocation* retVar;
 } t_registroStack;
 
 struct indiceDeEtiqueta{
@@ -58,6 +63,7 @@ struct bloqueDeControl{
 	int cantidadDePaginas;
 	int estado; //0: New, 1: Ready, 2: Exec, 3: Block, 4:5: Exit
 	int finalizar;
+	char* codeScript;
 	t_list *indiceDeCodigo;//cola o pila con registros del tipo t_registroIndiceCodigo
 	t_list *indiceDeEtiquetas;//cola o pila con registros del tipo t_registroIndiceEtiqueta
 	t_list *indiceDeStack;//cola o pila con registros del tipo t_registroStack
@@ -92,4 +98,8 @@ void wait(t_nombre_semaforo identificador_semaforo);
 void signal(t_nombre_semaforo identificador_semaforo);
 int condicionBuscarVarible(t_vars* variableBuscada,t_vars* otraVariable);
 void serializarES(t_es *dispositivoEnviar, char *dispositivoSerializado);
+void deserializarES(t_es* datos, char* buffer);
+t_memoryAndName* buscarEnElStackPosicionPagina(t_PCB* pcb);
+t_memoryLocation* buscarUltimaPosicionOcupada(t_PCB* pcbEjecutando);
+
 
