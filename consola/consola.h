@@ -33,7 +33,7 @@ t_configFile configConsola;
 
 //Encabezamiento de Funciones
 
-char* leerArchivoYGuardarEnCadena();
+void* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo);
 int reconocerComando(char* comando);
 void crearArchivoDeConfiguracion(char *configFile);
 int connectTo(enum_processes processToConnect, int *socketClient);

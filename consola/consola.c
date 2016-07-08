@@ -97,7 +97,7 @@ int reconocerComando(char* comando) {
 	return -1;
 }
 
-char* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
+void* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
 	FILE* archivo=NULL;
 
 	int descriptorArchivo;
@@ -113,10 +113,8 @@ char* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
 	if (archivo == NULL) {
 		printf("Error al abrir el archivo.\n");
 	} else {
-		while (!feof(archivo)) {
-			fgets(textoDeArchivo, *tamanioDeArchivo, archivo);
-			printf("%s\n", textoDeArchivo);
-		}
+		size_t count = 1;
+		fread(textoDeArchivo,*tamanioDeArchivo,count,archivo);
 	//	printf("Tamanio adentro de la funcion: %i\n",*tamanioDeArchivo);
 	}
 	fclose(archivo);
