@@ -745,7 +745,7 @@ t_metadata_program *obtenerMetadata(char *codeScript) {
 	return miMetaData;
 }
 
-int armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData){
+void armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData){
 	int i;
 
 	int programOffset  = 0;
@@ -766,26 +766,36 @@ int armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData){
 
 	}
 
-	return 0;
 }
 
 
-int armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData){
-	int i;
-	t_registroIndiceEtiqueta regIndiceEtiqueta;
-	t_puntero_instruccion devolucionEtiqueta;
+void armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData){
 
-	for( i=0; i < miMetaData->cantidad_de_etiquetas; i++ ){
-		devolucionEtiqueta = metadata_buscar_etiqueta(miMetaData->etiquetas[i],miMetaData->etiquetas,miMetaData->etiquetas_size);
-		//TODO se tiene que agregar una validacion porque la funcion devuelve un error si no se encontro la etiqueta.
+	int offset = 0;
+		while ( offset < miMetaData->etiquetas_size ){
+			t_registroIndiceEtiqueta *regIndiceEtiqueta = malloc(sizeof(t_registroIndiceEtiqueta));
 
-		//TODO esto esta mal Funcion no es lo mismo que etiqueta... ver como identificar etiquetas
-		regIndiceEtiqueta.funcion = miMetaData->etiquetas;
+			int j = 0;
+			for (j = 0; miMetaData->etiquetas[offset + j] != '\0'; j++);
 
-		regIndiceEtiqueta.posicionDeLaEtiqueta = devolucionEtiqueta;
-		list_add(unBloqueControl.indiceDeEtiquetas,&regIndiceEtiqueta);
-	}
-	return 0;
+			regIndiceEtiqueta->funcion = malloc(j);
+			memset(regIndiceEtiqueta->funcion,'\0', j);
+
+			regIndiceEtiqueta->funcion = string_substring(miMetaData->etiquetas, offset, j);
+			offset += j + 1;//+1 por '\0's
+
+			log_trace(logNucleo,"funcion: %s\n", regIndiceEtiqueta->funcion);
+
+			memcpy(&regIndiceEtiqueta->posicionDeLaEtiqueta, miMetaData->etiquetas +offset, sizeof(regIndiceEtiqueta->posicionDeLaEtiqueta));
+			offset += sizeof(regIndiceEtiqueta->posicionDeLaEtiqueta);
+
+			log_trace(logNucleo,"posicionDeLaEtiqueta: %d\n", regIndiceEtiqueta->posicionDeLaEtiqueta);
+
+			list_add(unBloqueControl.indiceDeEtiquetas,(void*)regIndiceEtiqueta);
+
+		}
+
+		log_trace(logNucleo,"list 'indiceDeEtiquetas' size: %d\n", list_size(unBloqueControl.indiceDeEtiquetas));
 }
 
 
