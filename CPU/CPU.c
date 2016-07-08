@@ -4,7 +4,9 @@
 
 int tamanioDePagina;
 int socketCPU;
-
+int contadorDeProgramas=0;
+int QUANTUM_SLEEP;
+int QUANTUM;
 int main(int argc, char *argv[]){
 	int exitCode = EXIT_SUCCESS;
 	char *configurationFile = NULL;
@@ -27,28 +29,45 @@ int main(int argc, char *argv[]){
 	//get configuration from file
 	crearArchivoDeConfiguracion(configurationFile);
 
-	//CPU 1 - Conectarse a la UMC y setear tamaño de paginas
 
-	//TODO CPU 2 - Conectarse al Nucleo y quedar a la espera de 1 PCB
-	//TODO CPU 2.1 - Al recibir PCB incrementar el valor del ProgramCounter
-	//TODO CPU 2.2 - Uso del indice de codigo para solicitar a la UMC donde se encuentra la sentencia a ejecutar
-	//TODO CPU 2.2.1 - Es posible recibir una excepcion desde la UMC por una solicitud enviada, en dicho caso se debe indicar por pantalla y CONCLUIR con el PROGRAMA
-	//TODO CPU 2.3 - Parsear instruccion recibida y ejecutar operaciones
-	//TODO CPU 2.4 - Actualizar valores del programa en la UMC
-	//TODO CPU 2.5 - Notifica al Nucleo que concluyo un QUANTUM
-	//TODO CPU 2.5.1 - Si es la ultima sentencia del programa avisar al Nucleo que finalizo el proceso para que elimine las estructuras usadas para este programa
 	//TODO CPU 2.5.2 - Si fue captada la señal SIGUSR1 mientras se estaba ejecutando una instruccion se debe finalizar la misma y acto seguido desconectarse del Nucleo
 
 	exitCode = connectTo(UMC,&socketUMC);
 	if(exitCode == EXIT_SUCCESS){
 		printf("CPU connected to UMC successfully\n");
 	}
-
+	char* tamanioDePaginaRecibido;
+	receiveMessage(&socketUMC,tamanioDePaginaRecibido,sizeof(int));
+	memcpy(&tamanioDePagina,tamanioDePaginaRecibido,sizeof(int));
 	exitCode = connectTo(NUCLEO,&socketNucleo);
 	if(exitCode == EXIT_SUCCESS){
 		printf("CPU connected to NUCLEO successfully\n");
 		waitRequestFromNucleo(&socketNucleo);
 	}
+	char* PCBrecibido;
+	t_PCB* pcbRecibdo;
+	exitCode=receiveMessage(&socketNucleo,PCBrecibido,sizeof(t_PCB));
+	if(exitCode!=-1){
+		printf("El PCB fue recibido correctamente");
+		contadorDeProgramas=+1;
+	}
+	//deseializarPCB(pcbRecibido,PCBrecibido);
+	int j;
+	for(j=0;j<QUANTUM;j++){
+		ejecutarPrograma(pcbRecibdo);
+		sleep(QUANTUM_SLEEP);
+		if(j==QUANTUM){
+			char* mensajeDeQuantum="Concluyo El Quantum Asignado";
+			sendMessage(&socketNucleo,mensajeDeQuantum,strlen(mensajeDeQuantum));
+		}
+		if(j==pcbRecibdo->indiceDeCodigo->elements_count){
+			char* mensajeFinalizacion="Finalizo el proceso que se estaba ejecutando";
+			sendMessage(&socketNucleo,mensajeFinalizacion,strlen(mensajeFinalizacion));
+			j=QUANTUM;
+		}
+
+	}
+
 
 	//exitCode = ejecutarPrograma(PCB);
 
@@ -61,21 +80,21 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 	char *ip = string_new();
 
 	switch (processToConnect){
-		case UMC:{
-			 string_append(&ip,configuration.ip_UMC);
-			 port= configuration.port_UMC;
-			break;
-		}
-		case NUCLEO:{
-			 string_append(&ip,configuration.ip_Nucleo);
-			 port= configuration.port_Nucleo;
-			break;
-		}
-		default:{
-			perror("Process not identified!");//TODO => Agregar logs con librerias
-			printf("Process '%s' NOT VALID to be connected by CPU.\n",getProcessString(processToConnect));
-			break;
-		}
+	case UMC:{
+		string_append(&ip,configuration.ip_UMC);
+		port= configuration.port_UMC;
+		break;
+	}
+	case NUCLEO:{
+		string_append(&ip,configuration.ip_Nucleo);
+		port= configuration.port_Nucleo;
+		break;
+	}
+	default:{
+		perror("Process not identified!");//TODO => Agregar logs con librerias
+		printf("Process '%s' NOT VALID to be connected by CPU.\n",getProcessString(processToConnect));
+		break;
+	}
 	}
 
 	exitcode = openClientConnection(ip, port, socketClient);
@@ -107,41 +126,41 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 				free(messageRcv);
 
 				switch (message->process){
-					case ACCEPTED:{
-						switch(processToConnect){
-							case UMC:{
-								printf("%s\n",message->message);
-								printf("Receiving frame size\n");
-								//After receiving ACCEPTATION has to be received the "Tamanio de pagina" information
-								receivedBytes = receiveMessage(socketClient, &frameSize, sizeof(messageSize));
-								configuration.pageSize = frameSize;
+				case ACCEPTED:{
+					switch(processToConnect){
+					case UMC:{
+						printf("%s\n",message->message);
+						printf("Receiving frame size\n");
+						//After receiving ACCEPTATION has to be received the "Tamanio de pagina" information
+						receivedBytes = receiveMessage(socketClient, &frameSize, sizeof(messageSize));
+						configuration.pageSize = frameSize;
 
-								printf("Tamanio de pagina: %d\n",frameSize);
-								break;
-							}
-							case NUCLEO:{
-								printf("%s\n",message->message);
+						printf("Tamanio de pagina: %d\n",frameSize);
+						break;
+					}
+					case NUCLEO:{
+						printf("%s\n",message->message);
 
-								printf("Conectado a NUCLEO\n");
-								break;
-							}
-							default:{
-								perror("Handshake not accepted");//TODO => Agregar logs con librerias
-								printf("Handshake not accepted when tried to connect your '%s' with '%s'\n",getProcessString(processToConnect),getProcessString(message->process));
-								close(*socketClient);
-								exitcode = EXIT_FAILURE;
-								break;
-							}
-						}
-
+						printf("Conectado a NUCLEO\n");
 						break;
 					}
 					default:{
-						perror("Process couldn't connect to SERVER");//TODO => Agregar logs con librerias
-						printf("Not able to connect to server %s. Please check if it's down.\n",ip);
+						perror("Handshake not accepted");//TODO => Agregar logs con librerias
+						printf("Handshake not accepted when tried to connect your '%s' with '%s'\n",getProcessString(processToConnect),getProcessString(message->process));
 						close(*socketClient);
+						exitcode = EXIT_FAILURE;
 						break;
 					}
+					}
+
+					break;
+				}
+				default:{
+					perror("Process couldn't connect to SERVER");//TODO => Agregar logs con librerias
+					printf("Not able to connect to server %s. Please check if it's down.\n",ip);
+					close(*socketClient);
+					break;
+				}
 				}
 
 			}else if (receivedBytes == 0 ){
@@ -185,7 +204,7 @@ void waitRequestFromNucleo(int *socketClient){
 }
 
 
-int ejecutarPrograma(t_PCB *PCB){
+int ejecutarPrograma(t_PCB* PCB){
 	int exitCode = EXIT_SUCCESS;
 	t_registroIndiceCodigo* instruccionActual;
 	t_memoryLocation* posicionEnMemoria=malloc(sizeof(t_memoryLocation));
@@ -198,7 +217,12 @@ int ejecutarPrograma(t_PCB *PCB){
 	posicionEnMemoria->size=instruccionActual->longitudInstruccionEnBytes;
 	//serializarPosicionDeMemoria();
 	sendMessage(&socketUMC,direccionAEnviar,sizeof(t_memoryLocation));
-	receiveMessage(&socketCPU,codigoRecibido,instruccionActual->longitudInstruccionEnBytes);
+	if(receiveMessage(&socketCPU,codigoRecibido,instruccionActual->longitudInstruccionEnBytes)==-1){
+		char* mensajeDeError="No se pudo obtener la solicitud a ejecutar";
+		sendMessage(&socketNucleo,mensajeDeError,strlen(mensajeDeError));
+		printf("No se pudo obtener la solicitud a ejecutar");
+		exit(EXIT_FAILURE);
+	};
 	analizadorLinea(codigoRecibido,funciones,funciones_kernel);
 	//free (instruccion_a_ejecutar);
 
