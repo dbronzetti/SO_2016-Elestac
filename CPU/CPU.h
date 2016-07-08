@@ -8,6 +8,8 @@
 #include <parser/parser.h>
 #include <commons/collections/list.h>
 #include "commons/config.h"
+#include "commons/log.h"
+
 #include "sockets.h"
 
 typedef struct {
@@ -25,11 +27,12 @@ AnSISOP_kernel* funciones_kernel;
 int frameSize = 0;
 int socketUMC = 0;
 int socketNucleo = 0;
+t_log* logCPU;
 
 int ejecutarPrograma(t_PCB *PCB);
 int connectTo(enum_processes processToConnect, int *socketClient);
 void crearArchivoDeConfiguracion(char *configFile);
 void sendRequestToUMC();
-void waitRequestFromNucleo(int *socketClient);
+void waitRequestFromNucleo(int *socketClient, char * messageRcv);
 
 #endif /* CPU_H_ */
