@@ -59,6 +59,7 @@ typedef struct {
 
 //Semaforos
 pthread_mutex_t listadoCPU;
+pthread_mutex_t listadoProcesos;
 pthread_mutex_t cListos;
 pthread_mutex_t cBloqueados;
 pthread_mutex_t cFinalizar;
@@ -100,6 +101,7 @@ int frameSize = 0;
 
 void runScript(char* codeScript);
 void planificarProceso();
+int procesarMensajeCPU(t_PCB* datosPCB, t_proceso* datosProceso,t_MessageNucleo_CPU* contextoProceso,int libreCPU);
 void finalizaProceso(int socket, int PID, int estado);
 void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
 void deserializarES(t_es* datos, char* buffer);

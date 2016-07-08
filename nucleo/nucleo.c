@@ -362,6 +362,7 @@ void runScript(char* codeScript){
 }
 
 void planificarProceso() {
+	int exitCode = EXIT_FAILURE;
 	//Veo si hay procesos para planificar en la cola de Listos
 	if (queue_is_empty(colaListos) && (queue_is_empty(colaFinalizar))) {
 		return;
@@ -390,34 +391,9 @@ void planificarProceso() {
 		int posicion = buscarPCB(datosProceso->PID);
 		if (posicion != -1) {
 			datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
-			char* bufferEnviar = malloc(sizeof(t_MessageNucleo_CPU));
-
 			contextoProceso->cantInstruc = configNucleo.quantum;
 
-			contextoProceso->ProgramCounter = datosPCB->ProgramCounter;
-
-			contextoProceso->processID = datosPCB->PID;
-
-			serializeNucleo_CPU(contextoProceso, bufferEnviar, sizeof(t_MessageNucleo_CPU));
-
-			//Saco el primer elemento de la cola, porque ya lo planifique.
-			pthread_mutex_lock(&cListos);
-			queue_pop(colaListos);
-			pthread_mutex_unlock(&cListos);
-
-			send(libreCPU, bufferEnviar, sizeof(t_MessageNucleo_CPU), 0);
-
-			//Cambio Estado del Proceso
-			int estado = 2;
-			cambiarEstadoProceso(datosPCB->PID, estado);
-			/*
-			1) rcv();
-
-			2)
-			procesarRespuesta(libreCPU);
-			 */
-
-			free(bufferEnviar);
+			exitCode = procesarMensajeCPU(datosPCB, datosProceso, contextoProceso, libreCPU);
 
 		} else {
 			printf("Proceso no encontrado en la lista.\n");
@@ -429,36 +405,50 @@ void planificarProceso() {
 		int posicion = buscarPCB(datosProceso->PID);
 		if (posicion != -1) {
 			datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
-			char* bufferEnviar = malloc(sizeof(t_MessageNucleo_CPU));
-
 			contextoProceso->head = 1;
 
-			contextoProceso->ProgramCounter = datosPCB->ProgramCounter;
+			exitCode = procesarMensajeCPU(datosPCB, datosProceso, contextoProceso,libreCPU);
 
-			//enviar metadata
-
-			contextoProceso->processID = datosPCB->PID;
-			serializeNucleo_CPU(contextoProceso, bufferEnviar, sizeof(t_MessageNucleo_CPU));
-			//Saco el primer elemento de la cola, porque ya lo planifique.
-			pthread_mutex_lock(&cFinalizar);
-			queue_pop(colaFinalizar);
-			pthread_mutex_unlock(&cFinalizar);
-
-			send(libreCPU, bufferEnviar, sizeof(t_MessageNucleo_CPU), 0);
-			//Cambio Estado del Proceso
-			int estado = 2;
-			cambiarEstadoProceso(datosPCB->PID, estado);
-
-			//1) rcv();
-
-			//2)
-			procesarRespuesta(libreCPU);
-
-			free(bufferEnviar);
+		} else {
+			printf("Proceso no encontrado en la lista.\n");
 		}
 	}
-
 	free(contextoProceso);
+}
+
+int procesarMensajeCPU(t_PCB* datosPCB, t_proceso* datosProceso,t_MessageNucleo_CPU* contextoProceso,int libreCPU){
+		int exitCode = EXIT_FAILURE;
+		char* bufferEnviar = malloc(sizeof(t_MessageNucleo_CPU));
+
+		contextoProceso->ProgramCounter = datosPCB->ProgramCounter;
+
+		contextoProceso->processID = datosPCB->PID;
+
+		//TODO enviar metadata
+
+		serializeNucleo_CPU(contextoProceso, bufferEnviar,sizeof(t_MessageNucleo_CPU));
+
+		//Saco el primer elemento de la cola, porque ya lo planifique.
+		pthread_mutex_lock(&cListos);
+		queue_pop(colaListos);
+		pthread_mutex_unlock(&cListos);
+
+		send(libreCPU, bufferEnviar, sizeof(t_MessageNucleo_CPU), 0);
+
+		//Cambio Estado del Proceso
+		int estado = 2;
+		cambiarEstadoProceso(datosPCB->PID, estado);
+
+		//1) rcv();
+
+
+		//2)
+
+		exitCode = procesarRespuesta(libreCPU);
+
+		free(bufferEnviar);
+		return exitCode;
+
 }
 
 int procesarRespuesta(int socketLibre){
@@ -573,7 +563,9 @@ void finalizaProceso(int socket, int PID, int estado) {
 	int estadoProceso;
 	//Cambio el estado del proceso, y guardo en Log que finalizo correctamente
 	t_PCB* datosProceso;
+	pthread_mutex_lock(&listadoProcesos);
 	datosProceso = (t_PCB*) list_get(listaProcesos, posicion);
+	pthread_mutex_unlock(&listadoProcesos);
 	if (estado == 2) {
 		estadoProceso = 4;
 		cambiarEstadoProceso(PID, estadoProceso);
@@ -602,17 +594,16 @@ int buscarCPULibre() {
 	int cantCPU, i=0;
 	t_MessageNucleo_CPU* datosCPU;
 	cantCPU = list_size(listaCPU);
-	pthread_mutex_lock(&listadoCPU);
 	for(i=0;i<cantCPU;i++){
+		pthread_mutex_lock(&listadoCPU);
 		datosCPU = (t_MessageNucleo_CPU*) list_get(listaCPU, 0);
+		pthread_mutex_unlock(&listadoCPU);
 
 		if (datosCPU->estadoCPU == 0){
 			datosCPU->estadoCPU = 1;
-			pthread_mutex_unlock(&listadoCPU);
 		return datosCPU->numSocket;
 		}
 	}
-	pthread_mutex_unlock(&listadoCPU);
 	return -1;
 }
 
@@ -621,7 +612,9 @@ int buscarPCB(int id) {
 	int i = 0;
 	int cantPCB = list_size(listaProcesos);
 	for (i = 0; i < cantPCB; i++) {
+		pthread_mutex_lock(&listadoProcesos);
 		datosPCB = list_get(listaProcesos, i);
+		pthread_mutex_unlock(&listadoProcesos);
 		if (datosPCB->PID == id) {
 			return i;
 		}
@@ -634,7 +627,9 @@ int buscarCPU(int socket) {
 	int i = 0;
 	int cantCPU = list_size(listaCPU);
 	for (i = 0; i < cantCPU; i++) {
+		pthread_mutex_lock(&listadoCPU);
 		datosCPU = list_get(listaCPU, i);
+		pthread_mutex_unlock(&listadoCPU);
 		if (datosCPU->numSocket == socket) {
 			return i;
 		}
@@ -664,7 +659,9 @@ void liberarCPU(int socket) {
 	int liberar = buscarCPU(socket);
 	if (liberar != -1) {
 		t_MessageNucleo_CPU* datosCPU;
+		pthread_mutex_lock(&listadoCPU);
 		datosCPU = (t_MessageNucleo_CPU*) list_get(listaCPU, liberar);
+		pthread_mutex_unlock(&listadoCPU);
 		datosCPU->estadoCPU = 0;
 		planificarProceso();
 	} else {
@@ -676,7 +673,9 @@ void cambiarEstadoProceso(int PID, int estado) {
 	int cambiar = buscarPCB(PID);
 	if (cambiar != -1) {
 		t_PCB* datosProceso;
+		pthread_mutex_lock(&listadoProcesos);
 		datosProceso = (t_PCB*) list_get(listaProcesos, cambiar);
+		pthread_mutex_lock(&listadoProcesos);
 		datosProceso->estado = estado;
 	} else {
 		printf("Error al cambiar estado de proceso, proceso no encontrado en la lista.\n");
@@ -1009,4 +1008,3 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 
 	return exitcode;
 }
-
