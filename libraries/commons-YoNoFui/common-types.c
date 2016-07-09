@@ -94,7 +94,8 @@ t_memoryAndName* buscarEnElStackPosicionPagina(t_PCB* pcb){
 	t_memoryAndName* ultimaPosicionLlena;
 	ultimoRegistro=list_get(pcb->indiceDeStack,pcb->indiceDeStack->elements_count);
 	ultimaPosicionLlena=list_get(ultimoRegistro->vars,ultimoRegistro->vars->elements_count);
-
+	//TODO 1) TENER EN CUENTA la pagina donde arranca el stack
+	//TODO 2) TENER EN CUENTA argumentos para ultima posicion
 	return ultimaPosicionLlena;
 }
 
