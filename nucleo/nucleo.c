@@ -724,6 +724,45 @@ void actualizarPC(int PID, int ProgramCounter) {
 	}
 }
 
+t_valor_variable *obtenerValor(t_nombre_compartida variable) {
+	printf("NUCLEO: pide variable %s\n", variable);
+	t_valor_variable *valorVariable = NULL;
+	int i = 0;
+
+	while (configNucleo.shared_vars[i] != NULL){
+
+		if (strcmp(configNucleo.shared_vars[i], variable) == 0) {
+			//return (int*)configNucleo.shared_vars[i];
+			*valorVariable = configNucleo.shared_vars_values[i];
+			break;
+		}
+		i++;
+	}
+
+	//TENER EN CUENTA que aca esta funcionando con el \n
+	if (valorVariable == NULL){//TODO PASAR ESTE BLOQUE IF A DONDE SE LLAMA LA FUNCION obtenerValor
+		printf("No encontre variable %s %d id, exit\n",variable,strlen(variable));
+	}
+
+	return valorVariable;
+}
+
+void grabarValor(t_nombre_compartida variable, t_valor_variable* valor){
+
+	int i = 0;
+
+	while (configNucleo.shared_vars[i] != NULL){
+
+		if (strcmp(configNucleo.shared_vars[i], variable) == 0) {
+			//return (int*)configNucleo.shared_vars[i];
+			configNucleo.shared_vars_values[i] =  *valor;
+			break;
+		}
+		i++;
+	}
+
+}
+
 void obtenerMetadata(char *codeScript,t_metadata_program* miMetaData) {
 	miMetaData = metadata_desde_literal(codeScript);
 
@@ -804,7 +843,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 
 	message->operation = agregar_proceso;
 	message->PID = PID;
-	message->cantPages = cantPages;
+	message->cantPages = cantPages + configNucleo.stack_size;
 
 	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->cantPages);
 	bufferSize = sizeof(bufferSize) + payloadSize;
@@ -821,26 +860,17 @@ void iniciarPrograma(int PID, char *codeScript) {
 	sendMessage(&socketUMC, (void*) contentLen, sizeof(contentLen));
 
 	//3) Enviar programa
-	char* content = malloc(contentLen);
-	strcpy(content,codeScript);
-	sendMessage(&socketUMC, content, contentLen);
-
-	//4) Enviar tamanio de stack
-	int stackSize = configNucleo.stack_size;
-	sendMessage(&socketUMC, (void*) stackSize, sizeof(stackSize));
+	sendMessage(&socketUMC, (void*) codeScript, contentLen);
 
 	free(message);
 
 }
-
-
 
 //TODO invocar al procesar estado exit
 void finalizarPrograma(int PID) {
 
 	int bufferSize = 0;
 	int payloadSize = 0;
-	char *content = string_new();
 
 	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
 
@@ -848,8 +878,8 @@ void finalizarPrograma(int PID) {
 	message->PID = PID;
 	message->cantPages = -1; //DEFAULT value when the operation doesn't need it
 
-	payloadSize = sizeof(message->operation) + sizeof(message->PID);
-	bufferSize = sizeof(bufferSize) + payloadSize ;
+	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->cantPages);
+	bufferSize = sizeof(bufferSize) + payloadSize;
 
 	char *buffer = malloc(bufferSize);
 
@@ -899,11 +929,17 @@ void crearArchivoDeConfiguracion(char *configFile){
 	configNucleo.stack_size = config_get_int_value(configuration,"stack_size");
 	configNucleo.pageSize = config_get_int_value(configuration,"pageSize");
 	int i = 0;
-	while (configNucleo.io_sleep[i] != NULL){
+	/*while (configNucleo.io_sleep[i] != NULL){
 		printf("valor %d - %d\n",i,configNucleo.io_sleep[i]);
 		i++;
-	}
+	}*/
 
+	//initializing shared variables values
+	i = 0;
+	while (configNucleo.shared_vars[i] != NULL){
+		configNucleo.shared_vars_values[i] = 0; //DEFAULT Value
+		i++;
+	}
 }
 
 

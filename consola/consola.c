@@ -53,28 +53,31 @@ int main(int argc, char **argv) {
 
 	printf("despues de conectarme");
 	*/
+	int tamanioArchivo = -1;
 	while (1) {
 		printf(PROMPT);
 		fgets(inputTeclado, sizeof(inputTeclado), stdin);
 		char ** comando = string_split(inputTeclado, " ");
 		switch (reconocerComando(comando[0])) {
 		case 1: {
-			int* tamanioArchivo=NULL;
 			printf("Comando Reconocido.\n");
+
 			codeScript = leerArchivoYGuardarEnCadena(&tamanioArchivo);
+			printf("codigo del programa:%s \n", codeScript);
+			printf("Tamanio del archivo: %d\n", tamanioArchivo);
+
+			exitCode = sendMessage(&socketNucleo, codeScript,strlen(codeScript));
+
 			fgets(inputTeclado, sizeof(inputTeclado), stdin);
-			exitCode = sendMessage(&socketNucleo, codeScript,string_length(codeScript));
-			//sendMessage(&socketNucleo, tamanioArchivo,sizeof(tamanioArchivo))
-			printf("Tamanio del archivo: %d\n",(int) tamanioArchivo);
+
 			break;
 		}
-		case 2:{
+		case 2: {
 			printf("Comando Reconocido.\n");
-			int finalizar = 1;
-			exitCode = sendMessage(&socketNucleo, (void*)finalizar, sizeof(int));//TODO verificar que sea correcto
+			sendMessage(&socketNucleo, (void*)tamanioArchivo, sizeof(int));
 			break;
 		}
-		case 3: {
+		case 2: {
 			printf("Comando Reconocido.\n");
 			exit(-1);
 			break;
@@ -89,7 +92,7 @@ int main(int argc, char **argv) {
 int reconocerComando(char* comando) {
 	if (!strcmp("ejecutar\n", comando)) {
 		return 1;
-	}else if(!strcmp("finalizar\n", comando)){
+	}else if (!strcmp("finalizar\n", comando)){
 		return 2;
 	}else if (!strcmp("salir\n", comando)) {
 		return 3;

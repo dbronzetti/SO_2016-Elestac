@@ -29,13 +29,8 @@ typedef struct{
 } t_memoryLocation;
 
 typedef struct{
-	char nombreVariable;
-	t_memoryLocation* posicionEnMemoria;
-}t_memoryAndName;
-
-typedef struct{
-	char *identificador;
-	t_memoryLocation direccionValorDeVariable; //
+	char identificador;
+	t_memoryLocation *direccionValorDeVariable; //
 } t_vars;
 
 struct indiceDeCodigo{
@@ -65,7 +60,7 @@ struct bloqueDeControl{
 	int finalizar;
 	char* codeScript;
 	t_list *indiceDeCodigo;//cola o pila con registros del tipo t_registroIndiceCodigo
-	t_list *indiceDeEtiquetas;//cola o pila con registros del tipo t_registroIndiceEtiqueta
+	char *indiceDeEtiquetas;//cola o pila con registros del tipo t_registroIndiceEtiqueta
 	t_list *indiceDeStack;//cola o pila con registros del tipo t_registroStack
 }typedef t_PCB;
 
@@ -99,7 +94,7 @@ void signal(t_nombre_semaforo identificador_semaforo);
 int condicionBuscarVarible(t_vars* variableBuscada,t_vars* otraVariable);
 void serializarES(t_es *dispositivoEnviar, char *dispositivoSerializado);
 void deserializarES(t_es* datos, char* buffer);
-t_memoryAndName* buscarEnElStackPosicionPagina(t_PCB* pcb);
+t_vars* buscarEnElStackPosicionPagina(t_PCB* pcb);
 t_memoryLocation* buscarUltimaPosicionOcupada(t_PCB* pcbEjecutando);
 
 

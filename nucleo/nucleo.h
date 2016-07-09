@@ -35,6 +35,7 @@ int* sem_init;
 char** io_ids;
 int* io_sleep;
 char** shared_vars;
+int** shared_vars_values;
 int stack_size;
 int pageSize;
 } t_configFile;
@@ -103,7 +104,6 @@ void runScript(char* codeScript);
 void planificarProceso();
 int procesarMensajeCPU(t_PCB* datosPCB, t_proceso* datosProceso,t_MessageNucleo_CPU* contextoProceso,int libreCPU);
 void finalizaProceso(int socket, int PID, int estado);
-void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
 void deserializarES(t_es* datos, char* buffer);
 void atenderBloqueados();
 void atenderCorteQuantum(int socket, int PID);
@@ -118,9 +118,21 @@ int buscarCPU(int socket);
 void actualizarPC(int PID, int ProgramCounter);
 void crearArchivoDeConfiguracion(char* configFile);
 
+//Encabezamiento de Funciones de Stack
+
 void armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData);
 void armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData);
 int definirVar(char* nombreVariable,t_registroStack miPrograma,int posicion);
+
+//Privilegiadas perro
+
+t_valor_variable* obtenerValor(t_nombre_compartida variable);
+void grabarValor(t_nombre_compartida variable, t_valor_variable* valor);
+void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
+void wait(t_nombre_semaforo identificador_semaforo);
+void signal(t_nombre_semaforo identificador_semaforo);
+
+
 
 
 //Conexiones y Funciones para los mensajes

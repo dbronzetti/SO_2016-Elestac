@@ -44,54 +44,55 @@ void destroyRegistroStack(t_registroStack* self){
 	free(self->vars);
 }
 
-t_puntero definirVariable(t_nombre_variable nombreVariable){
+t_puntero definirVariable(t_nombre_variable identificador){
 	t_memoryLocation* varPosition=malloc(sizeof(t_memoryLocation));
 	t_puntero posicionDeLaVariable;
-	t_memoryAndName* ultimaPosicionOcupada;
-	t_memoryAndName* variableAAgregar=malloc(sizeof(t_memoryLocation));
+	t_vars* ultimaPosicionOcupada;
+	t_vars* variableAAgregar=malloc(sizeof(t_memoryLocation));
 	ultimaPosicionOcupada=buscarEnElStackPosicionPagina(PCB);
-	ultimaPosicionOcupada->nombreVariable=nombreVariable;
+	ultimaPosicionOcupada->identificador=identificador;
 	if(ultimoPosicionPC==PCB->ProgramCounter){
 		t_registroStack* ultimoRegistro=malloc(sizeof(t_registroStack));
-		if(ultimaPosicionOcupada->posicionEnMemoria->offset==tamanioDePagina){
-			varPosition->pag=ultimaPosicionOcupada->posicionEnMemoria->pag+1;
-			varPosition->offset=ultimaPosicionOcupada->posicionEnMemoria->offset+4;
-			varPosition->size=ultimaPosicionOcupada->posicionEnMemoria->size;
+		if(ultimaPosicionOcupada->direccionValorDeVariable->offset==tamanioDePagina){
+			varPosition->pag=ultimaPosicionOcupada->direccionValorDeVariable->pag+1;
+			varPosition->offset=ultimaPosicionOcupada->direccionValorDeVariable->offset+4;
+			varPosition->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
 		}else{
-			varPosition->pag=ultimaPosicionOcupada->posicionEnMemoria->pag;
-			varPosition->offset=ultimaPosicionOcupada->posicionEnMemoria->offset+4;
-			varPosition->size=ultimaPosicionOcupada->posicionEnMemoria->size;
+			varPosition->pag=ultimaPosicionOcupada->direccionValorDeVariable->pag;
+			varPosition->offset=ultimaPosicionOcupada->direccionValorDeVariable->offset+4;
+			varPosition->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
 		}
-		variableAAgregar->nombreVariable=nombreVariable;
-		variableAAgregar->posicionEnMemoria=varPosition;
+		variableAAgregar->identificador=identificador;
+		variableAAgregar->direccionValorDeVariable=varPosition;
 		ultimoRegistro=list_get(PCB->indiceDeStack,PCB->indiceDeStack->elements_count);
-		posicionDeLaVariable=(t_puntero)varPosition;
+		posicionDeLaVariable = &varPosition;
 		ultimoPosicionPC=PCB->ProgramCounter;
 		return posicionDeLaVariable;
 	}else{
 		t_registroStack* registroAAgregar=malloc(sizeof(t_registroStack));
-		if(ultimaPosicionOcupada->posicionEnMemoria->offset==tamanioDePagina){
-			varPosition->pag=ultimaPosicionOcupada->posicionEnMemoria->pag+1;
-			varPosition->offset=ultimaPosicionOcupada->posicionEnMemoria->offset+4;
-			varPosition->size=ultimaPosicionOcupada->posicionEnMemoria->size;
+		if(ultimaPosicionOcupada->direccionValorDeVariable->offset==tamanioDePagina){
+			varPosition->pag=ultimaPosicionOcupada->direccionValorDeVariable->pag+1;
+			varPosition->offset=ultimaPosicionOcupada->direccionValorDeVariable->offset+4;
+			varPosition->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
 		}else{
-			varPosition->pag=ultimaPosicionOcupada->posicionEnMemoria->pag;
-			varPosition->offset=ultimaPosicionOcupada->posicionEnMemoria->offset+4;
-			varPosition->size=ultimaPosicionOcupada->posicionEnMemoria->size;
+			varPosition->pag=ultimaPosicionOcupada->direccionValorDeVariable->pag;
+			varPosition->offset=ultimaPosicionOcupada->direccionValorDeVariable->offset+4;
+			varPosition->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
 		}
-		variableAAgregar->nombreVariable=nombreVariable;
-		variableAAgregar->posicionEnMemoria=varPosition;
+		variableAAgregar->identificador=identificador;
+		variableAAgregar->direccionValorDeVariable=varPosition;
 		list_add(registroAAgregar->vars,(void*)variableAAgregar);
 		registroAAgregar->pos=PCB->indiceDeStack->elements_count;
 		list_add(PCB->indiceDeStack,registroAAgregar);
-		posicionDeLaVariable=(t_puntero)varPosition;
+		posicionDeLaVariable=&varPosition;
 		ultimoPosicionPC=PCB->ProgramCounter;
-		return posicionDeLaVariable;}
+		return posicionDeLaVariable;
+	}
 }
 
-t_memoryAndName* buscarEnElStackPosicionPagina(t_PCB* pcb){
+t_vars* buscarEnElStackPosicionPagina(t_PCB* pcb){
 	t_registroStack* ultimoRegistro;
-	t_memoryAndName* ultimaPosicionLlena;
+	t_vars* ultimaPosicionLlena;
 	ultimoRegistro=list_get(pcb->indiceDeStack,pcb->indiceDeStack->elements_count);
 	ultimaPosicionLlena=list_get(ultimoRegistro->vars,ultimoRegistro->vars->elements_count);
 
@@ -102,18 +103,18 @@ t_memoryAndName* buscarEnElStackPosicionPagina(t_PCB* pcb){
 
 
 t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
-	bool condicionVariable(t_memoryAndName* unaVariable){
-		return (unaVariable->nombreVariable==identificador_variable);
+	bool condicionVariable(t_vars* unaVariable){
+		return (unaVariable->identificador==identificador_variable);
 	}
 	int i;
 	t_registroStack* registroBuscado=malloc(sizeof(t_registroStack));
-	t_memoryAndName* posicionBuscada=malloc(sizeof(t_memoryLocation));
+	t_vars* posicionBuscada=malloc(sizeof(t_memoryLocation));
 	t_puntero posicionEncontrada;
 	for(i=0;i<PCB->indiceDeStack->elements_count;i++){
 		registroBuscado=list_get(PCB->indiceDeStack,i);
 		posicionBuscada=list_find(registroBuscado->vars,(void*)condicionVariable);
 	}
-	posicionEncontrada=(t_puntero)posicionBuscada->posicionEnMemoria;
+	posicionEncontrada=(t_puntero)posicionBuscada->direccionValorDeVariable;
 	return posicionEncontrada;
 
 
@@ -187,7 +188,7 @@ void irAlLabel(t_nombre_etiqueta etiqueta){
 	t_registroStack* nuevoRegistroStack=malloc(sizeof(t_registroStack));
 	t_memoryLocation* ultimaPosicionDeMemoria=malloc(sizeof(t_memoryLocation));
 	t_memoryLocation* nuevaPosicionDeMemoria=malloc(sizeof(t_memoryLocation));
-	t_memoryAndName* infoVariable=malloc(sizeof(t_memoryAndName));
+	t_vars* infoVariable=malloc(sizeof(t_vars));
 	int condicionEtiquetas(t_nombre_etiqueta unaEtiqueta,t_registroIndiceEtiqueta registroIndiceEtiqueta){
 		return (registroIndiceEtiqueta.funcion==unaEtiqueta);
 	}
@@ -204,8 +205,8 @@ void irAlLabel(t_nombre_etiqueta etiqueta){
 	list_add(nuevoRegistroStack->args,nuevaPosicionDeMemoria);
 	nuevoRegistroStack->pos=PCB->indiceDeStack->elements_count+1;
 	registroAnterior=list_get(PCB->indiceDeStack,PCB->indiceDeStack->elements_count);
-	infoVariable=(t_memoryAndName*)list_get(registroAnterior->vars,registroAnterior->vars->elements_count);
-	nuevoRegistroStack->retVar=infoVariable->posicionEnMemoria;
+	infoVariable=(t_vars*)list_get(registroAnterior->vars,registroAnterior->vars->elements_count);
+	nuevoRegistroStack->retVar=infoVariable->direccionValorDeVariable;
 	registroBuscado=(t_registroIndiceEtiqueta*)list_find(PCB->indiceDeEtiquetas,(void*)condicionEtiquetas);
 	PCB->ProgramCounter=registroBuscado->posicionDeLaEtiqueta;
 
@@ -324,21 +325,21 @@ void deserializarES(t_es* datos, char* buffer) {
 
 t_memoryLocation* buscarUltimaPosicionOcupada(t_PCB* pcbEjecutando){
 	t_registroStack* ultimoRegistro=malloc(sizeof(t_registroStack));
-	t_memoryAndName* ultimaPosicionDeMemoriaOcupadaVars;
+	t_vars* ultimaPosicionDeMemoriaOcupadaVars;
 	t_memoryLocation* ultimaPosicionDeMemoriaOcupadaArgs;
 	ultimoRegistro=list_get(pcbEjecutando->indiceDeStack,pcbEjecutando->indiceDeStack->elements_count);
 	ultimaPosicionDeMemoriaOcupadaArgs=list_get(ultimoRegistro->args,ultimoRegistro->args->elements_count);
 	ultimaPosicionDeMemoriaOcupadaVars=list_get(ultimoRegistro->vars,ultimoRegistro->vars->elements_count);
-	if(ultimaPosicionDeMemoriaOcupadaArgs->pag>ultimaPosicionDeMemoriaOcupadaVars->posicionEnMemoria->pag){
+	if(ultimaPosicionDeMemoriaOcupadaArgs->pag>ultimaPosicionDeMemoriaOcupadaVars->direccionValorDeVariable->pag){
 		return ultimaPosicionDeMemoriaOcupadaArgs;
 	}else{
-		return ultimaPosicionDeMemoriaOcupadaVars->posicionEnMemoria;
+		return ultimaPosicionDeMemoriaOcupadaVars->direccionValorDeVariable;
 	}
-	if(ultimaPosicionDeMemoriaOcupadaArgs->pag==ultimaPosicionDeMemoriaOcupadaVars->posicionEnMemoria->pag){
-		if(ultimaPosicionDeMemoriaOcupadaArgs->offset>ultimaPosicionDeMemoriaOcupadaVars->posicionEnMemoria->offset){
+	if(ultimaPosicionDeMemoriaOcupadaArgs->pag==ultimaPosicionDeMemoriaOcupadaVars->direccionValorDeVariable->pag){
+		if(ultimaPosicionDeMemoriaOcupadaArgs->offset>ultimaPosicionDeMemoriaOcupadaVars->direccionValorDeVariable->offset){
 			return ultimaPosicionDeMemoriaOcupadaArgs;
 		}else{
-			return ultimaPosicionDeMemoriaOcupadaVars->posicionEnMemoria;
+			return ultimaPosicionDeMemoriaOcupadaVars->direccionValorDeVariable;
 		}
 	}
 	return NULL;
