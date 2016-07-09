@@ -748,23 +748,35 @@ void armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData){
 }
 
 
-/*int armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData){
-	int i;
-	t_registroIndiceEtiqueta regIndiceEtiqueta;
 
-	miMetaData->etiquetas
+void armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData){
 
-	memcpy(unBloqueControl.)
+	int offset = 0;
+		while ( offset < miMetaData->etiquetas_size ){
+			t_registroIndiceEtiqueta *regIndiceEtiqueta = malloc(sizeof(t_registroIndiceEtiqueta));
 
-	//TODO se tiene que agregar una validacion porque la funcion devuelve un error si no se encontro la etiqueta.
+			int j = 0;
+			for (j = 0; miMetaData->etiquetas[offset + j] != '\0'; j++);
 
-	//TODO esto esta mal Funcion no es lo mismo que etiqueta... ver como identificar etiquetas
-	regIndiceEtiqueta.funcion = miMetaData->etiquetas;
+			regIndiceEtiqueta->funcion = malloc(j);
+			memset(regIndiceEtiqueta->funcion,'\0', j);
 
-	regIndiceEtiqueta.posicionDeLaEtiqueta = ;
-	list_add(unBloqueControl.indiceDeEtiquetas,&regIndiceEtiqueta);
-	return 0;
-}*/
+			regIndiceEtiqueta->funcion = string_substring(miMetaData->etiquetas, offset, j);
+			offset += j + 1;//+1 por '\0's
+
+			log_trace(logNucleo,"funcion: %s\n", regIndiceEtiqueta->funcion);
+
+			memcpy(&regIndiceEtiqueta->posicionDeLaEtiqueta, miMetaData->etiquetas +offset, sizeof(regIndiceEtiqueta->posicionDeLaEtiqueta));
+			offset += sizeof(regIndiceEtiqueta->posicionDeLaEtiqueta);
+
+			log_trace(logNucleo,"posicionDeLaEtiqueta: %d\n", regIndiceEtiqueta->posicionDeLaEtiqueta);
+
+			list_add(unBloqueControl.indiceDeEtiquetas,(void*)regIndiceEtiqueta);
+
+		}
+
+		log_trace(logNucleo,"list 'indiceDeEtiquetas' size: %d\n", list_size(unBloqueControl.indiceDeEtiquetas));
+}
 
 
 int definirVar(char* nombreVariable, t_registroStack miPrograma, int posicion) {
