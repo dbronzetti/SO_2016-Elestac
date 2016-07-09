@@ -56,6 +56,11 @@ typedef struct{
 typedef struct{
 	int processID;
 	int operacion;
+} t_MessageCPU_Nucleo;
+
+typedef struct{
+	int processID;
+	int operacion;
 	int ProgramCounter;
 	int cantidadDePaginas;// Cantidad de paginas de codigo
 	int StackPointer;
