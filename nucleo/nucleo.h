@@ -58,6 +58,12 @@ typedef struct {
 	int ProgramCounter;
 } t_proceso;
 
+//Estructura datosCPU
+typedef struct {
+	int numSocket;
+	int estadoCPU;
+} t_datosCPU;
+
 //Semaforos
 pthread_mutex_t listadoCPU;
 pthread_mutex_t listadoProcesos;
@@ -70,12 +76,6 @@ pthread_mutex_t mutex_config;
 
 //Semaforo Contador
 sem_t semBloqueados;
-
-typedef struct {
-	int socket;
-	int PID;
-	char ids[];
-} t_entradasalida;
 
 //Configuracion
 t_configFile configNucleo;
@@ -124,16 +124,13 @@ void armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData
 void armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData);
 int definirVar(char* nombreVariable,t_registroStack miPrograma,int posicion);
 
-//Privilegiadas perro
+//Privilegiadas
 
 t_valor_variable* obtenerValor(t_nombre_compartida variable);
 void grabarValor(t_nombre_compartida variable, t_valor_variable* valor);
 void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
 void wait(t_nombre_semaforo identificador_semaforo);
 void signal(t_nombre_semaforo identificador_semaforo);
-
-
-
 
 //Conexiones y Funciones para los mensajes
 
@@ -143,7 +140,7 @@ void newClients(void *parameter);
 void processMessageReceived(void *parameter);
 void handShake(void *parameter);
 int connectTo(enum_processes processToConnect, int *socketClient);
-int procesarRespuesta(int libre);
+int procesarRespuesta(int socketLibre, char* messageRcv);
 void iniciarPrograma(int PID, char* codeScript);
 void finalizarPrograma(int PID);
 

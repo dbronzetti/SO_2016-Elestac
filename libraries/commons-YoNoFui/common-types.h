@@ -73,6 +73,11 @@ typedef struct datosEntradaSalida {
 	t_nombre_dispositivo dispositivo;
 } t_es;
 
+typedef struct {
+	t_nombre_variable variable;
+	t_valor_variable valor;
+}t_privilegiado;
+
 void setPageSize (int pageSize);
 int getLogicalAddress (int page);
 t_puntero definirVariable(t_nombre_variable nombreVariable);
