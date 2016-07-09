@@ -58,6 +58,12 @@ typedef struct {
 	int ProgramCounter;
 } t_proceso;
 
+//Estructura datosCPU
+typedef struct {
+	int numSocket;
+	int estadoCPU;
+} t_datosCPU;
+
 //Semaforos
 pthread_mutex_t listadoCPU;
 pthread_mutex_t listadoProcesos;

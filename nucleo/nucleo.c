@@ -206,7 +206,7 @@ void handShake (void *parameter){
 
 				if (exitCode == EXIT_SUCCESS){
 
-					t_MessageNucleo_CPU *datosCPU = malloc(sizeof(t_MessageNucleo_CPU));
+					t_datosCPU *datosCPU = malloc(sizeof(t_MessageNucleo_CPU));
 					datosCPU->numSocket = serverData->socketClient;
 					list_add(listaCPU, (void*)datosCPU);
 					free(datosCPU);
@@ -589,11 +589,11 @@ void finalizaProceso(int socket, int PID, int estado) {
 
 int buscarCPULibre() {
 	int cantCPU, i=0;
-	t_MessageNucleo_CPU* datosCPU;
+	t_datosCPU* datosCPU;
 	cantCPU = list_size(listaCPU);
 	for(i=0;i<cantCPU;i++){
 		pthread_mutex_lock(&listadoCPU);
-		datosCPU = (t_MessageNucleo_CPU*) list_get(listaCPU, 0);
+		datosCPU = (t_datosCPU*) list_get(listaCPU, 0);
 		pthread_mutex_unlock(&listadoCPU);
 
 		if (datosCPU->estadoCPU == 0){
@@ -620,7 +620,7 @@ int buscarPCB(int id) {
 }
 
 int buscarCPU(int socket) {
-	t_MessageNucleo_CPU* datosCPU;
+	t_datosCPU* datosCPU;
 	int i = 0;
 	int cantCPU = list_size(listaCPU);
 	for (i = 0; i < cantCPU; i++) {
@@ -655,9 +655,9 @@ void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 void liberarCPU(int socket) {
 	int liberar = buscarCPU(socket);
 	if (liberar != -1) {
-		t_MessageNucleo_CPU* datosCPU;
+		t_datosCPU *datosCPU;
 		pthread_mutex_lock(&listadoCPU);
-		datosCPU = (t_MessageNucleo_CPU*) list_get(listaCPU, liberar);
+		datosCPU = (t_datosCPU*) list_get(listaCPU, liberar);
 		pthread_mutex_unlock(&listadoCPU);
 		datosCPU->estadoCPU = 0;
 		planificarProceso();
