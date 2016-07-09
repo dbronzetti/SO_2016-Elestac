@@ -790,31 +790,9 @@ void armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData){
 
 void armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData){
 
-	int offset = 0;
-		while ( offset < miMetaData->etiquetas_size ){
-			t_registroIndiceEtiqueta *regIndiceEtiqueta = malloc(sizeof(t_registroIndiceEtiqueta));
+	unBloqueControl.indiceDeEtiquetas = miMetaData->etiquetas;
 
-			int j = 0;
-			for (j = 0; miMetaData->etiquetas[offset + j] != '\0'; j++);
-
-			regIndiceEtiqueta->funcion = malloc(j);
-			memset(regIndiceEtiqueta->funcion,'\0', j);
-
-			regIndiceEtiqueta->funcion = string_substring(miMetaData->etiquetas, offset, j);
-			offset += j + 1;//+1 por '\0's
-
-			log_trace(logNucleo,"funcion: %s\n", regIndiceEtiqueta->funcion);
-
-			memcpy(&regIndiceEtiqueta->posicionDeLaEtiqueta, miMetaData->etiquetas +offset, sizeof(regIndiceEtiqueta->posicionDeLaEtiqueta));
-			offset += sizeof(regIndiceEtiqueta->posicionDeLaEtiqueta);
-
-			log_trace(logNucleo,"posicionDeLaEtiqueta: %d\n", regIndiceEtiqueta->posicionDeLaEtiqueta);
-
-			list_add(unBloqueControl.indiceDeEtiquetas,(void*)regIndiceEtiqueta);
-
-		}
-
-		log_trace(logNucleo,"list 'indiceDeEtiquetas' size: %d\n", list_size(unBloqueControl.indiceDeEtiquetas));
+	log_trace(logNucleo,"'indiceDeEtiquetas' size: %d\n", miMetaData->etiquetas_size);
 }
 
 
