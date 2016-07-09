@@ -36,56 +36,59 @@ int getLogicalAddress (int page){
 	return (page * tamanioDePagina);
 }
 void destroyRegistroStack(t_registroStack* self){
-	free(self->args);
-	free(self->pos);
-	free(self->retPos);
+	free(self->args); //TODO NO SE LIBERA ASI, es una LISTA! HACER list destroy con destroy element correspondiente
+	free(self->vars);//TODO NO SE LIBERA ASI, es una LISTA! HACER list destroy con destroy element correspondiente
 	free(self->retVar);
-
-	free(self->vars);
 }
 
 t_puntero definirVariable(t_nombre_variable identificador){
-	t_memoryLocation* varPosition=malloc(sizeof(t_memoryLocation));
 	t_puntero posicionDeLaVariable;
 	t_vars* ultimaPosicionOcupada;
-	t_vars* variableAAgregar=malloc(sizeof(t_memoryLocation));
-	ultimaPosicionOcupada=buscarEnElStackPosicionPagina(PCB);
-	ultimaPosicionOcupada->identificador=identificador;
-	if(ultimoPosicionPC==PCB->ProgramCounter){
-		t_registroStack* ultimoRegistro=malloc(sizeof(t_registroStack));
-		if(ultimaPosicionOcupada->direccionValorDeVariable->offset==tamanioDePagina){
-			varPosition->pag=ultimaPosicionOcupada->direccionValorDeVariable->pag+1;
-			varPosition->offset=ultimaPosicionOcupada->direccionValorDeVariable->offset+4;
-			varPosition->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
-		}else{
-			varPosition->pag=ultimaPosicionOcupada->direccionValorDeVariable->pag;
-			varPosition->offset=ultimaPosicionOcupada->direccionValorDeVariable->offset+4;
-			varPosition->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
+	t_vars* variableAAgregar = malloc(sizeof(t_vars));
+	variableAAgregar->direccionValorDeVariable = malloc(sizeof(t_memoryLocation));
+	variableAAgregar->identificador=identificador;
+
+	ultimaPosicionOcupada = buscarEnElStackPosicionPagina(PCB);
+
+	if(ultimoPosicionPC == PCB->ProgramCounter){
+		t_registroStack* ultimoRegistro = malloc(sizeof(t_registroStack));
+
+		if(ultimaPosicionOcupada->direccionValorDeVariable->offset == tamanioDePagina){
+			variableAAgregar->direccionValorDeVariable->pag = ultimaPosicionOcupada->direccionValorDeVariable->pag + 1; //increasing 1 page to last one
+			variableAAgregar->direccionValorDeVariable->offset = ultimaPosicionOcupada->direccionValorDeVariable->offset + sizeof(int); // sizeof(int) because of all variables values in AnsisOP are integer
+			variableAAgregar->direccionValorDeVariable->size = ultimaPosicionOcupada->direccionValorDeVariable->size;
+		}else{//we suppossed that the variable value is NEVER going to be greater than the page size
+			variableAAgregar->direccionValorDeVariable->pag = ultimaPosicionOcupada->direccionValorDeVariable->pag;
+			variableAAgregar->direccionValorDeVariable->offset = ultimaPosicionOcupada->direccionValorDeVariable->offset + sizeof(int); // sizeof(int) because of all variables values in AnsisOP are integer
+			variableAAgregar->direccionValorDeVariable->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
 		}
-		variableAAgregar->identificador=identificador;
-		variableAAgregar->direccionValorDeVariable=varPosition;
+
 		ultimoRegistro=list_get(PCB->indiceDeStack,PCB->indiceDeStack->elements_count);
-		posicionDeLaVariable = &varPosition;
-		ultimoPosicionPC=PCB->ProgramCounter;
+		list_add(ultimoRegistro->vars, (void*)variableAAgregar);
+
+		posicionDeLaVariable= &variableAAgregar->direccionValorDeVariable;
+
 		return posicionDeLaVariable;
 	}else{
 		t_registroStack* registroAAgregar=malloc(sizeof(t_registroStack));
+
 		if(ultimaPosicionOcupada->direccionValorDeVariable->offset==tamanioDePagina){
-			varPosition->pag=ultimaPosicionOcupada->direccionValorDeVariable->pag+1;
-			varPosition->offset=ultimaPosicionOcupada->direccionValorDeVariable->offset+4;
-			varPosition->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
+			variableAAgregar->direccionValorDeVariable->pag=ultimaPosicionOcupada->direccionValorDeVariable->pag+1;
+			variableAAgregar->direccionValorDeVariable->offset=ultimaPosicionOcupada->direccionValorDeVariable->offset+4;
+			variableAAgregar->direccionValorDeVariable->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
 		}else{
-			varPosition->pag=ultimaPosicionOcupada->direccionValorDeVariable->pag;
-			varPosition->offset=ultimaPosicionOcupada->direccionValorDeVariable->offset+4;
-			varPosition->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
+			variableAAgregar->direccionValorDeVariable->pag=ultimaPosicionOcupada->direccionValorDeVariable->pag;
+			variableAAgregar->direccionValorDeVariable->offset=ultimaPosicionOcupada->direccionValorDeVariable->offset+4;
+			variableAAgregar->direccionValorDeVariable->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
 		}
-		variableAAgregar->identificador=identificador;
-		variableAAgregar->direccionValorDeVariable=varPosition;
+
 		list_add(registroAAgregar->vars,(void*)variableAAgregar);
-		registroAAgregar->pos=PCB->indiceDeStack->elements_count;
+		registroAAgregar->pos = PCB->indiceDeStack->elements_count - 1;
+
 		list_add(PCB->indiceDeStack,registroAAgregar);
-		posicionDeLaVariable=&varPosition;
-		ultimoPosicionPC=PCB->ProgramCounter;
+
+		posicionDeLaVariable= (void*) &variableAAgregar->direccionValorDeVariable;
+
 		return posicionDeLaVariable;
 	}
 }
@@ -115,7 +118,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
 		registroBuscado=list_get(PCB->indiceDeStack,i);
 		posicionBuscada=list_find(registroBuscado->vars,(void*)condicionVariable);
 	}
-	posicionEncontrada=(t_puntero)posicionBuscada->direccionValorDeVariable;
+	posicionEncontrada =(void*)posicionBuscada->direccionValorDeVariable;
 	return posicionEncontrada;
 
 

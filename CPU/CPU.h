@@ -17,7 +17,6 @@ typedef struct {
 	char *ip_Nucleo;
 	int port_UMC;
 	char *ip_UMC;
-	int pageSize;
 } t_configFile;
 
 t_configFile configuration;
@@ -25,8 +24,11 @@ t_configFile configuration;
 AnSISOP_funciones* funciones;
 AnSISOP_kernel* funciones_kernel;
 int frameSize = 0;
+int stackSize = 0;
 int socketUMC = 0;
 int socketNucleo = 0;
+int QUANTUM_SLEEP = 0 ;
+int QUANTUM = 0;
 t_log* logCPU;
 
 int ejecutarPrograma(t_PCB *PCB);
