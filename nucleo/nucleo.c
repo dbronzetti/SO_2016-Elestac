@@ -328,11 +328,13 @@ void runScript(char* codeScript){
 	t_PCB* PCB = malloc(sizeof(t_PCB));
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
 
+	//TODO agregar campos a inicializar
 	PCB->PID = idProcesos;
 	PCB->ProgramCounter = 0;
 	PCB->estado=1;
-	idProcesos++;
 	PCB->finalizar = 0;
+	idProcesos++;
+
 	list_add(listaProcesos,(void*)PCB);
 	log_info(logNucleo, "myProcess %d - Iniciado  Script: %s",PCB->PID, codeScript);
 
@@ -369,6 +371,7 @@ void planificarProceso() {
 	t_PCB* datosPCB;
 	t_MessageNucleo_CPU* contextoProceso = malloc(sizeof(t_MessageNucleo_CPU));
 	t_proceso* datosProceso;
+
 	contextoProceso->head = 0;
 	contextoProceso->cantInstruc = 0;
 
@@ -410,11 +413,11 @@ int procesarMensajeCPU(t_PCB* datosPCB, t_proceso* datosProceso,t_MessageNucleo_
 		int exitCode = EXIT_FAILURE;
 		char* bufferEnviar = malloc(sizeof(t_MessageNucleo_CPU));
 
+		//TODO agregar campos a inicializar
+
 		contextoProceso->ProgramCounter = datosPCB->ProgramCounter;
 
 		contextoProceso->processID = datosPCB->PID;
-
-		//TODO enviar metadata
 
 		serializeNucleo_CPU(contextoProceso, bufferEnviar,sizeof(t_MessageNucleo_CPU));
 
@@ -430,31 +433,33 @@ int procesarMensajeCPU(t_PCB* datosPCB, t_proceso* datosProceso,t_MessageNucleo_
 		cambiarEstadoProceso(datosPCB->PID, estado);
 
 		//1) rcv();
+		//char *messageRcv = malloc(sizeof(t_MessageNucleo_CPU));
+		//TODO esto esta mal, hacerlo con bufferSize y payload
+
 		//processMessageReceived()
 
 		//2)
 
-		exitCode = procesarRespuesta(libreCPU);
+		//exitCode = procesarRespuesta(libreCPU, messageRcv);
 
 		free(bufferEnviar);
 		return exitCode;
 
 }
 
-int procesarRespuesta(int socketLibre){
+int procesarRespuesta(int socketLibre, char* messageRcv){
 	printf("Processing CPU message \n");
 	int exitCode = EXIT_FAILURE;
 
 	t_MessageNucleo_CPU *message=malloc(sizeof(t_MessageNucleo_CPU));
-	char *messageRcv = malloc(sizeof(t_MessageNucleo_CPU));
 
-	char *mensajePrivilegiado = malloc(sizeof(t_MessageNucleo_CPU));
+	char *mensajePrivilegiado = malloc(sizeof(t_privilegiado));//TODO esto no se puede hacer, cambiarlo
 
 	t_es infoES;
 	memset(messageRcv, '\0', sizeof(t_MessageNucleo_CPU));
 	exitCode = receiveMessage(&socketLibre,(void*)messageRcv,sizeof(t_MessageNucleo_CPU));
 
-	//Deserializar messageRcv
+	//Deserializo messageRcv
 	deserializeCPU_Nucleo(message, messageRcv);
 
 	//TODO Deserializar mensajePrivilegiado
@@ -502,7 +507,7 @@ int procesarRespuesta(int socketLibre){
 			atenderCorteQuantum(socketLibre, message->processID);
 			break;
 	case 6://obtener valor TODO
-		//obtenerValor(mensajePrivilegiado->variable);
+		//obtenerValor(mensajePrivilegiado->variable); //TODO
 		break;
 	case 7://grabar_valor TODO
 		//grabarValor(mensajePrivilegiado->variable,mensajePrivilegiado->valor);
