@@ -283,11 +283,11 @@ void processMessageReceived (void *parameter){
 				int opFinalizar;
 
 				//Deserializar messageRcv
-				memcpy(message, messageRcv,sizeof(messageRcv));
+				//memcpy(message, messageRcv,sizeof(messageRcv)); //TODO deserealizar mensaje recibido
 
 				//Finaliza Proceso
 				if(opFinalizar==-1){
-				finalizaProceso(serverData->socketClient, message->processID, message->processStatus);
+				//finalizaProceso(serverData->socketClient, message->processID, message->processStatus); //TODO finalizar proceso
 				}
 
 				runScript(messageRcv);
