@@ -280,31 +280,21 @@ void processMessageReceived (void *parameter){
 			case CONSOLA:{
 				log_info(logNucleo, "Processing CONSOLA message received\n");
 				pthread_mutex_lock(&activeProcessMutex);
-				int exitCode = EXIT_FAILURE;
 				int opFinalizar;
-				char* operacionSerializada=malloc(sizeof(int));
-				t_MessageNucleo_Consola *message = malloc(sizeof(t_MessageNucleo_Consola));
 
 				//Deserializar messageRcv
-				deserializeConsola_Nucleo(message, messageRcv);
-				printf("se recibio el processID #%d\n", message->processID);
-
-				runScript(messageRcv);
-				//TODO se puede agregar un campo de operacion
-				//Recibo operacion para finalizar
-				exitCode = receiveMessage(&serverData->socketClient, messageRcv, sizeof(fromProcess));
-				memcpy(&opFinalizar, &operacionSerializada, sizeof(int));
+				memcpy(message, messageRcv,sizeof(messageRcv));
 
 				//Finaliza Proceso
-				if(opFinalizar==1){
-
+				if(opFinalizar==-1){
 				finalizaProceso(serverData->socketClient, message->processID, message->processStatus);
 				}
 
-				free(message);
-				free(operacionSerializada);
-				pthread_mutex_unlock(&activeProcessMutex);
+				runScript(messageRcv);
 
+				receiveMessage(&serverData->socketClient, messageRcv, sizeof(fromProcess));
+
+				pthread_mutex_unlock(&activeProcessMutex);
 			break;
 		}
 			default:{
@@ -645,7 +635,7 @@ void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 	infoBloqueado->PID = activePID;
 	infoBloqueado->dispositivo = dispositivo;
 	infoBloqueado->tiempo = tiempo;
-
+	t_bloqueado* elementoDeLaCola;
 	pthread_mutex_lock(&cBloqueados);
 	queue_push(colaBloqueados, (void*) infoBloqueado);
 	pthread_mutex_unlock(&cBloqueados);
@@ -734,59 +724,47 @@ void actualizarPC(int PID, int ProgramCounter) {
 	}
 }
 
-t_metadata_program *obtenerMetadata(char *codeScript) {
-	t_metadata_program* miMetaData = malloc(sizeof(t_metadata_program));
+void obtenerMetadata(char *codeScript,t_metadata_program* miMetaData) {
 	miMetaData = metadata_desde_literal(codeScript);
 
 	printf("%d", miMetaData->instrucciones_serializado->start);
 
-	free(miMetaData);
 
-	return miMetaData;
 }
 
-int armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData){
+void armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData){
 	int i;
 
-	int programOffset  = 0;
-	t_intructions * nextInstructionPointer =  NULL;
+	t_registroIndiceCodigo* registroAAgregar = malloc(sizeof(t_registroIndiceCodigo));
 
 	//First instruction
-	nextInstructionPointer->start = miMetaData->instrucciones_serializado->start;
-	nextInstructionPointer->offset = miMetaData->instrucciones_serializado->offset;
 
-	for (i= miMetaData->instruccion_inicio; i < miMetaData->instrucciones_size ; i++){
+	for (i=0; i < miMetaData->instrucciones_size ; i++){
 
-		//unBloqueControl.indiceDeCodigo[i].inicioDeInstruccion = nextInstructionPointer->start;
-		//unBloqueControl.indiceDeCodigo[i].desplazamientoEnBytes = nextInstructionPointer->offset;
-
-		programOffset += nextInstructionPointer->start + nextInstructionPointer->offset ;
-
-		memcpy(nextInstructionPointer, (void*) programOffset, sizeof(t_intructions));//En vez de una direccion de memoria se le pasa un VALOR de direccion de memoria
-
+		registroAAgregar->inicioDeInstruccion= miMetaData->instrucciones_serializado[i].start;
+		registroAAgregar->longitudInstruccionEnBytes = miMetaData->instrucciones_serializado[i].offset;
+		list_add(unBloqueControl.indiceDeCodigo,(void*)registroAAgregar);
 	}
-
-	return 0;
 }
 
 
-int armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData){
+/*int armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData){
 	int i;
 	t_registroIndiceEtiqueta regIndiceEtiqueta;
-	t_puntero_instruccion devolucionEtiqueta;
 
-	for( i=0; i < miMetaData->cantidad_de_etiquetas; i++ ){
-		devolucionEtiqueta = metadata_buscar_etiqueta(miMetaData->etiquetas[i],miMetaData->etiquetas,miMetaData->etiquetas_size);
-		//TODO se tiene que agregar una validacion porque la funcion devuelve un error si no se encontro la etiqueta.
+	miMetaData->etiquetas
 
-		//TODO esto esta mal Funcion no es lo mismo que etiqueta... ver como identificar etiquetas
-		regIndiceEtiqueta.funcion = miMetaData->etiquetas;
+	memcpy(unBloqueControl.)
 
-		regIndiceEtiqueta.posicionDeLaEtiqueta = devolucionEtiqueta;
-		list_add(unBloqueControl.indiceDeEtiquetas,&regIndiceEtiqueta);
-	}
+	//TODO se tiene que agregar una validacion porque la funcion devuelve un error si no se encontro la etiqueta.
+
+	//TODO esto esta mal Funcion no es lo mismo que etiqueta... ver como identificar etiquetas
+	regIndiceEtiqueta.funcion = miMetaData->etiquetas;
+
+	regIndiceEtiqueta.posicionDeLaEtiqueta = ;
+	list_add(unBloqueControl.indiceDeEtiquetas,&regIndiceEtiqueta);
 	return 0;
-}
+}*/
 
 
 int definirVar(char* nombreVariable, t_registroStack miPrograma, int posicion) {
@@ -807,7 +785,8 @@ void iniciarPrograma(int PID, char *codeScript) {
 
 	int bufferSize = 0;
 	int payloadSize = 0;
-	int cantPages = sizeof(codeScript) / configNucleo.pageSize;
+	int contentLen = strlen(codeScript) + 1;	//+1 because of '\0'
+	int cantPages = contentLen / configNucleo.pageSize;
 
 	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
 
@@ -827,7 +806,6 @@ void iniciarPrograma(int PID, char *codeScript) {
 
 	//2) Despues de enviar la info, Enviar el tamanio del prgrama
 	string_append(&codeScript, "\0");	//ALWAYS put \0 for finishing the string
-	int contentLen = strlen(codeScript) + 1;	//+1 because of '\0'
 	sendMessage(&socketUMC, (void*) contentLen, sizeof(contentLen));
 
 	//3) Enviar programa
@@ -842,6 +820,8 @@ void iniciarPrograma(int PID, char *codeScript) {
 	free(message);
 
 }
+
+
 
 //TODO invocar al procesar estado exit
 void finalizarPrograma(int PID) {
@@ -890,8 +870,6 @@ void deserializarES(t_es* datos, char* buffer) {
 }
 
 void crearArchivoDeConfiguracion(char *configFile){
-	pthread_mutex_lock(&mutex_config);
-
 	t_config* configuration;
 
 	configuration = config_create(configFile);
@@ -913,7 +891,6 @@ void crearArchivoDeConfiguracion(char *configFile){
 		printf("valor %d - %d\n",i,configNucleo.io_sleep[i]);
 		i++;
 	}
-	pthread_mutex_unlock(&mutex_config);
 
 }
 

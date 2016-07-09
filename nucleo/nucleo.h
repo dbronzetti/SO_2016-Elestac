@@ -119,7 +119,7 @@ void actualizarPC(int PID, int ProgramCounter);
 void crearArchivoDeConfiguracion(char* configFile);
 
 int armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData);
-int armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData);
+void armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData);
 int definirVar(char* nombreVariable,t_registroStack miPrograma,int posicion);
 
 
