@@ -430,7 +430,7 @@ int procesarMensajeCPU(t_PCB* datosPCB, t_proceso* datosProceso,t_MessageNucleo_
 		cambiarEstadoProceso(datosPCB->PID, estado);
 
 		//1) rcv();
-
+		//processMessageReceived()
 
 		//2)
 
@@ -448,12 +448,17 @@ int procesarRespuesta(int socketLibre){
 	t_MessageNucleo_CPU *message=malloc(sizeof(t_MessageNucleo_CPU));
 	char *messageRcv = malloc(sizeof(t_MessageNucleo_CPU));
 
+	char *mensajePrivilegiado = malloc(sizeof(t_MessageNucleo_CPU));
+
 	t_es infoES;
 	memset(messageRcv, '\0', sizeof(t_MessageNucleo_CPU));
 	exitCode = receiveMessage(&socketLibre,(void*)messageRcv,sizeof(t_MessageNucleo_CPU));
 
 	//Deserializar messageRcv
 	deserializeCPU_Nucleo(message, messageRcv);
+
+	//TODO Deserializar mensajePrivilegiado
+	exitCode = receiveMessage(&socketLibre,(void*)mensajePrivilegiado,sizeof(t_MessageNucleo_CPU));
 
 	switch (message->operacion) {
 	case 1: //Entrada Salida
@@ -482,11 +487,11 @@ int procesarRespuesta(int socketLibre){
 		pthread_mutex_unlock(&activeProcessMutex);
 		break;
 	case 2: //Finaliza Proceso Bien
-		finalizaProceso(socketLibre, message->processID,message->operacion);
+		finalizaProceso(socketLibre, message->processID,message->processStatus);
 		break;
 
 	case 3: //Finaliza Proceso Mal
-		finalizaProceso(socketLibre, message->processID,message->operacion);
+		finalizaProceso(socketLibre, message->processID,message->processStatus);
 		break;
 
 	case 4:	//Falla otra cosa
@@ -496,9 +501,11 @@ int procesarRespuesta(int socketLibre){
 			printf("Corto por Quantum.\n");
 			atenderCorteQuantum(socketLibre, message->processID);
 			break;
-	case 6://obtener valor
+	case 6://obtener valor TODO
+		//obtenerValor(mensajePrivilegiado->variable);
 		break;
-	case 7://grabar_valor
+	case 7://grabar_valor TODO
+		//grabarValor(mensajePrivilegiado->variable,mensajePrivilegiado->valor);
 		break;
 	case 8:	//wait o signal
 		break;
