@@ -54,13 +54,11 @@ struct indiceDeEtiqueta{
 struct bloqueDeControl{
 	int PID;
 	int ProgramCounter;
+	int cantidadDePaginas;// Cantidad de paginas de codigo
 	int StackPointer;
-	int cantidadDePaginas;
 	int estado; //0: New, 1: Ready, 2: Exec, 3: Block, 4:5: Exit
-	int finalizar;
-	char* codeScript;
 	t_list *indiceDeCodigo;//cola o pila con registros del tipo t_registroIndiceCodigo
-	char *indiceDeEtiquetas;//cola o pila con registros del tipo t_registroIndiceEtiqueta
+	char *indiceDeEtiquetas;
 	t_list *indiceDeStack;//cola o pila con registros del tipo t_registroStack
 }typedef t_PCB;
 
