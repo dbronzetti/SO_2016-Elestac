@@ -54,14 +54,20 @@ typedef struct{
 } t_MessageNucleo_UMC;
 
 typedef struct{
-	int head;
 	int processID;
-	enum_processStatus processStatus;
-	int ProgramCounter;
-	int cantInstruc;
 	int operacion;
-	int numSocket;
-	int estadoCPU;
+} t_MessageCPU_Nucleo;
+
+typedef struct{
+	int processID;
+	int operacion;
+	int ProgramCounter;
+	int cantidadDePaginas;// Cantidad de paginas de codigo
+	int StackPointer;
+	int quantum_sleep;
+	int quantum;
+	int indiceDeEtiquetasTamanio;
+	char *indiceDeEtiquetas;
 } t_MessageNucleo_CPU;
 
 typedef struct{

@@ -362,72 +362,81 @@ void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize
 	memcpy(buffer + offset, &process, sizeof(process));
 	offset += sizeof(process);
 
-	//2)head
-	memcpy(buffer + offset, &value->head, sizeof(value->head));
-	offset += sizeof(value->head);
-
-	//3)processID
+	//2)processID
 	memcpy(buffer + offset, &value->processID, sizeof(value->processID));
 	offset += sizeof(value->processID);
 
-    //4)processStatus
-    memcpy(buffer + offset, &value->processStatus, sizeof(value->processStatus));
-	offset += sizeof(value->processStatus);
-
-	//5)ProgramCounter
-	memcpy(buffer + offset, &value->ProgramCounter, sizeof(value->ProgramCounter));
-	offset += sizeof(value->ProgramCounter);
-
-	//6)cantInstruc
-	memcpy(buffer + offset, &value->cantInstruc, sizeof(value->cantInstruc));
-	offset += sizeof(value->cantInstruc);
-
-	//7)operacion
+	//3)operacion
 	memcpy(buffer + offset, &value->operacion, sizeof(value->operacion));
 	offset += sizeof(value->operacion);
 
-	//8)numSocket
-	memcpy(buffer + offset, &value->numSocket, sizeof(value->numSocket));
-	offset += sizeof(value->numSocket);
+	//4)ProgramCounter
+	memcpy(buffer + offset, &value->ProgramCounter, sizeof(value->ProgramCounter));
+	offset += sizeof(value->ProgramCounter);
 
-	//9)estadoCPU
-	memcpy(buffer + offset, &value->estadoCPU, sizeof(value->estadoCPU));
+    //5)cantidadDePaginas de codigo
+    memcpy(buffer + offset, &value->cantidadDePaginas, sizeof(value->cantidadDePaginas));
+	offset += sizeof(value->cantidadDePaginas);
+
+	//6)StackPointer
+	memcpy(buffer + offset, &value->StackPointer, sizeof(value->StackPointer));
+	offset += sizeof(value->StackPointer);
+
+	//7)quantum_sleep
+	memcpy(buffer + offset, &value->quantum_sleep, sizeof(value->quantum_sleep));
+	offset += sizeof(value->quantum_sleep);
+
+	//8)quantum
+	memcpy(buffer + offset, &value->quantum, sizeof(value->quantum));
+	offset += sizeof(value->quantum);
+
+    //9)indiceDeEtiquetasTamanio
+    value->indiceDeEtiquetasTamanio = strlen(value->indiceDeEtiquetas) + 1;//+1 because of '\0'
+	memcpy(buffer + offset, &value->indiceDeEtiquetasTamanio, sizeof(value->indiceDeEtiquetasTamanio));
+	offset += sizeof(value->indiceDeEtiquetasTamanio);
+
+	 //10)indiceDeEtiquetas
+    memcpy(buffer + offset, value->indiceDeEtiquetas, value->indiceDeEtiquetasTamanio);
 
 }
 
 void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char * bufferReceived) {
 	int offset = 0;
 
-	//2)head
-	memcpy(&value->head, bufferReceived, sizeof(value->head));
-	offset += sizeof(value->head);
-
-	//3)processID
+	//2)processID
 	memcpy(&value->processID, bufferReceived + offset, sizeof(value->processID));
 	offset += sizeof(value->processID);
 
-	//4)processStatus
-	memcpy(&value->processStatus, bufferReceived + offset, sizeof(value->processStatus));
-	offset += sizeof(value->processStatus);
-
-	//5)ProgramCounter
-	memcpy(&value->ProgramCounter, bufferReceived + offset, sizeof(value->ProgramCounter));
-	offset += sizeof(value->ProgramCounter);
-
-	//6)cantInstruc
-	memcpy(&value->cantInstruc, bufferReceived + offset, sizeof(value->cantInstruc));
-	offset += sizeof(value->cantInstruc);
-
-	//7)operacion
+	//3)operacion
 	memcpy(&value->operacion, bufferReceived + offset, sizeof(value->operacion));
 	offset += sizeof(value->operacion);
 
-	//8)numSocket
-	memcpy(&value->numSocket, bufferReceived + offset, sizeof(value->numSocket));
-	offset += sizeof(value->numSocket);
+	//4)ProgramCounter
+	memcpy(&value->ProgramCounter, bufferReceived + offset, sizeof(value->ProgramCounter));
+	offset += sizeof(value->ProgramCounter);
 
-	//9)estadoCPU
-	memcpy(&value->estadoCPU, bufferReceived + offset, sizeof(value->estadoCPU));
+	//5)cantidadDePaginas de codigo
+	memcpy(&value->cantidadDePaginas, bufferReceived + offset, sizeof(value->cantidadDePaginas));
+	offset += sizeof(value->cantidadDePaginas);
+
+	//6)StackPointer
+	memcpy(&value->StackPointer, bufferReceived + offset, sizeof(value->StackPointer));
+	offset += sizeof(value->StackPointer);
+
+	//7)quantum_sleep
+	memcpy(&value->quantum_sleep, bufferReceived + offset, sizeof(value->quantum_sleep));
+	offset += sizeof(value->quantum_sleep);
+
+	//8)quantum
+	memcpy(&value->quantum, bufferReceived + offset, sizeof(value->quantum));
+	offset += sizeof(value->quantum);
+
+	//9)indiceDeEtiquetasTamanio
+	memcpy(&value->indiceDeEtiquetasTamanio, bufferReceived + offset, sizeof(value->indiceDeEtiquetasTamanio));
+	offset += sizeof(value->indiceDeEtiquetasTamanio);
+
+	//10)indiceDeEtiquetas
+	memcpy(&value->indiceDeEtiquetas, bufferReceived + offset, value->indiceDeEtiquetasTamanio);
 
 }
 
