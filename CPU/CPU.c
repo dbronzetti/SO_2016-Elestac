@@ -336,3 +336,54 @@ void crearArchivoDeConfiguracion(char *configFile){
 	configuration.ip_UMC = config_get_string_value(configurationFile,"IP_UMC");
 	configuration.port_UMC = config_get_int_value(configurationFile,"PUERTO_UMC");
 }
+
+
+/*********** TODO 			funciones de entrada salida a considerar (manejarES y leerParametro)				**********/
+// Modificalas y usalas como quieras perro
+
+void manejarES(char* instruccion,int PID, int pcActualizado, int banderaFinQuantum){
+	printf("ENTRADA SALIDA...\n");
+
+	//lee el parametro de Entrada-Salida (tiempo de bloqueo...)
+	char* parametroIniciar = leerParametro(instruccion);
+	int tiempoBloqueo = atoi(parametroIniciar);
+
+	//Prepara estructuras para mandarle al NUCLEO
+	t_MessageCPU_Nucleo entradaSalida;
+	entradaSalida.operacion = 1;
+	entradaSalida.processID = PID;
+	banderaFinQuantum = 1;
+	t_es* datosParaPlanifdeES = malloc(sizeof(t_es));
+	datosParaPlanifdeES->ProgramCounter = pcActualizado;
+	datosParaPlanifdeES->tiempo = tiempoBloqueo;
+	char* bufferRespuesta = malloc(sizeof(t_MessageCPU_Nucleo));
+
+	//TODO crear serializar CPU a NUCLEO
+	//serializeCPU_Nucleo(entradaSalida, &bufferRespuesta);
+
+	sendMessage(&socketNucleo, bufferRespuesta, sizeof(t_MessageCPU_Nucleo));
+
+	char* bufferDatosES = malloc(sizeof(t_es));
+
+	//TODO serializar Entrada Salida
+	//serializarES(datosParaPlanifdeES, bufferDatosES);
+
+	sendMessage(&socketNucleo, bufferDatosES, sizeof(t_es));
+
+	log_info(logCPU, "proceso: %d en entrada-salida de tiempo: %d \n", PID,tiempoBloqueo);
+
+	free(bufferRespuesta);
+	free(bufferDatosES);
+	free(datosParaPlanifdeES);
+
+}
+
+char* leerParametro(char* instruccion){
+	//Arma array de strings de laterales del SPACE
+	char** desdeSpace = string_split(instruccion, " ");
+
+	char* parametro = string_new();
+	//copia en parametro lo que hay despues del space menos ";"
+	strncpy (parametro, desdeSpace[1], sizeof(desdeSpace[1])-1);
+	return parametro;
+}

@@ -37,4 +37,7 @@ void crearArchivoDeConfiguracion(char *configFile);
 void sendRequestToUMC();
 void waitRequestFromNucleo(int *socketClient, char * messageRcv);
 
+void manejarES(char* instruccion,int PID, int pcActualizado, int banderaFinQuantum);
+char* leerParametro(char* instruccion);
+
 #endif /* CPU_H_ */
