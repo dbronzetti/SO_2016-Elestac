@@ -81,24 +81,33 @@ typedef struct {
 
 void setPageSize (int pageSize);
 int getLogicalAddress (int page);
-t_puntero definirVariable(t_nombre_variable nombreVariable);
-t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable);
-t_valor_variable dereferenciar(t_puntero direccion_variable);
-void asignar(t_puntero direccion_variable, t_valor_variable valor);
-t_valor_variable obtenerValorCompartida(t_nombre_compartida variable);
-t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor);
-void irAlLabel(t_nombre_etiqueta etiqueta);
-void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar);
-void retornar(t_valor_variable retorno);
-void imprimir(t_valor_variable valor_mostrar);
-void imprimirTexto(char *texto);
-void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
-void wait(t_nombre_semaforo identificador_semaforo);
-void signal(t_nombre_semaforo identificador_semaforo);
-int condicionBuscarVarible(t_vars* variableBuscada,t_vars* otraVariable);
 void serializarES(t_es *dispositivoEnviar, char *dispositivoSerializado);
 void deserializarES(t_es* datos, char* buffer);
-t_vars* buscarEnElStackPosicionPagina(t_PCB* pcb);
-t_memoryLocation* buscarUltimaPosicionOcupada(t_PCB* pcbEjecutando);
+
+
+
+
+
+
+void serializarVars(t_vars* miRegistro, char* value);
+void serializeMemoryLocation(t_memoryLocation* unaPosicion, char* value);
+void serializeListaArgs(t_list* listaASerializar, char* listaSerializada);
+void serializarListasVars(t_list* listaASerializar, char* listaSerializada);
+void serializarStack(t_registroStack* registroStack, char* registroSerializado);
+void deserializarMemoryLocation(t_memoryLocation* unaPosicion,char* posicionRecibida);
+int deserializarListasVars(t_list* listaVars,char* listaSerializada);
+int deserializarListasArgs(t_list* listaArgs,char* listaSerializada);
+void deserializarVars(t_vars* unaVariable, char* variablesRecibidas) ;
+void deserializarStack(t_registroStack* estructuraARecibir, char* registroStack);
+void deserializarListaStack(t_list* listaARecibir, char* listaSerializada);
+
+void serializarIndiceDeCodigo(t_registroIndiceCodigo* registroEnviar, char* registroSerializado);
+void deserializarIndiceDeCodigo(t_registroIndiceCodigo* registroARecibir, char* registroSerializado);
+void serializarListaIndiceDeCodigo(t_list* listaARecibir, char* listaSerializada);
+void deserializarListaIndiceDeCodigo(t_list* listaARecibir, char* listaSerializada);
+void serializarRegistroStack(t_registroStack* registroASerializar, char* registroSerializado);
+void serializarListaStack(t_list* listaASerializar, char* listaSerializada);
+
+void serializarPCB(t_MessageNucleo_CPU* value, char* buffer, int valueSize);
 
 

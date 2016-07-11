@@ -71,6 +71,14 @@ typedef struct {
 	int numSocket;
 } t_datosConsola;
 
+typedef struct {
+	t_nombre_semaforo semaforo;
+	int valor;
+	t_queue** colas_semaforos;
+} t_semaforo;
+
+t_queue** colas_semaforos;
+
 //Semaforos
 pthread_mutex_t listadoCPU;
 pthread_mutex_t listadoConsola;
@@ -112,7 +120,7 @@ int frameSize = 0;
 
 void runScript(char* codeScript,int socketConsola);
 void planificarProceso();
-void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_serverData* serverData);
+void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso,t_serverData* serverData);
 void finalizaProceso(int socket, int PID, int estado);
 void atenderBloqueados();
 void atenderCorteQuantum(int socket, int PID);

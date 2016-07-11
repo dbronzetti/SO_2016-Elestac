@@ -261,7 +261,6 @@ void processMessageReceived (void *parameter){
 	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(messageSize));
 
 	if ( receivedBytes > 0 ){
-		messageSize = atoi(messageRcv);
 
 		//Get Payload size
 		messageSize = atoi(messageRcv);
@@ -285,16 +284,18 @@ void processMessageReceived (void *parameter){
 
 				char *message = malloc(sizeof(messageSize));
 
-				//Deserializar messageRcv
+				//Deserializar messageRcv para el codigo del programa
 				memcpy(message, messageRcv,sizeof(messageSize));
 
-				int* opFinalizar = (int*) message;
+				//Deserializar messageRcv para el tamanio
+				int opFinalizar;
+				memcpy(opFinalizar, messageRcv, sizeof(int));
 
 				int PID = buscarPIDConsola(serverData->socketClient);
 				if (PID==-1){
 					printf("No se encontro Consola para el socket: %d \n",serverData->socketClient);
 
-				}else if (*opFinalizar == -1) { 	//Finaliza Proceso
+				}else if (opFinalizar == -1) { 	//Finaliza Proceso
 
 					finalizarPid(PID);
 
@@ -346,20 +347,18 @@ void runScript(char* codeScript, int socketConsola){
 	//Creo el PCB del proceso.
 	t_PCB* PCB = malloc(sizeof(t_PCB));
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
+	//Armo Indice de codigo y etiquetas
+	t_metadata_program *miMetaData = metadata_desde_literal(codeScript);
 
 	PCB->PID = idProcesos;
-	PCB->ProgramCounter = 0;
+	PCB->ProgramCounter = miMetaData->instruccion_inicio;
 	PCB->cantidadDePaginas = (int) ceil((double) (strlen(codeScript) + 1)/ (double) frameSize);
 	PCB->StackPointer = 0;
 	PCB->estado = 1;
 	PCB->finalizar = 0;
-
-	//Armo Indice de codigo y etiquetas
-	t_metadata_program *miMetaData = metadata_desde_literal(codeScript);
-
 	armarIndiceDeCodigo(*PCB, miMetaData);
 	armarIndiceDeEtiquetas(*PCB, miMetaData);
-	// TODO indice de stack
+	PCB->indiceDeStack = list_create();
 
 	idProcesos++;
 
@@ -461,19 +460,18 @@ void planificarProceso() {
 
 void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_serverData* serverData){
 
-		contextoProceso->ProgramCounter = datosPCB->ProgramCounter;
+		contextoProceso->programCounter = datosPCB->ProgramCounter;
 		contextoProceso->processID = datosPCB->PID;
-		contextoProceso->StackPointer = datosPCB->StackPointer;
+		contextoProceso->stackPointer = datosPCB->StackPointer;
 		contextoProceso->cantidadDePaginas = datosPCB->cantidadDePaginas;
 		//contextoProceso->indiceDeCodigo = datosPCB->indiceDeCodigo;//TODO
-		contextoProceso->indiceDeEtiquetasTamanio = strlen(contextoProceso->indiceDeEtiquetas) + 1;
-		strcpy(contextoProceso->indiceDeEtiquetas, datosPCB->indiceDeEtiquetas);
 		//contextoProceso->indiceDeStack = datosPCB->indiceDeStack;
+		strcpy(contextoProceso->indiceDeEtiquetas, datosPCB->indiceDeEtiquetas);
+		contextoProceso->indiceDeEtiquetasTamanio = strlen(datosPCB->indiceDeEtiquetas) + 1;
 
 		int payloadSize = sizeof(contextoProceso->ProgramCounter) + (sizeof(contextoProceso->processID))
 			+ sizeof(contextoProceso->StackPointer)+ sizeof(contextoProceso->cantidadDePaginas) + sizeof(contextoProceso->operacion)
-			+ sizeof(contextoProceso->quantum) + sizeof(contextoProceso->quantum_sleep) + contextoProceso->indiceDeEtiquetasTamanio
-			+ sizeof(contextoProceso->indiceDeEtiquetasTamanio);
+			+ sizeof(contextoProceso->quantum) + sizeof(contextoProceso->quantum_sleep) ;
 			//TODO falta sumarle las listas
 
 		int bufferSize = sizeof(bufferSize) + payloadSize ;
@@ -918,6 +916,59 @@ void escribirSem(t_nombre_semaforo semaforo, int valor){
 		}
 	}
 	printf("No se encontro el id del semaforo. \n");
+}
+
+
+void liberaSemaforo(t_nombre_semaforo semaforo) {
+	int i;
+	t_proceso *proceso;
+
+	for (i = 0; i < strlen((char*)configNucleo.sem_ids) / sizeof(char*); i++) {
+		if (strcmp((char*)configNucleo.sem_ids[i], semaforo) == 0) {
+
+			if(list_size(colas_semaforos[i]->elements)){
+				proceso = queue_pop(colas_semaforos[i]);
+				queue_push(colaListos, (void*) proceso);
+			}else{
+				configNucleo.sem_ids_values[i]++;
+			}
+
+			return;
+/*
+
+
+		//TODO:aca esta funcando con el \n OJO
+			//TODO: mutex confignucleo
+			config_nucleo->VALOR_SEM[i]++;
+			printf("VALRO SEM %d\n",config_nucleo->VALOR_SEM[i]);
+			if (proceso = queue_pop(colas_semaforos[i])) {
+				//config_nucleo->VALOR_SEM[i]--;
+				queue_push(cola_ready, proceso);
+				sem_post(&sem_ready);
+			}
+			return;
+
+			*/
+		}
+	}
+	printf("No encontre SEM id, exit\n");exit(0);
+}
+
+
+void  bloqueoSemaforo(t_proceso *proceso, char *semaforo) {
+	int i;
+
+	for (i = 0; i < strlen((char*)config_nucleo->SEM_IDS) / sizeof(char*); i++) {
+		if (strcmp((char*)config_nucleo->SEM_IDS[i], semaforo) == 0) {
+			//TODO:aca esta funcando con el \n OJO
+			//Mocks config colas
+
+			queue_push(colas_semaforos[i], proceso);
+			return;
+
+		}
+	}
+	printf("No encontre SEM id, exit\n");exit(0);
 }
 
 

@@ -371,16 +371,16 @@ void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize
 	offset += sizeof(value->operacion);
 
 	//4)ProgramCounter
-	memcpy(buffer + offset, &value->ProgramCounter, sizeof(value->ProgramCounter));
-	offset += sizeof(value->ProgramCounter);
+	memcpy(buffer + offset, &value->programCounter, sizeof(value->programCounter));
+	offset += sizeof(value->programCounter);
 
     //5)cantidadDePaginas de codigo
     memcpy(buffer + offset, &value->cantidadDePaginas, sizeof(value->cantidadDePaginas));
 	offset += sizeof(value->cantidadDePaginas);
 
 	//6)StackPointer
-	memcpy(buffer + offset, &value->StackPointer, sizeof(value->StackPointer));
-	offset += sizeof(value->StackPointer);
+	memcpy(buffer + offset, &value->stackPointer, sizeof(value->stackPointer));
+	offset += sizeof(value->stackPointer);
 
 	//7)quantum_sleep
 	memcpy(buffer + offset, &value->quantum_sleep, sizeof(value->quantum_sleep));
@@ -412,16 +412,16 @@ void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char * bufferReceived) {
 	offset += sizeof(value->operacion);
 
 	//4)ProgramCounter
-	memcpy(&value->ProgramCounter, bufferReceived + offset, sizeof(value->ProgramCounter));
-	offset += sizeof(value->ProgramCounter);
+	memcpy(&value->programCounter, bufferReceived + offset, sizeof(value->programCounter));
+	offset += sizeof(value->programCounter);
 
 	//5)cantidadDePaginas de codigo
 	memcpy(&value->cantidadDePaginas, bufferReceived + offset, sizeof(value->cantidadDePaginas));
 	offset += sizeof(value->cantidadDePaginas);
 
 	//6)StackPointer
-	memcpy(&value->StackPointer, bufferReceived + offset, sizeof(value->StackPointer));
-	offset += sizeof(value->StackPointer);
+	memcpy(&value->stackPointer, bufferReceived + offset, sizeof(value->stackPointer));
+	offset += sizeof(value->stackPointer);
 
 	//7)quantum_sleep
 	memcpy(&value->quantum_sleep, bufferReceived + offset, sizeof(value->quantum_sleep));
@@ -440,7 +440,7 @@ void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char * bufferReceived) {
 
 }
 
-void serializeCPU_Nucleo(t_MessageCPU_Nucleo *value, char *buffer, int valueSize) {
+void serializeCPU_Nucleo(t_MessageNucleo_CPU *value, char *buffer, int valueSize) {
 	int offset = 0;
 	enum_processes process = CPU;
 

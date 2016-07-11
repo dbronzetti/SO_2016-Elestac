@@ -56,18 +56,15 @@ typedef struct{
 typedef struct{
 	int processID;
 	int operacion;
-} t_MessageCPU_Nucleo;
-
-typedef struct{
-	int processID;
-	int operacion;
-	int ProgramCounter;
+	int programCounter;
 	int cantidadDePaginas;// Cantidad de paginas de codigo
-	int StackPointer;
+	int stackPointer;
 	int quantum_sleep;
 	int quantum;
 	int indiceDeEtiquetasTamanio;
 	char *indiceDeEtiquetas;
+	t_list* indiceDeCodigo;
+	t_list* indiceDeStack;
 } t_MessageNucleo_CPU;
 
 int openServerConnection(int newSocketServerPort, int *socketServer);
@@ -97,7 +94,7 @@ void deserializeUMC_CPU(t_MessageCPU_UMC *value, char *bufferReceived);
 void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize);
 void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char *bufferReceived);
 
-void serializeCPU_Nucleo(t_MessageCPU_Nucleo *value, char *buffer, int valueSize);
-void deserializeNucleo_CPU(t_MessageCPU_Nucleo *value, char *bufferReceived);
+void serializeCPU_Nucleo(t_MessageNucleo_CPU *value, char *buffer, int valueSize);
+void deserializeNucleo_CPU(t_MessageNucleo_CPU *value, char *bufferReceived);
 
 #endif /*SOCKET_H_*/
