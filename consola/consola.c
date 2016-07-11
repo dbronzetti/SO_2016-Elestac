@@ -53,8 +53,10 @@ int main(int argc, char **argv) {
 
 	printf("despues de conectarme");
 	*/
-	int tamanioArchivo = -1;
+	int tamanioArchivo;
+
 	while (1) {
+		tamanioArchivo =-1;
 		printf(PROMPT);
 		fgets(inputTeclado, sizeof(inputTeclado), stdin);
 		char ** comando = string_split(inputTeclado, " ");
@@ -77,7 +79,7 @@ int main(int argc, char **argv) {
 			sendMessage(&socketNucleo, (void*)tamanioArchivo, sizeof(int));
 			break;
 		}
-		case 2: {
+		case 3: {
 			printf("Comando Reconocido.\n");
 			exit(-1);
 			break;
@@ -174,8 +176,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 					break;
 				}
 				default:{
-					log_error(logConsola,
-							"Process couldn't connect to SERVER - Not able to connect to server %s. Please check if it's down.\n",ip);
+					log_error(logConsola,"Process couldn't connect to SERVER - Not able to connect to server %s. Please check if it's down.\n",ip);
 					close(*socketClient);
 					break;
 				}

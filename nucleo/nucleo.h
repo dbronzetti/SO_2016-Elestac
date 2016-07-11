@@ -17,10 +17,10 @@
 #include "commons/collections/queue.h"
 #include "commons/config.h"
 #include "commons/log.h"
+#include <math.h>
 #include <sys/types.h>
 #include <pthread.h>
 #include <semaphore.h>
-
 
 // Estructuras
 typedef struct {
@@ -31,6 +31,7 @@ char* ip_umc;
 int quantum;
 int quantum_sleep;
 char** sem_ids;
+int** sem_ids_values;
 int* sem_init;
 char** io_ids;
 int* io_sleep;
@@ -64,8 +65,15 @@ typedef struct {
 	int estadoCPU;
 } t_datosCPU;
 
+//Estructura datosConsola
+typedef struct {
+	int PID;
+	int numSocket;
+} t_datosConsola;
+
 //Semaforos
 pthread_mutex_t listadoCPU;
+pthread_mutex_t listadoConsola;
 pthread_mutex_t listadoProcesos;
 pthread_mutex_t cListos;
 pthread_mutex_t cBloqueados;
@@ -85,6 +93,7 @@ t_log* logNucleo;
 
 //Variables de Listas
 t_list* listaCPU;
+t_list* listaConsola;
 t_list* listaProcesos;
 
 //Variables de Colas
@@ -96,25 +105,27 @@ t_queue* colaFinalizar;
 int idProcesos = 1;
 int activePID = 0;
 int socketUMC = 0;
+int socketConsola = 0;
 int frameSize = 0;
 
 //Encabezamientos de Funciones Principales
 
-void runScript(char* codeScript);
+void runScript(char* codeScript,int socketConsola);
 void planificarProceso();
-int procesarMensajeCPU(t_PCB* datosPCB, t_proceso* datosProceso,t_MessageNucleo_CPU* contextoProceso,int libreCPU);
+void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_serverData* serverData);
 void finalizaProceso(int socket, int PID, int estado);
-void deserializarES(t_es* datos, char* buffer);
 void atenderBloqueados();
 void atenderCorteQuantum(int socket, int PID);
 
 //Encabezamiento de Funciones Secundarias
 
 int buscarCPULibre();
-int buscarPCB(int id);
+int buscarPCB(int pid);
 void cambiarEstadoProceso(int PID, int estado);
 void liberarCPU(int socket);
 int buscarCPU(int socket);
+int buscarPIDConsola(int socket);
+int buscarSocketConsola(int PID);
 void actualizarPC(int PID, int ProgramCounter);
 void crearArchivoDeConfiguracion(char* configFile);
 
@@ -129,6 +140,11 @@ int definirVar(char* nombreVariable,t_registroStack miPrograma,int posicion);
 t_valor_variable* obtenerValor(t_nombre_compartida variable);
 void grabarValor(t_nombre_compartida variable, t_valor_variable* valor);
 void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
+
+int *pideSemaforo(t_nombre_semaforo semaforo);
+void escribirSem(char *semaforo,int valor);
+
+
 void wait(t_nombre_semaforo identificador_semaforo);
 void signal(t_nombre_semaforo identificador_semaforo);
 
@@ -137,11 +153,16 @@ void signal(t_nombre_semaforo identificador_semaforo);
 void startServerProg();
 void startServerCPU();
 void newClients(void *parameter);
-void processMessageReceived(void *parameter);
 void handShake(void *parameter);
+void processMessageReceived(void *parameter);
+void processCPUMessages(char* messageRcv,int messageSize,int socketLibre);
+
 int connectTo(enum_processes processToConnect, int *socketClient);
-int procesarRespuesta(int socketLibre, char* messageRcv);
+
 void iniciarPrograma(int PID, char* codeScript);
 void finalizarPrograma(int PID);
+void finalizarPid(int PID);
+
+void deserializarES(t_es* datos, char* buffer);
 
 #endif /* NUCLEO_H_ */
