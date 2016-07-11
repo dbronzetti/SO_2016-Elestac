@@ -395,7 +395,7 @@ void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize
 	memcpy(buffer + offset, &value->indiceDeEtiquetasTamanio, sizeof(value->indiceDeEtiquetasTamanio));
 	offset += sizeof(value->indiceDeEtiquetasTamanio);
 
-	 //10)indiceDeEtiquetas
+	//10)indiceDeEtiquetas
     memcpy(buffer + offset, value->indiceDeEtiquetas, value->indiceDeEtiquetasTamanio);
 
 }
@@ -440,17 +440,27 @@ void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char * bufferReceived) {
 
 }
 
-void deserializeConsola_Nucleo(t_MessageNucleo_Consola *value, char *bufferReceived){
+void serializeCPU_Nucleo(t_MessageCPU_Nucleo *value, char *buffer, int valueSize) {
 	int offset = 0;
+	enum_processes process = CPU;
+
+	//0)valueSize
+	memcpy(buffer, &valueSize, sizeof(valueSize));
+	offset += sizeof(valueSize);
+
+	//1)From process
+	memcpy(buffer + offset, &process, sizeof(process));
+	offset += sizeof(process);
 
 	//2)processID
-	memcpy(&value->processID, bufferReceived , sizeof(value->processID));
+	memcpy(buffer + offset, &value->processID, sizeof(value->processID));
 	offset += sizeof(value->processID);
 
-	//3)processStatus
-	memcpy(&value->processStatus, bufferReceived + offset, sizeof(value->processStatus));
+	//3)operacion
+	memcpy(buffer + offset, &value->operacion, sizeof(value->operacion));
 
 }
+
 
 char *getProcessString (enum_processes process){
 

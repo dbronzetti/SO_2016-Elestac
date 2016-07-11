@@ -70,11 +70,6 @@ typedef struct{
 	char *indiceDeEtiquetas;
 } t_MessageNucleo_CPU;
 
-typedef struct{
-	int processID;
-	enum_processStatus processStatus;
-} t_MessageNucleo_Consola;
-
 int openServerConnection(int newSocketServerPort, int *socketServer);
 int acceptClientConnection(int *socketServer, int *socketClient);
 int openClientConnection(char *IPServer, int PortServer, int *socketClient);
@@ -102,6 +97,7 @@ void deserializeUMC_CPU(t_MessageCPU_UMC *value, char *bufferReceived);
 void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize);
 void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char *bufferReceived);
 
-void deserializeConsola_Nucleo(t_MessageNucleo_Consola *value, char *bufferReceived);
+void serializeCPU_Nucleo(t_MessageCPU_Nucleo *value, char *buffer, int valueSize);
+void deserializeNucleo_CPU(t_MessageCPU_Nucleo *value, char *bufferReceived);
 
 #endif /*SOCKET_H_*/

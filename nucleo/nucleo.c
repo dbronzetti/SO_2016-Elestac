@@ -45,6 +45,8 @@ int main(int argc, char *argv[]) {
 		logNucleo = log_create(logFile, "NUCLEO", 0, LOG_LEVEL_TRACE);
 	//Creo la lista de CPUs
 		listaCPU = list_create();
+	//Creo la lista de Consolas
+		listaConsola = list_create();
 	//Creo Lista Procesos
 		listaProcesos = list_create();
 	//Creo la Cola de Listos
@@ -65,9 +67,6 @@ int main(int argc, char *argv[]) {
 	exitCode = connectTo(UMC,&socketUMC);
 	if (exitCode == EXIT_SUCCESS) {
 		 log_info(logNucleo, "NUCLEO connected to UMC successfully\n");
-		// TODO solicitarle lás páginas necesarias para almacenar el codeScript y el stack.
-		// TODO enviarle el codigo completo del programa
-
 	}else{
 		printf("No server available - shutting down proces!!\n");
 		return EXIT_FAILURE;
@@ -204,11 +203,12 @@ void handShake (void *parameter){
 				close(serverData->socketClient);
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
-				if (exitCode == EXIT_SUCCESS){
-
-					t_datosCPU *datosCPU = malloc(sizeof(t_MessageNucleo_CPU));
+				if (exitCode == EXIT_SUCCESS){//TODO si uso connectTo => debo considerar este bloque
+					t_datosCPU *datosCPU = malloc(sizeof(t_datosCPU));
 					datosCPU->numSocket = serverData->socketClient;
+					pthread_mutex_lock(&listadoCPU);
 					list_add(listaCPU, (void*)datosCPU);
+					pthread_mutex_unlock(&listadoCPU);
 					free(datosCPU);
 				}
 
@@ -220,8 +220,6 @@ void handShake (void *parameter){
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){
-
-					//processMessageReceived(parameter);
 
 					//Create thread attribute detached
 					pthread_attr_t processMessageThreadAttr;
@@ -240,7 +238,7 @@ void handShake (void *parameter){
 			}
 			default:{
 			log_error(logNucleo,
-					"Process not allowed to connect - Invalid process '%s' tried to connect to UMC\n",
+					"Process not allowed to connect - Invalid process '%s' tried to connect to NUCLEO\n",
 					getProcessString(message->process));
 				close(serverData->socketClient);
 				break;
@@ -280,23 +278,44 @@ void processMessageReceived (void *parameter){
 			case CONSOLA:{
 				log_info(logNucleo, "Processing CONSOLA message received\n");
 				pthread_mutex_lock(&activeProcessMutex);
-				int opFinalizar;
+
+				//Receive message using the size read before
+				messageRcv = realloc(messageRcv, messageSize);
+				receiveMessage(&serverData->socketClient, messageRcv, messageSize);
+
+				char *message = malloc(sizeof(messageSize));
 
 				//Deserializar messageRcv
-				//memcpy(message, messageRcv,sizeof(messageRcv)); //TODO deserealizar mensaje recibido
+				memcpy(message, messageRcv,sizeof(messageSize));
 
-				//Finaliza Proceso
-				if(opFinalizar==-1){
-				//finalizaProceso(serverData->socketClient, message->processID, message->processStatus); //TODO finalizar proceso
+				int* opFinalizar = (int*) message;
+
+				int PID = buscarPIDConsola(serverData->socketClient);
+				if (PID==-1){
+					printf("No se encontro Consola para el socket: %d \n",serverData->socketClient);
+
+				}else if (*opFinalizar == -1) { 	//Finaliza Proceso
+
+					finalizarPid(PID);
+
+					finalizaProceso(serverData->socketClient, PID, 2); //TODO 2 porque finaliza correctamente
+
+					//TODO enviarle el mensaje del log a la Consola asociada y destruir PCB
+					return;
 				}
 
-				runScript(messageRcv);
-
-				receiveMessage(&serverData->socketClient, messageRcv, sizeof(fromProcess));
-
+				iniciarPrograma(PID, messageRcv);
+				runScript(messageRcv,socketConsola);
 				pthread_mutex_unlock(&activeProcessMutex);
 			break;
-		}
+			}
+			case CPU:{
+				log_info(logNucleo, "Processing CPU message received\n");
+				pthread_mutex_lock(&activeProcessMutex);
+				processCPUMessages(messageRcv, messageSize, serverData->socketClient);
+				pthread_mutex_unlock(&activeProcessMutex);
+				break;
+			}
 			default:{
 			log_error(logNucleo,
 					"Process not allowed to connect - Invalid process '%s' send a message to UMC\n",
@@ -323,19 +342,30 @@ void processMessageReceived (void *parameter){
 
 }
 
-void runScript(char* codeScript){
+void runScript(char* codeScript, int socketConsola){
 	//Creo el PCB del proceso.
 	t_PCB* PCB = malloc(sizeof(t_PCB));
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
 
-	//TODO agregar campos a inicializar
 	PCB->PID = idProcesos;
 	PCB->ProgramCounter = 0;
-	PCB->estado=1;
+	PCB->cantidadDePaginas = (int) ceil((double) (strlen(codeScript) + 1)/ (double) frameSize);
+	PCB->StackPointer = 0;
+	PCB->estado = 1;
 	PCB->finalizar = 0;
+
+	//Armo Indice de codigo y etiquetas
+	t_metadata_program *miMetaData = metadata_desde_literal(codeScript);
+
+	armarIndiceDeCodigo(*PCB, miMetaData);
+	armarIndiceDeEtiquetas(*PCB, miMetaData);
+	// TODO indice de stack
+
 	idProcesos++;
 
+	pthread_mutex_lock(&listadoProcesos);
 	list_add(listaProcesos,(void*)PCB);
+	pthread_mutex_unlock(&listadoProcesos);
 	log_info(logNucleo, "myProcess %d - Iniciado  Script: %s",PCB->PID, codeScript);
 
 	//Agrego a la Cola de Listos
@@ -346,34 +376,47 @@ void runScript(char* codeScript){
 	queue_push(colaListos, (void*)datosProceso);
 	pthread_mutex_unlock(&cListos);
 
+	//Agrego a la lista de Consolas
+	t_datosConsola* datosConsola = malloc(sizeof(t_datosConsola));
+	datosConsola->numSocket = socketConsola;
+	datosConsola->PID = PCB->PID;
+	pthread_mutex_lock(&listadoConsola);
+	list_add(listaConsola, (void*) datosConsola);
+	pthread_mutex_unlock(&listadoConsola);
+	free(datosConsola);
+
 	planificarProceso();
 
 	free(PCB);
 	free(datosProceso);
+	metadata_destruir(miMetaData);
 
 }
 
 void planificarProceso() {
-	int exitCode = EXIT_FAILURE;
-	//Veo si hay procesos para planificar en la cola de Listos
+	//Veo si hay procesos para planificar en la cola de Listos y en la cola Finalizar
 	if (queue_is_empty(colaListos) && (queue_is_empty(colaFinalizar))) {
 		return;
 	}
 	//Veo si hay CPU libre para asignarle
 	int libreCPU = buscarCPULibre();
+	t_serverData *serverData;
 
 	if (libreCPU == -1) {
 		printf("No hay CPU libre.\n");
 		return;
 	}
 
+	serverData->socketClient = libreCPU;
+
 	//Le envio la informacion a la CPU
 	t_PCB* datosPCB;
 	t_MessageNucleo_CPU* contextoProceso = malloc(sizeof(t_MessageNucleo_CPU));
 	t_proceso* datosProceso;
 
-	contextoProceso->head = 0;
-	contextoProceso->cantInstruc = 0;
+	contextoProceso->operacion = 0; //No finaliza el proceso
+	contextoProceso->quantum = 0;
+	contextoProceso->quantum_sleep=0;
 
 	if (queue_is_empty(colaFinalizar)) {
 
@@ -383,10 +426,14 @@ void planificarProceso() {
 
 		int posicion = buscarPCB(datosProceso->PID);
 		if (posicion != -1) {
+			pthread_mutex_lock(&listadoProcesos);
 			datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
-			contextoProceso->cantInstruc = configNucleo.quantum;
+			pthread_mutex_unlock(&listadoProcesos);
 
-			exitCode = procesarMensajeCPU(datosPCB, datosProceso, contextoProceso, libreCPU);
+			contextoProceso->quantum = configNucleo.quantum;
+			contextoProceso->quantum_sleep=configNucleo.quantum_sleep;
+
+			enviarMsjCPU(datosPCB, contextoProceso, serverData);
 
 		} else {
 			printf("Proceso no encontrado en la lista.\n");
@@ -397,10 +444,13 @@ void planificarProceso() {
 		pthread_mutex_unlock(&cFinalizar);
 		int posicion = buscarPCB(datosProceso->PID);
 		if (posicion != -1) {
+			pthread_mutex_lock(&listadoProcesos);
 			datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
-			contextoProceso->head = 1;
+			pthread_mutex_unlock(&listadoProcesos);
 
-			exitCode = procesarMensajeCPU(datosPCB, datosProceso, contextoProceso,libreCPU);
+// TODO Ver esto en la CPU: Le aviso al CPU que finalice el proceso (op = 1) y luego voy a esperar la Respuesta(processCPUMessages)
+			contextoProceso->operacion = 1;
+			enviarMsjCPU(datosPCB, contextoProceso, serverData);
 
 		} else {
 			printf("Proceso no encontrado en la lista.\n");
@@ -409,72 +459,78 @@ void planificarProceso() {
 	free(contextoProceso);
 }
 
-int procesarMensajeCPU(t_PCB* datosPCB, t_proceso* datosProceso,t_MessageNucleo_CPU* contextoProceso,int libreCPU){
-		int exitCode = EXIT_FAILURE;
-		char* bufferEnviar = malloc(sizeof(t_MessageNucleo_CPU));
-
-		//TODO agregar campos a inicializar
+void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_serverData* serverData){
 
 		contextoProceso->ProgramCounter = datosPCB->ProgramCounter;
-
 		contextoProceso->processID = datosPCB->PID;
+		contextoProceso->StackPointer = datosPCB->StackPointer;
+		contextoProceso->cantidadDePaginas = datosPCB->cantidadDePaginas;
+		//contextoProceso->indiceDeCodigo = datosPCB->indiceDeCodigo;//TODO
+		contextoProceso->indiceDeEtiquetasTamanio = strlen(contextoProceso->indiceDeEtiquetas) + 1;
+		strcpy(contextoProceso->indiceDeEtiquetas, datosPCB->indiceDeEtiquetas);
+		//contextoProceso->indiceDeStack = datosPCB->indiceDeStack;
 
-		serializeNucleo_CPU(contextoProceso, bufferEnviar,sizeof(t_MessageNucleo_CPU));
+		int payloadSize = sizeof(contextoProceso->ProgramCounter) + (sizeof(contextoProceso->processID))
+			+ sizeof(contextoProceso->StackPointer)+ sizeof(contextoProceso->cantidadDePaginas) + sizeof(contextoProceso->operacion)
+			+ sizeof(contextoProceso->quantum) + sizeof(contextoProceso->quantum_sleep) + contextoProceso->indiceDeEtiquetasTamanio
+			+ sizeof(contextoProceso->indiceDeEtiquetasTamanio);
+			//TODO falta sumarle las listas
+
+		int bufferSize = sizeof(bufferSize) + payloadSize ;
+
+		char* bufferEnviar = malloc(bufferSize);
+		//TODO serializar estructuras del stack
+		serializeNucleo_CPU(contextoProceso, bufferEnviar, payloadSize);
 
 		//Saco el primer elemento de la cola, porque ya lo planifique.
 		pthread_mutex_lock(&cListos);
 		queue_pop(colaListos);
 		pthread_mutex_unlock(&cListos);
 
-		send(libreCPU, bufferEnviar, sizeof(t_MessageNucleo_CPU), 0);
+		sendMessage(&serverData->socketClient, bufferEnviar, bufferSize);
 
 		//Cambio Estado del Proceso
 		int estado = 2;
 		cambiarEstadoProceso(datosPCB->PID, estado);
 
 		//1) rcv();
-		//char *messageRcv = malloc(sizeof(t_MessageNucleo_CPU));
-		//TODO esto esta mal, hacerlo con bufferSize y payload
 
-		//processMessageReceived()
+		processMessageReceived(&serverData);
 
-		//2)
-
-		//exitCode = procesarRespuesta(libreCPU, messageRcv);
+		//2) processCPUMessages se hace dentro de processMessageReceived (case CPU)
 
 		free(bufferEnviar);
-		return exitCode;
 
 }
 
-int procesarRespuesta(int socketLibre, char* messageRcv){
+void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 	printf("Processing CPU message \n");
-	int exitCode = EXIT_FAILURE;
+	t_valor_variable* valorVariable;
 
 	t_MessageNucleo_CPU *message=malloc(sizeof(t_MessageNucleo_CPU));
 
-	char *mensajePrivilegiado = malloc(sizeof(t_privilegiado));//TODO esto no se puede hacer, cambiarlo
+	t_privilegiado *mensajePrivilegiado = malloc(sizeof(t_privilegiado));
 
 	t_es infoES;
 	memset(messageRcv, '\0', sizeof(t_MessageNucleo_CPU));
-	exitCode = receiveMessage(&socketLibre,(void*)messageRcv,sizeof(t_MessageNucleo_CPU));
+	receiveMessage(&socketLibre,(void*)messageRcv,sizeof(t_MessageNucleo_CPU));
 
 	//Deserializo messageRcv
 	deserializeCPU_Nucleo(message, messageRcv);
 
 	//TODO Deserializar mensajePrivilegiado
-	exitCode = receiveMessage(&socketLibre,(void*)mensajePrivilegiado,sizeof(t_MessageNucleo_CPU));
+	receiveMessage(&socketLibre,(void*)mensajePrivilegiado,sizeof(t_MessageNucleo_CPU));
 
 	switch (message->operacion) {
-	case 1: //Entrada Salida
+	case 1:{ 	//Entrada Salida
 		pthread_mutex_lock(&activeProcessMutex);
 		char *datosEntradaSalida = malloc(sizeof(t_es));
 
 		//change active PID
 		activePID = message->processID;
 
-		exitCode = recv(socketLibre, (void*) datosEntradaSalida, sizeof(t_es),0);
-		deserializarES(&infoES, datosEntradaSalida); //TODO deserializar entrada-salida
+		receiveMessage(&socketLibre, (void*) datosEntradaSalida, sizeof(t_es));
+		deserializarES(&infoES, datosEntradaSalida);
 
 		//Libero la CPU que ocupaba el proceso
 		liberarCPU(socketLibre);
@@ -490,50 +546,76 @@ int procesarRespuesta(int socketLibre, char* messageRcv){
 
 		free(datosEntradaSalida);
 		pthread_mutex_unlock(&activeProcessMutex);
-		break;
-	case 2: //Finaliza Proceso Bien
-		finalizaProceso(socketLibre, message->processID,message->processStatus);
-		break;
+		break;}
+	case 2:{ 	//Finaliza Proceso Bien
+		finalizaProceso(socketLibre, message->processID,message->operacion);
+		break;}
+	case 3:{ 	//Finaliza Proceso Mal
+		finalizaProceso(socketLibre, message->processID,message->operacion);
+		break;}
+	case 4:{
+		printf("No se pudo obtener la solicitud a ejecutar - Error al finalizar");
+		break;}
+	case 5:{ 	//Corte por Quantum
+		printf("Corto por Quantum.\n");
+		atenderCorteQuantum(socketLibre, message->processID);
+		break;}
+	case 6:{	//Obtener valor y enviarlo al CPU
+		valorVariable = obtenerValor(&mensajePrivilegiado->variable);
 
-	case 3: //Finaliza Proceso Mal
-		finalizaProceso(socketLibre, message->processID,message->processStatus);
-		break;
+		if (valorVariable == NULL){
+				printf("No encontre variable %s %d id \n",&mensajePrivilegiado->variable,strlen(&mensajePrivilegiado->variable));
+			}
 
-	case 4:	//Falla otra cosa
-		printf("Hubo un fallo.\n");
-		break;
-	case 5 : //Corte por Quantum
-			printf("Corto por Quantum.\n");
-			atenderCorteQuantum(socketLibre, message->processID);
+		sendMessage(&socketLibre, (void*) &valorVariable, sizeof(t_valor_variable));
+		break;}
+	case 7:{	//Grabar valor
+		grabarValor(&mensajePrivilegiado->variable,&mensajePrivilegiado->valor);
+		break;}
+	case 8:{	//wait o signal
+		//TODO
+		break;}
+
+	case 10:{	//Imprimir VALOR por Consola
+		int socketConsola = buscarSocketConsola(message->processID);
+		if (socketConsola==-1){
+			printf("No se encontro Consola para el PID: %d \n",message->processID);
 			break;
-	case 6://obtener valor TODO
-		//obtenerValor(mensajePrivilegiado->variable); //TODO
-		break;
-	case 7://grabar_valor TODO
-		//grabarValor(mensajePrivilegiado->variable,mensajePrivilegiado->valor);
-		break;
-	case 8:	//wait o signal
-		break;
+		}
+		t_valor_variable valor;
+		// TODO valor = message.valorImprimir;
+		sendMessage(&socketConsola, (void*) valor, sizeof(t_valor_variable));
+
+		break;}
+	case 11:{	//Imprimir TEXTO por Consola
+			int socketConsola = buscarSocketConsola(message->processID);
+			if (socketConsola==-1){
+				printf("No se encontro Consola para el PID: %d \n",message->processID);
+				break;
+			}
+			char *texto = string_new();
+			// TODO strcpy(texto,message->textoImprimir);
+			sendMessage(&socketConsola, (void*) texto, sizeof(int));
+
+			break;}
 	default:
 		printf("Mensaje recibido invalido, CPU desconectado.\n");
-		abort();
+		//abort();
 	}
-
-	free(message);
-	free(messageRcv);
-	return exitCode;
 }
 
 void atenderCorteQuantum(int socket,int PID){
 	//Libero la CPU
 	liberarCPU(socket);
 
-	//Cambio el PC del Proceso, le sumo el quantum al PC actual.
+	//Cambio el PC del Proceso, le sumo el quantum y quantum_spleep al PC actual.
 	t_PCB* infoProceso;
 	int buscar = buscarPCB(PID);
+	pthread_mutex_lock(&listadoProcesos);
 	infoProceso = (t_PCB*)list_get(listaProcesos,buscar);
+	pthread_mutex_unlock(&listadoProcesos);
 	int pcnuevo;
-	pcnuevo = infoProceso->ProgramCounter + configNucleo.quantum;
+	pcnuevo = infoProceso->ProgramCounter + configNucleo.quantum + configNucleo.quantum_sleep;
 	actualizarPC(PID,pcnuevo);
 	//Agrego el proceso a la Cola de Listos
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
@@ -582,10 +664,10 @@ void finalizaProceso(int socket, int PID, int estado) {
 		}
 	}
 
-	//TODO enviarle el mensaje del log a la Consola asociada y destruir PCB
-
 	//Libero la CPU
 	liberarCPU(socket);
+
+	finalizarPrograma(PID);
 
 	//Mando a revisar si hay alguno en la lista para ejecutar.
 	planificarProceso();
@@ -609,7 +691,7 @@ int buscarCPULibre() {
 	return -1;
 }
 
-int buscarPCB(int id) {
+int buscarPCB(int pid) {
 	t_PCB* datosPCB;
 	int i = 0;
 	int cantPCB = list_size(listaProcesos);
@@ -617,7 +699,7 @@ int buscarPCB(int id) {
 		pthread_mutex_lock(&listadoProcesos);
 		datosPCB = list_get(listaProcesos, i);
 		pthread_mutex_unlock(&listadoProcesos);
-		if (datosPCB->PID == id) {
+		if (datosPCB->PID == pid) {
 			return i;
 		}
 	}
@@ -639,6 +721,36 @@ int buscarCPU(int socket) {
 	return -1;
 }
 
+int buscarPIDConsola(int socket) {
+	t_datosConsola* datosConsola;
+	int i = 0;
+	int cantConsolas = list_size(listaConsola);
+	for (i = 0; i < cantConsolas; i++) {
+		pthread_mutex_lock(&listadoConsola);
+		datosConsola = list_get(listaConsola, i);
+		pthread_mutex_unlock(&listadoConsola);
+		if (datosConsola->numSocket == socket) {
+			return datosConsola->PID;
+		}
+	}
+	return -1;
+}
+
+int buscarSocketConsola(int PID){
+	t_datosConsola* datosConsola;
+	int i = 0;
+	int cantConsolas = list_size(listaConsola);
+	for (i = 0; i < cantConsolas; i++) {
+		pthread_mutex_lock(&listadoConsola);
+		datosConsola = list_get(listaConsola, i);
+		pthread_mutex_unlock(&listadoConsola);
+		if (datosConsola->PID == PID) {
+			return datosConsola->numSocket;
+		}
+	}
+	return -1;
+}
+
 void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 
 	t_bloqueado* infoBloqueado = malloc(sizeof(t_bloqueado));
@@ -647,7 +759,6 @@ void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 	infoBloqueado->PID = activePID;
 	infoBloqueado->dispositivo = dispositivo;
 	infoBloqueado->tiempo = tiempo;
-	t_bloqueado* elementoDeLaCola;
 	pthread_mutex_lock(&cBloqueados);
 	queue_push(colaBloqueados, (void*) infoBloqueado);
 	pthread_mutex_unlock(&cBloqueados);
@@ -698,11 +809,15 @@ void atenderBloqueados() {
 		cambiarEstadoProceso(datosProceso->PID, estado);
 		//Agrego a la Lista de Listos el Proceso
 		int buscar = buscarPCB(datosProceso->PID);
+		pthread_mutex_lock(&listadoProcesos);
 		t_PCB * informacionDeProceso = list_get(listaProcesos, buscar);
+		pthread_mutex_unlock(&listadoProcesos);
 		t_proceso* infoProceso = (t_proceso*) malloc(sizeof(t_proceso));
 		t_PCB* datos;
 		if (buscar != -1) {
+			pthread_mutex_lock(&listadoProcesos);
 			datos = (t_PCB*) list_get(listaProcesos, buscar);
+			pthread_mutex_unlock(&listadoProcesos);
 			infoProceso->PID = datos->PID;
 			infoProceso->ProgramCounter = datos->ProgramCounter;
 			pthread_mutex_lock(&cBloqueados);
@@ -745,16 +860,13 @@ t_valor_variable *obtenerValor(t_nombre_compartida variable) {
 
 		if (strcmp(configNucleo.shared_vars[i], variable) == 0) {
 			//return (int*)configNucleo.shared_vars[i];
-			*valorVariable = configNucleo.shared_vars_values[i];
+			*valorVariable = (t_valor_variable) configNucleo.shared_vars_values[i];
 			break;
 		}
 		i++;
 	}
 
 	//TENER EN CUENTA que aca esta funcionando con el \n
-	if (valorVariable == NULL){//TODO PASAR ESTE BLOQUE IF A DONDE SE LLAMA LA FUNCION obtenerValor
-		printf("No encontre variable %s %d id, exit\n",variable,strlen(variable));
-	}
 
 	return valorVariable;
 }
@@ -767,7 +879,7 @@ void grabarValor(t_nombre_compartida variable, t_valor_variable* valor){
 
 		if (strcmp(configNucleo.shared_vars[i], variable) == 0) {
 			//return (int*)configNucleo.shared_vars[i];
-			configNucleo.shared_vars_values[i] =  *valor;
+			configNucleo.shared_vars_values[i] =  (int*)*valor;
 			break;
 		}
 		i++;
@@ -775,13 +887,39 @@ void grabarValor(t_nombre_compartida variable, t_valor_variable* valor){
 
 }
 
-void obtenerMetadata(char *codeScript,t_metadata_program* miMetaData) {
-	miMetaData = metadata_desde_literal(codeScript);
+int *pideSemaforo(t_nombre_semaforo semaforo) {
+	int i = 0;
+	int *valorVariable = NULL;
 
-	printf("%d", miMetaData->instrucciones_serializado->start);
+	while ( strlen((char*)configNucleo.sem_ids[i]) / sizeof(char)) {
+		//TODO: mutex confignucleo??
+		if (strcmp((char*)configNucleo.sem_ids[i], semaforo) == 0) {
 
-
+			//if (config_nucleo->VALOR_SEM[i] == -1) {return &config_nucleo->VALOR_SEM[i];}
+			//config_nucleo->VALOR_SEM[i]--;
+			return (configNucleo.sem_ids_values[i]);
+		}
+		i++;
+	}
+	printf("No encontre SEM id, exit\n");
+	return valorVariable;
 }
+
+void escribirSem(t_nombre_semaforo semaforo, int valor){
+	int i = 0;
+
+	while (configNucleo.sem_ids[i] != NULL){
+
+		if (strcmp((char*)configNucleo.sem_ids[i], semaforo) == 0) {
+
+			//if (configNucleo.valor_sem[i] == -1) return &configNucleo.valor_sem[i];
+			configNucleo.sem_ids_values[i] = (int*) valor;
+			return;
+		}
+	}
+	printf("No se encontro el id del semaforo. \n");
+}
+
 
 void armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData){
 	int i;
@@ -804,10 +942,10 @@ void armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData
 
 	unBloqueControl.indiceDeEtiquetas = miMetaData->etiquetas;
 
-	log_trace(logNucleo,"'indiceDeEtiquetas' size: %d\n", miMetaData->etiquetas_size);
+	log_error(logNucleo,"'indiceDeEtiquetas' size: %d\n", miMetaData->etiquetas_size);
 }
 
-
+//TODO verificar para que se creo esta funcion:
 int definirVar(char* nombreVariable, t_registroStack miPrograma, int posicion) {
 	t_vars *nuevaVariable;
 
@@ -821,13 +959,52 @@ int definirVar(char* nombreVariable, t_registroStack miPrograma, int posicion) {
 	return 1;
 }
 
+void finalizarPid(int pid){
+	if((pid<0) || (pid >idProcesos)){
+		printf ("Error, PID inexistente.\n");
+		return;
+	}
+	int ret = buscarPCB(pid);
+	if (ret == -1){
+		printf("Error al buscar el proceso.\n");
+		return;
+	}
+	t_PCB* datosProceso;
+	pthread_mutex_lock(&listadoProcesos);
+	datosProceso = (t_PCB*)list_get(listaProcesos,ret);
+	pthread_mutex_unlock(&listadoProcesos);
+	switch(datosProceso->estado){
+	case 1:
+		  	//EL proceso esta en la cola de Ready
+			datosProceso->finalizar = 1;
+			break;
+	case 2:
+			//El Proceso esta ejecutando seteo una bandera para avisar que vuelva a cola privilegiada.
+			datosProceso->finalizar = 1;
+			break;
+	case 3:
+			//EL Proceso esta bloqueado
+			datosProceso->finalizar = 1;
+			break;
+
+	case 4: printf ("Error, el proceso ya finalizo correctamente.\n");
+			break;
+
+	case 5: printf ("Error, el proceso ya finalizo de forma incorrecta.\n");
+			break;
+	default:
+			break;
+
+	}
+}
+
 //TODO invocar al recibir un script
 void iniciarPrograma(int PID, char *codeScript) {
 
 	int bufferSize = 0;
 	int payloadSize = 0;
 	int contentLen = strlen(codeScript) + 1;	//+1 because of '\0'
-	int cantPages = contentLen / configNucleo.pageSize;
+	int cantPages = ceil((double) contentLen /(double) frameSize);
 
 	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
 
@@ -930,6 +1107,11 @@ void crearArchivoDeConfiguracion(char *configFile){
 		configNucleo.shared_vars_values[i] = 0; //DEFAULT Value
 		i++;
 	}
+	//initializing sem_ids values
+	while ((configNucleo.sem_ids[i] != NULL) && (configNucleo.sem_init[i] != NULL)){
+			configNucleo.sem_ids_values[i] = configNucleo.sem_init[i];
+			i++;
+		}
 }
 
 
@@ -985,7 +1167,6 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 							printf("Receiving frame size\n");
 							//After receiving ACCEPTATION has to be received the "Tamanio de pagina" information
 							receivedBytes = receiveMessage(socketClient, &frameSize,sizeof(messageSize));
-							configNucleo.pageSize = frameSize;
 
 							printf("Tamanio de pagina: %d\n", frameSize);
 							break;
@@ -995,25 +1176,26 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 									"Handshake not accepted when tried to connect your '%s' with '%s'\n",
 									getProcessString(processToConnect),	getProcessString(message->process));
 							close(*socketClient);
+							exitcode = EXIT_FAILURE;
 							break;
 						}
+
 					}
-				default:{
-					log_error(logNucleo,
-						"Process couldn't connect to SERVER - Not able to connect to server %s. Please check if it's down.\n",ip);
+					break;
+				}	//fin case ACCEPTED
+				default: {
+					log_error(logNucleo,"Process couldn't connect to SERVER - Not able to connect to server %s. Please check if it's down.\n",ip);
 					close(*socketClient);
-				break;}
-				}//fin case ACCEPTED
+					break;
+				}
 				}
 			}else if (receivedBytes == 0 ){
 				//The client is down when bytes received are 0
-				log_error(logNucleo,
-						"The client went down while receiving! - Please check the client '%d' is down!\n",*socketClient);
+				log_error(logNucleo, "The client went down while receiving! - Please check the client '%d' is down!\n",*socketClient);
 				close(*socketClient);
 			}else{
-				log_error(logNucleo,
-						"Error - No able to received - Error receiving from socket '%d', with error: %d\n",*socketClient, errno);
-				 close(*socketClient);
+				log_error(logNucleo, "Error - No able to received - Error receiving from socket '%d', with error: %d\n",*socketClient, errno);
+				close(*socketClient);
 			}
 		}
 	}else{

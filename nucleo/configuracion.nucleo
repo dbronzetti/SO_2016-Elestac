@@ -10,4 +10,3 @@ sem_ids=[SEM1, SEM2, SEM3]
 sem_init=[0, 0, 5]
 shared_vars=[!Global, !UnaVar, !tiempo3]
 stack_size=2
-page_size=0
