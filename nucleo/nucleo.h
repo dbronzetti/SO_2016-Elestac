@@ -24,21 +24,21 @@
 
 // Estructuras
 typedef struct {
-int puerto_prog;
-int puerto_cpu;
-int puerto_umc;
-char* ip_umc;
-int quantum;
-int quantum_sleep;
-char** sem_ids;
-int** sem_ids_values;
-int* sem_init;
-char** io_ids;
-int* io_sleep;
-char** shared_vars;
-int** shared_vars_values;
-int stack_size;
-int pageSize;
+	int puerto_prog;
+	int puerto_cpu;
+	int puerto_umc;
+	char* ip_umc;
+	int quantum;
+	int quantum_sleep;
+	char** sem_ids;
+	int** sem_ids_values;
+	int* sem_init;
+	char** io_ids;
+	int* io_sleep;
+	char** shared_vars;
+	int** shared_vars_values;
+	int stack_size;
+	int pageSize;
 } t_configFile;
 
 typedef struct {
@@ -70,12 +70,6 @@ typedef struct {
 	int PID;
 	int numSocket;
 } t_datosConsola;
-
-typedef struct {
-	t_nombre_semaforo semaforo;
-	int valor;
-	t_queue** colas_semaforos;
-} t_semaforo;
 
 t_queue** colas_semaforos;
 
@@ -122,8 +116,8 @@ void runScript(char* codeScript,int socketConsola);
 void planificarProceso();
 void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso,t_serverData* serverData);
 void finalizaProceso(int socket, int PID, int estado);
-void atenderBloqueados();
 void atenderCorteQuantum(int socket, int PID);
+void atenderBloqueados();
 
 //Encabezamiento de Funciones Secundarias
 
@@ -150,8 +144,9 @@ void grabarValor(t_nombre_compartida variable, t_valor_variable* valor);
 void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
 
 int *pideSemaforo(t_nombre_semaforo semaforo);
-void escribirSem(char *semaforo,int valor);
-
+void grabarSemaforo(t_nombre_semaforo semaforo,int valor);
+void liberaSemaforo(t_nombre_semaforo semaforo);
+void  bloqueoSemaforo(t_proceso *proceso, t_nombre_semaforo semaforo);
 
 void wait(t_nombre_semaforo identificador_semaforo);
 void signal(t_nombre_semaforo identificador_semaforo);

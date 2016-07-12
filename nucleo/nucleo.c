@@ -289,7 +289,7 @@ void processMessageReceived (void *parameter){
 
 				//Deserializar messageRcv para el tamanio
 				int opFinalizar;
-				memcpy(opFinalizar, messageRcv, sizeof(int));
+				memcpy(&opFinalizar, messageRcv, sizeof(int));
 
 				int PID = buscarPIDConsola(serverData->socketClient);
 				if (PID==-1){
@@ -469,7 +469,7 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		strcpy(contextoProceso->indiceDeEtiquetas, datosPCB->indiceDeEtiquetas);
 		contextoProceso->indiceDeEtiquetasTamanio = strlen(datosPCB->indiceDeEtiquetas) + 1;
 
-		int payloadSize = sizeof(contextoProceso->ProgramCounter) + (sizeof(contextoProceso->processID))
+		int payloadSize = sizeof(contextoProceso->programCounter) + (sizeof(contextoProceso->processID))
 			+ sizeof(contextoProceso->StackPointer)+ sizeof(contextoProceso->cantidadDePaginas) + sizeof(contextoProceso->operacion)
 			+ sizeof(contextoProceso->quantum) + sizeof(contextoProceso->quantum_sleep) ;
 			//TODO falta sumarle las listas
@@ -571,7 +571,12 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		grabarValor(&mensajePrivilegiado->variable,&mensajePrivilegiado->valor);
 		break;}
 	case 8:{	//wait o signal
-		//TODO
+
+		//Si no esta
+		t_PCB* datosProceso;
+		pthread_mutex_lock(&listadoProcesos);
+		datosProceso = (t_PCB*) list_get(listaProcesos, posicion);
+		pthread_mutex_unlock(&listadoProcesos);
 		break;}
 
 	case 10:{	//Imprimir VALOR por Consola
@@ -594,7 +599,6 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 			char *texto = string_new();
 			// TODO strcpy(texto,message->textoImprimir);
 			sendMessage(&socketConsola, (void*) texto, sizeof(int));
-
 			break;}
 	default:
 		printf("Mensaje recibido invalido, CPU desconectado.\n");
@@ -656,9 +660,7 @@ void finalizaProceso(int socket, int PID, int estado) {
 		if (estado == 3) {
 			estadoProceso = 5;
 			cambiarEstadoProceso(PID, estadoProceso);
-			log_info(logNucleo,
-					"myProcess %d - Finalizo incorrectamente por falta de espacio en Swap",
-					datosProceso->PID);
+			log_info(logNucleo, "myProcess %d - Finalizo incorrectamente por falta de espacio en Swap", datosProceso->PID);
 		}
 	}
 
@@ -749,6 +751,15 @@ int buscarSocketConsola(int PID){
 	return -1;
 }
 
+bool estaEjecutando(int PID){
+
+	int i;
+	int cantElementos = queue
+	for (i = 0; i < cantConsolas; i++) {
+
+
+}
+
 void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 
 	t_bloqueado* infoBloqueado = malloc(sizeof(t_bloqueado));
@@ -761,7 +772,7 @@ void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 	queue_push(colaBloqueados, (void*) infoBloqueado);
 	pthread_mutex_unlock(&cBloqueados);
 
-	sem_post(&semBloqueados);//TODO
+	sem_post(&semBloqueados);
 
 	free(infoBloqueado);
 }
@@ -863,9 +874,7 @@ t_valor_variable *obtenerValor(t_nombre_compartida variable) {
 		}
 		i++;
 	}
-
 	//TENER EN CUENTA que aca esta funcionando con el \n
-
 	return valorVariable;
 }
 
@@ -889,58 +898,60 @@ int *pideSemaforo(t_nombre_semaforo semaforo) {
 	int i = 0;
 	int *valorVariable = NULL;
 
-	while ( strlen((char*)configNucleo.sem_ids[i]) / sizeof(char)) {
+	while (configNucleo.sem_ids[i] != NULL) {
 		//TODO: mutex confignucleo??
-		if (strcmp((char*)configNucleo.sem_ids[i], semaforo) == 0) {
+		if (strcmp(configNucleo.sem_ids[i], semaforo) == 0) {
 
-			//if (config_nucleo->VALOR_SEM[i] == -1) {return &config_nucleo->VALOR_SEM[i];}
-			//config_nucleo->VALOR_SEM[i]--;
+			//if (configNucleo.sem_ids_values[i] == -1) {return &configNucleo.sem_ids_values[i];}
+			//configNucleo.sem_ids_values[i]--;
 			return (configNucleo.sem_ids_values[i]);
 		}
 		i++;
 	}
-	printf("No encontre SEM id, exit\n");
+	printf("No se encontro el id del semaforo. \n");
 	return valorVariable;
 }
 
-void escribirSem(t_nombre_semaforo semaforo, int valor){
+void grabarSemaforo(t_nombre_semaforo semaforo, int valor){
 	int i = 0;
 
 	while (configNucleo.sem_ids[i] != NULL){
 
-		if (strcmp((char*)configNucleo.sem_ids[i], semaforo) == 0) {
+		if (strcmp(configNucleo.sem_ids[i], semaforo) == 0) {
 
-			//if (configNucleo.valor_sem[i] == -1) return &configNucleo.valor_sem[i];
+			//if (configNucleo.sem_ids_values[i] == -1) return &configNucleo.sem_ids_values[i];
 			configNucleo.sem_ids_values[i] = (int*) valor;
 			return;
 		}
+		i++;
 	}
 	printf("No se encontro el id del semaforo. \n");
 }
 
 
 void liberaSemaforo(t_nombre_semaforo semaforo) {
-	int i;
+	int i=0;
 	t_proceso *proceso;
 
-	for (i = 0; i < strlen((char*)configNucleo.sem_ids) / sizeof(char*); i++) {
-		if (strcmp((char*)configNucleo.sem_ids[i], semaforo) == 0) {
+	while (configNucleo.sem_ids[i] != NULL){
+		if (strcmp(configNucleo.sem_ids[i], semaforo) == 0) {
 
 			if(list_size(colas_semaforos[i]->elements)){
 				proceso = queue_pop(colas_semaforos[i]);
+				pthread_mutex_lock(&cListos);
 				queue_push(colaListos, (void*) proceso);
+				pthread_mutex_unlock(&cListos);
+
 			}else{
 				configNucleo.sem_ids_values[i]++;
 			}
 
 			return;
 /*
-
-
-		//TODO:aca esta funcando con el \n OJO
-			//TODO: mutex confignucleo
-			config_nucleo->VALOR_SEM[i]++;
-			printf("VALRO SEM %d\n",config_nucleo->VALOR_SEM[i]);
+		//Aca esta funcionando con el \n OJO
+		//TODO: mutex configNucleo??
+			configNucleo.sem_ids_values[i]++;
+			printf("VALOR SEM: %d\n",configNucleo->sem_ids_values[i]);
 			if (proceso = queue_pop(colas_semaforos[i])) {
 				//config_nucleo->VALOR_SEM[i]--;
 				queue_push(cola_ready, proceso);
@@ -951,24 +962,21 @@ void liberaSemaforo(t_nombre_semaforo semaforo) {
 			*/
 		}
 	}
-	printf("No encontre SEM id, exit\n");exit(0);
+	printf("No se encontro el id del semaforo. \n");
 }
 
+void  bloqueoSemaforo(t_proceso *proceso, t_nombre_semaforo semaforo) {
+	int i=0;
 
-void  bloqueoSemaforo(t_proceso *proceso, char *semaforo) {
-	int i;
-
-	for (i = 0; i < strlen((char*)config_nucleo->SEM_IDS) / sizeof(char*); i++) {
-		if (strcmp((char*)config_nucleo->SEM_IDS[i], semaforo) == 0) {
-			//TODO:aca esta funcando con el \n OJO
-			//Mocks config colas
-
+	while (configNucleo.sem_ids[i] != NULL) {
+		if (strcmp(configNucleo.sem_ids[i], semaforo) == 0) {
+			//Aca esta funcionando con el \n  OJO
 			queue_push(colas_semaforos[i], proceso);
 			return;
-
 		}
+		i++;
 	}
-	printf("No encontre SEM id, exit\n");exit(0);
+	printf("No se encontro el id del semaforo. \n");
 }
 
 
@@ -994,20 +1002,6 @@ void armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData
 	unBloqueControl.indiceDeEtiquetas = miMetaData->etiquetas;
 
 	log_error(logNucleo,"'indiceDeEtiquetas' size: %d\n", miMetaData->etiquetas_size);
-}
-
-//TODO verificar para que se creo esta funcion:
-int definirVar(char* nombreVariable, t_registroStack miPrograma, int posicion) {
-	t_vars *nuevaVariable;
-
-	nuevaVariable->identificador = nombreVariable;
-	miPrograma.pos = 0;
-
-	list_add(miPrograma.vars, (void*) &nuevaVariable);
-
-	miPrograma.retPos = posicion;
-
-	return 1;
 }
 
 void finalizarPid(int pid){
@@ -1049,7 +1043,6 @@ void finalizarPid(int pid){
 	}
 }
 
-//TODO invocar al recibir un script
 void iniciarPrograma(int PID, char *codeScript) {
 
 	int bufferSize = 0;
@@ -1160,11 +1153,10 @@ void crearArchivoDeConfiguracion(char *configFile){
 	}
 	//initializing sem_ids values
 	while ((configNucleo.sem_ids[i] != NULL) && (configNucleo.sem_init[i] != NULL)){
-			configNucleo.sem_ids_values[i] = configNucleo.sem_init[i];
+			configNucleo.sem_ids_values[i] = configNucleo.sem_init[i]; // TODO inicializar valores de semaforos
 			i++;
 		}
 }
-
 
 int connectTo(enum_processes processToConnect, int *socketClient){
 	int exitcode = EXIT_FAILURE;//DEFAULT VALUE
