@@ -171,6 +171,4 @@ void iniciarPrograma(int PID, char* codeScript);
 void finalizarPrograma(int PID);
 void finalizarPid(int PID);
 
-void deserializarES(t_es* datos, char* buffer);
-
 #endif /* NUCLEO_H_ */

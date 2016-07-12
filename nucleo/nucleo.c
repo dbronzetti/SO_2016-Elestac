@@ -1110,25 +1110,6 @@ void finalizarPrograma(int PID) {
 	free(message);
 }
 
-void deserializarES(t_es* datos, char* buffer) {
-
-	memcpy(&datos->dispositivo,buffer, (strlen(datos->dispositivo)));
-	int offset = strlen(datos->dispositivo);
-
-	memcpy(&datos->tiempo, buffer+offset, sizeof(datos->tiempo));
-	offset += sizeof(datos->tiempo);
-
-	memcpy(&datos->ProgramCounter, buffer + offset, sizeof(datos->ProgramCounter));
-
-
-	/* int dispositivoLen = 0;
-	memcpy(&dispositivoLen, buffer + offset, sizeof(dispositivoLen));
-	offset += sizeof(dispositivoLen);
-	datos->dispositivo= malloc(dispositivoLen);
-	memcpy(datos->dispositivo, buffer + offset, dispositivoLen);
-*/
-}
-
 void crearArchivoDeConfiguracion(char *configFile){
 	t_config* configuration;
 

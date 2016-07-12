@@ -9,7 +9,7 @@
 #include <assert.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include "commons/string.h"
+#include <commons/string.h>
 #include "common-types.h"
 
 typedef enum{
@@ -48,6 +48,11 @@ typedef struct{
 } t_MessageCPU_UMC;
 
 typedef struct{
+	int processID;
+	int operacion;
+} t_MessageCPU_Nucleo;
+
+typedef struct{
 	int PID;
 	int cantPages;
 	enum_operationsUMC_SWAP operation;
@@ -76,6 +81,41 @@ int sendMessage (int *socketClient, void *buffer, int bufferSize);
 int receiveMessage(int *socketClient, void *messageRcv, int bufferSize);
 void serializeHandShake(t_MessageGenericHandshake *value, char *buffer, int valueSize);
 void deserializeHandShake(t_MessageGenericHandshake *value, char *bufferReceived);
+void serializarPCB(t_MessageNucleo_CPU* value, char* buffer, int valueSize);
+
+void serializarRegistroStack(t_registroStack* registroASerializar, char* registroSerializado);
+void deserializarRegistroStack(t_registroStack* registroRecibido, char* registroSerializado);
+
+void serializarListaStack(t_list* listaASerializar, char* listaSerializada);
+void deserializarListaStack(t_list* listaARecibir, char* listaSerializada);
+
+void serializarVars(t_vars* miRegistro, char* value);
+void deserializarVars(t_vars* unaVariable, char* variablesRecibidas);
+
+void serializeMemoryLocation(t_memoryLocation* unaPosicion, char* value);
+void deserializeMemoryLocation(t_memoryLocation* unaPosicion, char* posicionRecibida);
+
+void serializarListasVars(t_list* listaASerializar, char* listaSerializada);
+int deserializarListasVars(t_list* listaVars,char* listaSerializada);
+
+void serializarStack(t_registroStack* registroStack, char* registroSerializado);
+void deserializarStack(t_registroStack* estructuraARecibir, char* registroStack);
+
+void serializeListaArgs(t_list* listaASerializar, char* listaSerializada);
+int deserializeListasArgs(t_list* listaArgs,char* listaSerializada);
+
+void serializarIndiceDeCodigo(t_registroIndiceCodigo* registroEnviar, char* registroSerializado);
+void deserializarIndiceDeCodigo(t_registroIndiceCodigo* registroARecibir, char* registroSerializado);
+
+void serializarListaIndiceDeCodigo(t_list* listaASerializar, char* listaSerializada);
+void deserializarListaIndiceDeCodigo(t_list* listaARecibir, char* listaSerializada);
+
+void serializarListaIndiceDeEtiquetas(t_list* listaASerializar,char* listaSerializada);
+void DeserializarListaIndiceDeEtiquetas(t_list* listaRecibida,char* listaSerializada);
+
+void serializarIndiceDeEtiquetas(t_registroIndiceEtiqueta* registroAEnviar,char* registroSerializado);
+void DeserializarIndiceDeEtiquetas(t_registroIndiceEtiqueta* registroRecibido,char* registroSerializado);
+
 char *getProcessString (enum_processes process);
 
 //IMPORTANTE!!! --> Nomeclatura de Serializadores y Deserealizadores
@@ -94,7 +134,7 @@ void deserializeUMC_CPU(t_MessageCPU_UMC *value, char *bufferReceived);
 void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize);
 void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char *bufferReceived);
 
-void serializeCPU_Nucleo(t_MessageNucleo_CPU *value, char *buffer, int valueSize);
-void deserializeNucleo_CPU(t_MessageNucleo_CPU *value, char *bufferReceived);
+void serializeCPU_Nucleo(t_MessageCPU_Nucleo *value, char *buffer, int valueSize);
+void deserializeNucleo_CPU(t_MessageCPU_Nucleo *value, char *bufferReceived);
 
 #endif /*SOCKET_H_*/

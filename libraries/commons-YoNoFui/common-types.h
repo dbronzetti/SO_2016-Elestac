@@ -81,33 +81,5 @@ typedef struct {
 
 void setPageSize (int pageSize);
 int getLogicalAddress (int page);
-void serializarES(t_es *dispositivoEnviar, char *dispositivoSerializado);
+
 void deserializarES(t_es* datos, char* buffer);
-
-
-
-
-
-
-void serializarVars(t_vars* miRegistro, char* value);
-void serializeMemoryLocation(t_memoryLocation* unaPosicion, char* value);
-void serializeListaArgs(t_list* listaASerializar, char* listaSerializada);
-void serializarListasVars(t_list* listaASerializar, char* listaSerializada);
-void serializarStack(t_registroStack* registroStack, char* registroSerializado);
-void deserializarMemoryLocation(t_memoryLocation* unaPosicion,char* posicionRecibida);
-int deserializarListasVars(t_list* listaVars,char* listaSerializada);
-int deserializarListasArgs(t_list* listaArgs,char* listaSerializada);
-void deserializarVars(t_vars* unaVariable, char* variablesRecibidas) ;
-void deserializarStack(t_registroStack* estructuraARecibir, char* registroStack);
-void deserializarListaStack(t_list* listaARecibir, char* listaSerializada);
-
-void serializarIndiceDeCodigo(t_registroIndiceCodigo* registroEnviar, char* registroSerializado);
-void deserializarIndiceDeCodigo(t_registroIndiceCodigo* registroARecibir, char* registroSerializado);
-void serializarListaIndiceDeCodigo(t_list* listaARecibir, char* listaSerializada);
-void deserializarListaIndiceDeCodigo(t_list* listaARecibir, char* listaSerializada);
-void serializarRegistroStack(t_registroStack* registroASerializar, char* registroSerializado);
-void serializarListaStack(t_list* listaASerializar, char* listaSerializada);
-
-void serializarPCB(t_MessageNucleo_CPU* value, char* buffer, int valueSize);
-
-

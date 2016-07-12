@@ -363,7 +363,7 @@ void manejarES(char* instruccion,int PID, int pcActualizado, int banderaFinQuant
 	char* bufferDatosES = malloc(sizeof(t_es));
 
 	//TODO serializar Entrada Salida
-	//serializarES(datosParaPlanifdeES, bufferDatosES);
+	serializarES(datosParaPlanifdeES, bufferDatosES);
 
 	sendMessage(&socketNucleo, bufferDatosES, sizeof(t_es));
 
@@ -372,6 +372,18 @@ void manejarES(char* instruccion,int PID, int pcActualizado, int banderaFinQuant
 	free(bufferRespuesta);
 	free(bufferDatosES);
 	free(datosParaPlanifdeES);
+
+}
+
+void serializarES(t_es *dispositivoEnviar, char *dispositivoSerializado){
+	//TODO no se esta enviando el tamanio del dispositivo que es un char* ni se esta considerando el \0 en el offset
+	memcpy(dispositivoSerializado,dispositivoEnviar->dispositivo , strlen(dispositivoEnviar->dispositivo));
+	int offset = strlen(dispositivoEnviar->dispositivo);
+
+	memcpy(dispositivoSerializado + offset,(void*) dispositivoEnviar->tiempo, sizeof(int));
+	offset += sizeof(int);
+
+	memcpy(dispositivoSerializado + offset,(void*) dispositivoEnviar->ProgramCounter, sizeof(int));
 
 }
 
@@ -464,13 +476,9 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
 		posicionBuscada=list_find(registroBuscado->vars,(void*)condicionVariable);
 	}
 	posicionEncontrada =(void*)posicionBuscada->direccionValorDeVariable;
+
 	return posicionEncontrada;
-
-
-
 }
-
-
 
 t_valor_variable dereferenciar(t_puntero direccion_variable){
 	t_valor_variable varValue=malloc(sizeof(t_valor_variable));
@@ -480,7 +488,7 @@ t_valor_variable dereferenciar(t_puntero direccion_variable){
 	memcpy(&posicionSenialada->size,(&direccion_variable+8),4);*/
 	sendMessage(&socketUMC,direccion_variable,sizeof(t_memoryLocation));
 	char* valorRecibido;
-	receiveMessage(&socket,valorRecibido,sizeof(int));
+	receiveMessage(&socketUMC,valorRecibido,sizeof(int));
 	memcpy(&varValue,valorRecibido,4);
 	return varValue;
 }
@@ -501,10 +509,10 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 
 	int valorDeError;
 
-	valorDeError=sendMessage(socket,variable,sizeof(char));
+	valorDeError=sendMessage(&socketNucleo,variable,sizeof(char));
 	if(valorDeError!=-1){
 		printf("Los datos se enviaron correctamente");
-		if(receiveMessage(socket,valorVariableSerializado,sizeof(t_valor_variable))!=-1){
+		if(receiveMessage(&socketNucleo,valorVariableSerializado,sizeof(t_valor_variable))!=-1){
 
 			memcpy(valorVariableDeserializado,valorVariableSerializado,sizeof(t_valor_variable));
 		}
@@ -524,7 +532,7 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_va
 	variableCompuesta.nombreCompartida=variable;
 	variableCompuesta.valorVariable=valor;
 	//serializarStructCompartida(struct_serializado,variableCompuesta);
-	sendMessage(socket,struct_serializado,sizeof(struct_serializado));
+	sendMessage(&socketNucleo,struct_serializado,sizeof(struct_serializado));
 
 	return valor;
 
@@ -587,12 +595,9 @@ void retornar(t_valor_variable retorno){
 	memcpy(valorRetorno,registroActual->retVar->offset,4);
 	memcpy(valorRetorno,registroActual->retVar->pag,4);
 	memcpy(valorRetorno,registroActual->retVar->size,4);
-	sendMessage(socketUMC,valorRetorno,sizeof(t_memoryLocation));
+	sendMessage(&socketUMC,valorRetorno,sizeof(t_memoryLocation));
 	memcpy(&valorRetorno,retorno,4);
-	sendMessage(socketUMC,valorRetorno,4);
-
-
-
+	sendMessage(&socketUMC,valorRetorno,4);
 
 }
 
@@ -601,7 +606,7 @@ void imprimir(t_valor_variable valor_mostrar){
 	char *valueChar = malloc(sizeof(t_valor_variable));
 
 	memcpy(valueChar,(void*) valor_mostrar, sizeof(valor_mostrar));
-	sendMessage (&socket, valueChar, sizeof(t_valor_variable));
+	sendMessage (&socketNucleo, valueChar, sizeof(t_valor_variable));
 
 	//send to Nucleo valueChar to be printed on Consola
 
@@ -609,7 +614,7 @@ void imprimir(t_valor_variable valor_mostrar){
 
 void imprimirTexto(char *texto){
 
-	sendMessage (&socket, texto, sizeof(texto)); // TODO string_lenght(texto) ??
+	sendMessage (&socketNucleo, texto, sizeof(texto)); // TODO string_lenght(texto) ??
 
 }
 
@@ -619,8 +624,10 @@ void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo) {
 	dispositivoEnviar->tiempo = tiempo;
 	int sizeDS = 0;
 	char* dispositivoSerializado = malloc(sizeof(sizeDS));
+
 	serializarES(dispositivoEnviar, dispositivoSerializado);
-	sendMessage(&socket, dispositivoSerializado, sizeof(t_es));
+
+	sendMessage(&socketNucleo, dispositivoSerializado, sizeof(t_es));
 	// definir enum_dispositivos
 }
 
@@ -639,7 +646,6 @@ void signal(t_nombre_semaforo identificador_semaforo){
 	//send to Nucleo to execute SIGNAL function for "identificador_semaforo"
 
 }
-
 
 t_memoryLocation* buscarUltimaPosicionOcupada(t_PCB* pcbEjecutando){
 	t_registroStack* ultimoRegistro=malloc(sizeof(t_registroStack));
