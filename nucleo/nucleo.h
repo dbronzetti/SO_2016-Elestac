@@ -128,6 +128,7 @@ void liberarCPU(int socket);
 int buscarCPU(int socket);
 int buscarPIDConsola(int socket);
 int buscarSocketConsola(int PID);
+int estaEjecutando(int PID);
 void actualizarPC(int PID, int ProgramCounter);
 void crearArchivoDeConfiguracion(char* configFile);
 
@@ -142,6 +143,7 @@ int definirVar(char* nombreVariable,t_registroStack miPrograma,int posicion);
 t_valor_variable* obtenerValor(t_nombre_compartida variable);
 void grabarValor(t_nombre_compartida variable, t_valor_variable* valor);
 void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
+void deserializarES(t_es* datos, char* bufferRecived);
 
 int *pideSemaforo(t_nombre_semaforo semaforo);
 void grabarSemaforo(t_nombre_semaforo semaforo,int valor);

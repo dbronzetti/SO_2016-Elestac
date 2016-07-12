@@ -77,9 +77,8 @@ typedef struct datosEntradaSalida {
 typedef struct {
 	t_nombre_variable variable;
 	t_valor_variable valor;
+	t_nombre_semaforo semaforo;
 }t_privilegiado;
 
 void setPageSize (int pageSize);
 int getLogicalAddress (int page);
-
-void deserializarES(t_es* datos, char* buffer);
