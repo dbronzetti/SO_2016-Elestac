@@ -603,12 +603,22 @@ void retornar(t_valor_variable retorno){
 
 
 void imprimir(t_valor_variable valor_mostrar){
-	char *valueChar = malloc(sizeof(t_valor_variable));
 
-	memcpy(valueChar,(void*) valor_mostrar, sizeof(valor_mostrar));
-	sendMessage (&socketNucleo, valueChar, sizeof(t_valor_variable));
+	//Envia aviso que finaliza incorrectamente el proceso a NUCLEO
+	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
+	respuesta->operacion = 10;
+	respuesta->processID = PCB->PID;
 
-	//send to Nucleo valueChar to be printed on Consola
+	int payloadSize = sizeof(respuesta->operacion) + sizeof(respuesta->processID);
+	int bufferSize = sizeof(bufferSize) + payloadSize ;
+
+	char* bufferRespuesta = malloc(bufferSize);
+	serializeCPU_Nucleo(respuesta, bufferRespuesta, payloadSize);
+
+	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+
+	//Envio mensaje con valor a imprimir - send to Nucleo valueChar to be printed on Consola
+	sendMessage (&socketNucleo, valor_mostrar, sizeof(t_valor_variable));
 
 }
 

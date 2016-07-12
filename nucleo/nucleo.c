@@ -505,22 +505,17 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 	printf("Processing CPU message \n");
 	t_valor_variable* valorVariable;
 
-	t_MessageNucleo_CPU *message=malloc(sizeof(t_MessageNucleo_CPU));
+	t_MessageCPU_Nucleo *message=malloc(sizeof(t_MessageCPU_Nucleo));
 
-	t_privilegiado *mensajePrivilegiado = malloc(sizeof(t_privilegiado));
-
-	t_es infoES;
-	memset(messageRcv, '\0', sizeof(t_MessageNucleo_CPU));
-	receiveMessage(&socketLibre,(void*)messageRcv,sizeof(t_MessageNucleo_CPU));
+	messageRcv = realloc(messageRcv, messageSize);
+	receiveMessage(&socketLibre,(void*)messageRcv, messageSize);
 
 	//Deserializo messageRcv
-	deserializeCPU_Nucleo(message, messageRcv);
-
-	//TODO Deserializar mensajePrivilegiado
-	receiveMessage(&socketLibre,(void*)mensajePrivilegiado,sizeof(t_MessageNucleo_CPU));
+	deserializeNucleo_CPU(message, messageRcv);
 
 	switch (message->operacion) {
 	case 1:{ 	//Entrada Salida
+		t_es infoES;
 		pthread_mutex_lock(&activeProcessMutex);
 		char *datosEntradaSalida = malloc(sizeof(t_es));
 
@@ -559,6 +554,11 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		atenderCorteQuantum(socketLibre, message->processID);
 		break;}
 	case 6:{	//Obtener valor y enviarlo al CPU
+
+		//TODO Deserializar mensajePrivilegiado
+		t_privilegiado *mensajePrivilegiado = malloc(sizeof(t_privilegiado));
+		receiveMessage(&socketLibre,(void*)mensajePrivilegiado, sizeof(t_privilegiado));
+
 		valorVariable = obtenerValor(&mensajePrivilegiado->variable);
 
 		if (valorVariable == NULL){
@@ -568,9 +568,19 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		sendMessage(&socketLibre, (void*) &valorVariable, sizeof(t_valor_variable));
 		break;}
 	case 7:{	//Grabar valor
+
+		//TODO Deserializar mensajePrivilegiado
+		t_privilegiado *mensajePrivilegiado = malloc(sizeof(t_privilegiado));
+		receiveMessage(&socketLibre,(void*)mensajePrivilegiado, sizeof(t_privilegiado));
+
 		grabarValor(&mensajePrivilegiado->variable,&mensajePrivilegiado->valor);
 		break;}
 	case 8:{	//Grabar semaforo y enviar al CPU
+
+		//TODO Deserializar mensajePrivilegiado
+		t_privilegiado *mensajePrivilegiado = malloc(sizeof(t_privilegiado));
+		receiveMessage(&socketLibre,(void*)mensajePrivilegiado, sizeof(t_privilegiado));
+
 		t_proceso* proceso = malloc(sizeof(t_proceso));
 		proceso->PID = message->processID;
 
@@ -593,19 +603,32 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		free(proceso);
 		break;}
 	case 9:{//Libera semaforo
+
+		//TODO Deserializar mensajePrivilegiado
+		t_privilegiado *mensajePrivilegiado = malloc(sizeof(t_privilegiado));
+		receiveMessage(&socketLibre,(void*)mensajePrivilegiado, sizeof(t_privilegiado));
+
 		liberaSemaforo(mensajePrivilegiado->semaforo);
 		break;}
 	case 10:{	//Imprimir VALOR por Consola
 		int socketConsola = buscarSocketConsola(message->processID);
+
 		if (socketConsola==-1){
 			printf("No se encontro Consola para el PID: %d \n",message->processID);
 			break;
 		}
-		t_valor_variable* valor = malloc(sizeof(int));
-		// TODO valor = message.valorImprimir;
+
+		//Received value from CPU
+		t_valor_variable* valor = malloc(sizeof(t_valor_variable));
+		receiveMessage(&socketLibre,(void*)valor, sizeof(t_valor_variable));
+
+		log_info(logNucleo, "Enviar valor '%s' a PID #%d\n", valor, message->processID);
+
 		sendMessage(&socketConsola, (void*) valor, sizeof(t_valor_variable));
+
 		free(valor);
-		break;}
+		break;
+	}
 	case 11:{	//Imprimir TEXTO por Consola
 			int socketConsola = buscarSocketConsola(message->processID);
 			if (socketConsola==-1){
@@ -621,6 +644,8 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		//printf("CPU desconectado.\n");
 		//abort();
 	}
+
+	free(message);
 }
 
 void atenderCorteQuantum(int socket,int PID){
@@ -1121,7 +1146,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 }
 
 //TODO invocar al procesar estado exit
-void finalizarPrograma(int PID) {
+void finalizarPrograma(int PID){
 
 	int bufferSize = 0;
 	int payloadSize = 0;
