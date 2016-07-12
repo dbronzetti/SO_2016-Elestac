@@ -633,25 +633,31 @@ void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo) {
 
 void wait(t_nombre_semaforo identificador_semaforo){
 	enum_semaforo semID;
-
-	//TODO NO SE ESTA ENVIANDO EL SIZE DEL nombre del semaforo!!!
-	sendMessage(&socketNucleo, identificador_semaforo , strlen(identificador_semaforo));
-
-	//TODO VER PORQUE SE EJECUTA ESTO DE NUEVO!!!!
+	char* sizeAEnviar=malloc(sizeof(int));
+	int cantidadDeCaracteres=strlen(identificador_semaforo);
+	memcpy(sizeAEnviar,&cantidadDeCaracteres,sizeof(int));
+	char*respuestaNucleo=malloc(sizeof(int));
+	int respuestaRecibida;
 	sendMessage(&socketNucleo, &semID, sizeof(int));
+	sendMessage(&socketNucleo, sizeAEnviar , strlen(identificador_semaforo));
+	sendMessage(&socketNucleo, identificador_semaforo , strlen(identificador_semaforo));
+	receiveMessage(&socketNucleo,respuestaNucleo,sizeof(int));
+	memcpy(&respuestaRecibida,respuestaNucleo,sizeof(int));
+	if(respuestaRecibida==1){
+		//TODO devolver PCB al nucleo
+	}
 	//send to Nucleo to execute WAIT function for "identificador_semaforo"
 
 }
 
 void signal(t_nombre_semaforo identificador_semaforo){
 	enum_semaforo semID;
-
-	//TODO NO SE ESTA ENVIANDO EL SIZE DEL nombre del semaforo!!!
-	sendMessage(&socketNucleo, identificador_semaforo , strlen(identificador_semaforo));
-
-	//TODO VER PORQUE SE EJECUTA ESTO DE NUEVO!!!!
+	char* sizeAEnviar=malloc(sizeof(int));
+	int cantidadDeCaracteres=strlen(identificador_semaforo);
+	memcpy(sizeAEnviar,&cantidadDeCaracteres,sizeof(int));
 	sendMessage(&socketNucleo,&semID , sizeof(int));
-	//send to Nucleo to execute SIGNAL function for "identificador_semaforo"
+	sendMessage(&socketNucleo, sizeAEnviar , strlen(identificador_semaforo));
+	sendMessage(&socketNucleo, identificador_semaforo , strlen(identificador_semaforo));
 
 }
 
