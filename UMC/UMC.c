@@ -424,7 +424,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 	if (exitcode == EXIT_SUCCESS){
 
 		// ***1) Send handshake
-		exitcode = sendClientHandShake(socketClient,CPU);
+		exitcode = sendClientHandShake(socketClient,UMC);
 
 		if (exitcode == EXIT_SUCCESS){
 

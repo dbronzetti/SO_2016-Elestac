@@ -1,17 +1,14 @@
 #ifndef CPU_H_
 #define CPU_H_
 
+#include "sockets.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include <parser/metadata_program.h>
-#include <parser/parser.h>
 #include <commons/collections/list.h>
-#include "commons/config.h"
-#include "commons/log.h"
-
-#include "sockets.h"
-#include "common-types.h"
+#include <commons/config.h>
+#include <commons/log.h>
 
 typedef struct {
 	int port_Nucleo;
@@ -34,7 +31,6 @@ t_log* logCPU;
 t_PCB* PCB;
 int ultimoPosicionPC;
 
-
 int ejecutarPrograma(t_PCB *PCB);
 int connectTo(enum_processes processToConnect, int *socketClient);
 void crearArchivoDeConfiguracion(char *configFile);
@@ -42,6 +38,7 @@ void sendRequestToUMC();
 void waitRequestFromNucleo(int *socketClient, char * messageRcv);
 
 void manejarES(char* instruccion,int PID, int pcActualizado, int banderaFinQuantum);
+void serializarES(t_es *dispositivoEnviar, char *dispositivoSerializado);
 char* leerParametro(char* instruccion);
 //Encabezamientos primitivas
 
@@ -63,6 +60,5 @@ void signal(t_nombre_semaforo identificador_semaforo);
 int condicionBuscarVarible(t_vars* variableBuscada,t_vars* otraVariable);
 t_vars* buscarEnElStackPosicionPagina(t_PCB* pcb);
 t_memoryLocation* buscarUltimaPosicionOcupada(t_PCB* pcbEjecutando);
-
 
 #endif /* CPU_H_ */
