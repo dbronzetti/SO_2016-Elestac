@@ -362,7 +362,7 @@ void manejarES(char* instruccion,int PID, int pcActualizado, int banderaFinQuant
 
 	char* bufferDatosES = malloc(sizeof(t_es));
 
-	//TODO serializar Entrada Salida
+	//serializar Entrada Salida
 	serializarES(datosParaPlanifdeES, bufferDatosES);
 
 	sendMessage(&socketNucleo, bufferDatosES, sizeof(t_es));
@@ -423,7 +423,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 		ultimoRegistro=list_get(PCB->indiceDeStack,PCB->indiceDeStack->elements_count);
 		list_add(ultimoRegistro->vars, (void*)variableAAgregar);
 
-		posicionDeLaVariable= &variableAAgregar->direccionValorDeVariable;
+		posicionDeLaVariable= (int) &variableAAgregar->direccionValorDeVariable;
 
 		return posicionDeLaVariable;
 	}else{
@@ -444,7 +444,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 
 		list_add(PCB->indiceDeStack,registroAAgregar);
 
-		posicionDeLaVariable= (void*) &variableAAgregar->direccionValorDeVariable;
+		posicionDeLaVariable= (int) &variableAAgregar->direccionValorDeVariable;
 
 		return posicionDeLaVariable;
 	}
@@ -475,22 +475,22 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
 		registroBuscado=list_get(PCB->indiceDeStack,i);
 		posicionBuscada=list_find(registroBuscado->vars,(void*)condicionVariable);
 	}
-	posicionEncontrada =(void*)posicionBuscada->direccionValorDeVariable;
+	posicionEncontrada =(int) &posicionBuscada->direccionValorDeVariable;
 
 	return posicionEncontrada;
 }
 
 t_valor_variable dereferenciar(t_puntero direccion_variable){
-	t_valor_variable varValue=malloc(sizeof(t_valor_variable));
-	t_memoryLocation* posicionSenialada=malloc(sizeof(t_memoryLocation));
+	t_valor_variable *varValue = malloc(sizeof(t_valor_variable));
+	t_memoryLocation *posicionSenialada = malloc(sizeof(t_memoryLocation));
 	/*memcpy(&posicionSenialada->offset,&direccion_variable,4);
 	memcpy(&posicionSenialada->pag,(&direccion_variable+4),4);
 	memcpy(&posicionSenialada->size,(&direccion_variable+8),4);*/
-	sendMessage(&socketUMC,direccion_variable,sizeof(t_memoryLocation));
-	char* valorRecibido;
+	sendMessage(&socketUMC, &direccion_variable, sizeof(t_memoryLocation));
+	char* valorRecibido = NULL;
 	receiveMessage(&socketUMC,valorRecibido,sizeof(int));
-	memcpy(&varValue,valorRecibido,4);
-	return varValue;
+	memcpy(varValue,valorRecibido,4);
+	return *varValue;
 }
 
 void asignar(t_puntero direccion_variable, t_valor_variable valor){
@@ -505,7 +505,7 @@ void asignar(t_puntero direccion_variable, t_valor_variable valor){
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 	t_valor_variable valorVariableDeserializado;
-	char* valorVariableSerializado;
+	char* valorVariableSerializado = NULL;
 
 	int valorDeError;
 
@@ -514,7 +514,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 		printf("Los datos se enviaron correctamente");
 		if(receiveMessage(&socketNucleo,valorVariableSerializado,sizeof(t_valor_variable))!=-1){
 
-			memcpy(valorVariableDeserializado,valorVariableSerializado,sizeof(t_valor_variable));
+			memcpy(&valorVariableDeserializado, valorVariableSerializado, sizeof(t_valor_variable));
 		}
 	}else{
 		printf("Los datos no pudieron ser enviados");
@@ -535,7 +535,6 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_va
 	sendMessage(&socketNucleo,struct_serializado,sizeof(struct_serializado));
 
 	return valor;
-
 }
 
 void irAlLabel(t_nombre_etiqueta etiqueta){
@@ -564,24 +563,25 @@ void irAlLabel(t_nombre_etiqueta etiqueta){
 	registroAnterior=list_get(PCB->indiceDeStack,PCB->indiceDeStack->elements_count);
 	infoVariable=(t_vars*)list_get(registroAnterior->vars,registroAnterior->vars->elements_count);
 	nuevoRegistroStack->retVar=infoVariable->direccionValorDeVariable;
+	//TODO PCB->indiceDeEtiquetas NO ES MAS UNA LISTA POR LA SERIALIZACION - CAMBIAR A LA LISTA ARMADA DESPUES DE DESEREALIZARLO
 	registroBuscado=(t_registroIndiceEtiqueta*)list_find(PCB->indiceDeEtiquetas,(void*)condicionEtiquetas);
 	PCB->ProgramCounter=registroBuscado->posicionDeLaEtiqueta;
 
 }
 
 void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
-	t_valor_variable retorno;
+	t_valor_variable retorno = -1;//TODO VER DEFAULT VALUE
 	irAlLabel(etiqueta);
 
 	retornar(retorno);
-
 }
 
 void retornar(t_valor_variable retorno){
 
 	t_registroStack* registroARegresar;
-	t_memoryLocation* retVar;
+	t_memoryLocation* retVar = NULL;
 	t_registroStack* registroActual;
+
 	bool condicionRetorno(t_registroStack* unRegistro){
 		return (unRegistro->retPos==registroARegresar->pos);
 	}
@@ -590,13 +590,13 @@ void retornar(t_valor_variable retorno){
 	PCB->StackPointer=registroARegresar->pos;
 	registroActual=list_get(PCB->indiceDeStack,PCB->StackPointer);
 	char* valorRetorno;
-	char* retornar;
+	char* retornar; //TODO VER PARA QUE SE USA!!!!!
 
-	memcpy(valorRetorno,registroActual->retVar->offset,4);
-	memcpy(valorRetorno,registroActual->retVar->pag,4);
-	memcpy(valorRetorno,registroActual->retVar->size,4);
+	memcpy(valorRetorno,&registroActual->retVar->offset,4);
+	memcpy(valorRetorno,&registroActual->retVar->pag,4);
+	memcpy(valorRetorno,&registroActual->retVar->size,4);
 	sendMessage(&socketUMC,valorRetorno,sizeof(t_memoryLocation));
-	memcpy(&valorRetorno,retorno,4);
+	memcpy(&valorRetorno,&retorno,4);
 	sendMessage(&socketUMC,valorRetorno,4);
 
 }
@@ -633,16 +633,24 @@ void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo) {
 
 void wait(t_nombre_semaforo identificador_semaforo){
 	enum_semaforo semID;
+
+	//TODO NO SE ESTA ENVIANDO EL SIZE DEL nombre del semaforo!!!
 	sendMessage(&socketNucleo, identificador_semaforo , strlen(identificador_semaforo));
-	sendMessage(&socketNucleo, (void*) semID, sizeof(int));
+
+	//TODO VER PORQUE SE EJECUTA ESTO DE NUEVO!!!!
+	sendMessage(&socketNucleo, &semID, sizeof(int));
 	//send to Nucleo to execute WAIT function for "identificador_semaforo"
 
 }
 
 void signal(t_nombre_semaforo identificador_semaforo){
 	enum_semaforo semID;
+
+	//TODO NO SE ESTA ENVIANDO EL SIZE DEL nombre del semaforo!!!
 	sendMessage(&socketNucleo, identificador_semaforo , strlen(identificador_semaforo));
-	sendMessage(&socketNucleo,(void*) semID , sizeof(int));
+
+	//TODO VER PORQUE SE EJECUTA ESTO DE NUEVO!!!!
+	sendMessage(&socketNucleo,&semID , sizeof(int));
 	//send to Nucleo to execute SIGNAL function for "identificador_semaforo"
 
 }
