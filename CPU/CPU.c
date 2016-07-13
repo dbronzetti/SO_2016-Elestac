@@ -109,7 +109,7 @@ int main(int argc, char *argv[]){
 						corteQuantum->processID = PCBRecibido->PID;
 
 						int payloadSize = sizeof(corteQuantum->operacion) + sizeof(corteQuantum->processID);
-						int bufferSize = sizeof(bufferSize) + payloadSize ;
+						int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
 						char* bufferRespuesta = malloc(bufferSize);
 						serializeCPU_Nucleo(corteQuantum, bufferRespuesta, payloadSize);
@@ -127,7 +127,7 @@ int main(int argc, char *argv[]){
 						respuestaFinOK->processID = PCBRecibido->PID;
 
 						int payloadSize = sizeof(respuestaFinOK->operacion) + sizeof(respuestaFinOK->processID);
-						int bufferSize = sizeof(bufferSize) + payloadSize ;
+						int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
 						char* bufferRespuesta = malloc(bufferSize);
 						serializeCPU_Nucleo(respuestaFinOK, bufferRespuesta, payloadSize);
@@ -164,7 +164,7 @@ int ejecutarPrograma(t_PCB* PCB){
 	posicionEnMemoria->offset=instruccionActual->inicioDeInstruccion%frameSize;
 	posicionEnMemoria->size=instruccionActual->longitudInstruccionEnBytes;
 
-	//serializarPosicionDeMemoria(direccionAEnviar,posicionEnMemoria,tamanio);
+	//TODO serializarPosicionDeMemoria(direccionAEnviar,posicionEnMemoria,tamanio);
 	sendMessage(&socketUMC,direccionAEnviar,sizeof(t_memoryLocation));
 
 	int returnCode = EXIT_SUCCESS;//DEFAULT
@@ -180,7 +180,7 @@ int ejecutarPrograma(t_PCB* PCB){
 		respuestaFinFalla->processID = PCB->PID;
 
 		int payloadSize = sizeof(respuestaFinFalla->operacion) + sizeof(respuestaFinFalla->processID);
-		int bufferSize = sizeof(bufferSize) + payloadSize ;
+		int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
 		char* bufferRespuesta = malloc(bufferSize);
 		serializeCPU_Nucleo(respuestaFinFalla, bufferRespuesta, payloadSize);
@@ -342,22 +342,26 @@ void manejarES(char* instruccion,int PID, int pcActualizado, int banderaFinQuant
 	char* parametroIniciar = leerParametro(instruccion);
 	int tiempoBloqueo = atoi(parametroIniciar);
 
-	//Prepara estructuras para mandarle al NUCLEO
-	t_MessageCPU_Nucleo entradaSalida;
-	entradaSalida.operacion = 1;
-	entradaSalida.processID = PID;
+	//TODO ver que hacen con esta bandera
 	banderaFinQuantum = 1;
 
 	t_es* datosParaPlanifdeES = malloc(sizeof(t_es));
 	datosParaPlanifdeES->ProgramCounter = pcActualizado;
 	datosParaPlanifdeES->tiempo = tiempoBloqueo;
-	//TODO cambiar forma a payload y buffersize
-	char* bufferRespuesta = malloc(sizeof(t_MessageCPU_Nucleo));
 
-	//TODO crear serializar CPU a NUCLEO
-	//serializeCPU_Nucleo(entradaSalida, &bufferRespuesta);
 
-	sendMessage(&socketNucleo, bufferRespuesta, sizeof(t_MessageCPU_Nucleo));
+	//Prepara estructuras para mandarle al NUCLEO
+	t_MessageCPU_Nucleo* entradaSalida = malloc(sizeof(t_MessageCPU_Nucleo));
+	entradaSalida->operacion = 1;
+	entradaSalida->processID = PID;
+
+	int payloadSize = sizeof(entradaSalida->operacion) + sizeof(entradaSalida->processID);
+	int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
+
+	char* bufferRespuesta = malloc(bufferSize);
+	serializeCPU_Nucleo(entradaSalida, bufferRespuesta, payloadSize);
+
+	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
 	char* bufferDatosES = malloc(sizeof(t_es));
 
@@ -369,6 +373,7 @@ void manejarES(char* instruccion,int PID, int pcActualizado, int banderaFinQuant
 	log_info(logCPU, "proceso: %d en entrada-salida de tiempo: %d \n", PID,tiempoBloqueo);
 
 	free(bufferRespuesta);
+	free(entradaSalida);
 	free(bufferDatosES);
 	free(datosParaPlanifdeES);
 
@@ -609,7 +614,7 @@ void imprimir(t_valor_variable valor_mostrar){
 	respuesta->processID = PCB->PID;
 
 	int payloadSize = sizeof(respuesta->operacion) + sizeof(respuesta->processID);
-	int bufferSize = sizeof(bufferSize) + payloadSize ;
+	int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
 	char* bufferRespuesta = malloc(bufferSize);
 	serializeCPU_Nucleo(respuesta, bufferRespuesta, payloadSize);
@@ -617,7 +622,7 @@ void imprimir(t_valor_variable valor_mostrar){
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
 	//Envio mensaje con valor a imprimir - send to Nucleo valueChar to be printed on Consola
-	sendMessage (&socketNucleo, valor_mostrar, sizeof(t_valor_variable));
+	sendMessage(&socketNucleo, &valor_mostrar, sizeof(valor_mostrar));
 
 }
 

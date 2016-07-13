@@ -368,8 +368,6 @@ void procesNucleoMessages(char *messageRcv, int messageSize, t_serverData* serve
 
 	changeActiveProcess(message->PID);
 
-	void *content = NULL;
-
 	switch (message->operation){
 		case agregar_proceso:{
 
@@ -380,11 +378,12 @@ void procesNucleoMessages(char *messageRcv, int messageSize, t_serverData* serve
 			receivedBytes = receiveMessage(&serverData->socketClient, (void*) messageSize, sizeof(messageSize));
 
 			//Receive content using the size read before
-			content = realloc(content, messageSize);
+			void *content = malloc(messageSize);
 			receivedBytes = receiveMessage(&serverData->socketClient, content, messageSize);
 
 			initializeProgram(message->PID, message->cantPages, content);
 
+			free(content);
 			break;
 		}
 		case finalizar_proceso:{
@@ -794,8 +793,6 @@ void initializeProgram(int PID, int totalPagesRequired, char *programCode){
 	// inform new program to swap and check if it could write it.
 	int bufferSize = 0;
 	int payloadSize = 0;
-	void *memoryBlockOffset = NULL;
-	char *content = string_new();
 
 	//overwrite page content in swap (swap out)
 	t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
@@ -807,8 +804,8 @@ void initializeProgram(int PID, int totalPagesRequired, char *programCode){
 	message->virtualAddress->offset = -1;//DEFAULT value when the operation doesn't need it
 	message->virtualAddress->size = -1;//DEFAULT value when the operation doesn't need it
 
-	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) ;
-	bufferSize = sizeof(bufferSize) + payloadSize ;
+	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) + sizeof(message->cantPages);
+	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
 	char *buffer = malloc(bufferSize);
 	//Serialize messageRcv
@@ -825,7 +822,11 @@ void initializeProgram(int PID, int totalPagesRequired, char *programCode){
 	sendMessage(&socketSwap, (void*) programCodeLen, sizeof(programCodeLen));
 
 	//2) Send program to swap
-	sendMessage(&socketSwap, content, programCodeLen);
+	sendMessage(&socketSwap, programCode, programCodeLen);
+
+	free(buffer);
+	free(message);
+
 
 }
 
@@ -847,8 +848,6 @@ void endProgram(int PID){
 	// inform new program to swap and check if it could write it.
 	int bufferSize = 0;
 	int payloadSize = 0;
-	void *memoryBlockOffset = NULL;
-	char *content = string_new();
 
 	//overwrite page content in swap (swap out)
 	t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
@@ -860,8 +859,8 @@ void endProgram(int PID){
 	message->virtualAddress->offset = -1;//DEFAULT value when the operation doesn't need it
 	message->virtualAddress->size = -1;//DEFAULT value when the operation doesn't need it
 
-	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) ;
-	bufferSize = sizeof(bufferSize) + payloadSize ;
+	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) + sizeof(message->cantPages);
+	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize;
 
 	char *buffer = malloc(bufferSize);
 	//Serialize messageRcv
@@ -1030,8 +1029,8 @@ void checkPageModification(t_memoryAdmin *memoryElement){
 		message->cantPages = -1; //DEFAULT value when the operation doesnt need it
 		memcpy(message->virtualAddress, memoryElement->virtualAddress,sizeof(memoryElement->virtualAddress));
 
-		payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) ;
-		bufferSize = sizeof(bufferSize) + payloadSize ;
+		payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) + sizeof(message->cantPages);
+		bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
 		char *buffer = malloc(bufferSize);
 		//Serialize messageRcv
@@ -1068,10 +1067,10 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID){
 	message->operation = lectura_pagina;
 	message->PID = PID;
 	message->cantPages = -1; //DEFAULT value when the operation doesnt need it
-	memcpy(message->virtualAddress, virtualAddress,sizeof(virtualAddress));
+	memcpy(message->virtualAddress, virtualAddress, sizeof(virtualAddress));
 
-	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) ;
-	bufferSize = sizeof(bufferSize) + payloadSize ;
+	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) + sizeof(message->cantPages);
+	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
 	//Serialize messageRcv
 	serializeUMC_Swap(message, buffer, payloadSize);

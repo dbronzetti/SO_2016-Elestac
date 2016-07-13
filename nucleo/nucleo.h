@@ -17,10 +17,10 @@
 #include "commons/collections/queue.h"
 #include "commons/config.h"
 #include "commons/log.h"
-#include <math.h>
 #include <sys/types.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <math.h>
 
 // Estructuras
 typedef struct {
