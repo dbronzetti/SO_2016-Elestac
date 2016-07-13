@@ -68,8 +68,6 @@ typedef struct{
 	int quantum;
 	int indiceDeEtiquetasTamanio;
 	char *indiceDeEtiquetas;
-	t_list* indiceDeCodigo;
-	t_list* indiceDeStack;
 } t_MessageNucleo_CPU;
 
 int openServerConnection(int newSocketServerPort, int *socketServer);
@@ -81,28 +79,27 @@ int sendMessage (int *socketClient, void *buffer, int bufferSize);
 int receiveMessage(int *socketClient, void *messageRcv, int bufferSize);
 void serializeHandShake(t_MessageGenericHandshake *value, char *buffer, int valueSize);
 void deserializeHandShake(t_MessageGenericHandshake *value, char *bufferReceived);
-void serializarPCB(t_MessageNucleo_CPU* value, char* buffer, int valueSize);
 
-void serializarRegistroStack(t_registroStack* registroASerializar, char* registroSerializado);
-void deserializarRegistroStack(t_registroStack* registroRecibido, char* registroSerializado);
+void serializarRegistroStack(t_registroStack* registroASerializar, char* registroSerializado, int *offset);
+void deserializarRegistroStack(t_registroStack* registroRecibido, char* registroSerializado, int *offset);
 
 void serializarListaStack(t_list* listaASerializar, char* listaSerializada);
 void deserializarListaStack(t_list* listaARecibir, char* listaSerializada);
 
-void serializarVars(t_vars* miRegistro, char* value);
-void deserializarVars(t_vars* unaVariable, char* variablesRecibidas);
+void serializarVars(t_vars* miRegistro, char* value, int *offset);
+void deserializarVars(t_vars* unaVariable, char* variablesRecibidas, int *offset);
 
-void serializeMemoryLocation(t_memoryLocation* unaPosicion, char* value);
-void deserializeMemoryLocation(t_memoryLocation* unaPosicion, char* posicionRecibida);
+void serializeMemoryLocation(t_memoryLocation* unaPosicion, char* value, int *offset);
+void deserializeMemoryLocation(t_memoryLocation* unaPosicion, char* posicionRecibida, int *offset);
 
-void serializarListasVars(t_list* listaASerializar, char* listaSerializada);
-int deserializarListasVars(t_list* listaVars,char* listaSerializada);
+void serializarListasVars(t_list* listaASerializar, char* listaSerializada, int *offset);
+void deserializarListasVars(t_list* listaVars,char* listaSerializada, int *offset);
 
-void serializarStack(t_registroStack* registroStack, char* registroSerializado);
-void deserializarStack(t_registroStack* estructuraARecibir, char* registroStack);
+void serializarStack(t_registroStack* registroStack, char* registroSerializado, int *offset);
+void deserializarStack(t_registroStack* estructuraARecibir, char* registroStack, int *offset);
 
-void serializeListaArgs(t_list* listaASerializar, char* listaSerializada);
-int deserializeListasArgs(t_list* listaArgs,char* listaSerializada);
+void serializeListaArgs(t_list* listaASerializar, char* listaSerializada, int *offset);
+void deserializeListasArgs(t_list* listaArgs,char* listaSerializada, int *offset);
 
 void serializarIndiceDeCodigo(t_registroIndiceCodigo* registroEnviar, char* registroSerializado);
 void deserializarIndiceDeCodigo(t_registroIndiceCodigo* registroARecibir, char* registroSerializado);
