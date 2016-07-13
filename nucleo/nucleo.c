@@ -721,6 +721,7 @@ void atenderCorteQuantum(int socket,int PID){
 
 }
 
+//TODO cada vez que se finaliza proceso se debe avisar a la consola ascociada
 void finalizaProceso(int socket, int PID, int estado) {
 
 	int posicion = buscarPCB(PID);
@@ -1400,12 +1401,12 @@ void administrarBloqueosIO(t_bloqueado *proceso, char *ioString, int unidadesBlo
 			pthread_mutex_lock(&cBloqueados);
 			queue_push(colaBloqueados, proceso);
 			pthread_mutex_unlock(&cBloqueados);
-			printf("LA SIZE: %d\n",queue_size(colaBloqueados));
+			printf("El tamanio: %d\n",queue_size(colaBloqueados));
 			return;
 		}
 		i++;
 	}
-	printf("No encontre IO id, exit\n");
+	printf("No encontre IO id.\n");
 
 }
 
