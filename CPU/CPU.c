@@ -56,7 +56,7 @@ int main(int argc, char *argv[]){
 		if(messageRcv !=  NULL){
 			int messageSize = 0;
 			int receivedBytes = 0;
-			//TODO deserealizar y construir PCB
+			//deserealizar y construir PCB
 			t_MessageNucleo_CPU* messageWithBasicPCB = malloc(sizeof(t_MessageNucleo_CPU));
 
 			deserializeCPU_Nucleo(messageWithBasicPCB, messageRcv);
@@ -72,6 +72,7 @@ int main(int argc, char *argv[]){
 			PCBRecibido->indiceDeStack = list_create();
 			QUANTUM = messageWithBasicPCB->quantum;
 			QUANTUM_SLEEP = messageWithBasicPCB->quantum_sleep;
+			ultimoPosicionPC = PCBRecibido->ProgramCounter;
 
 			//receive tamaño de lista indice codigo
 			messageRcv = realloc(messageRcv, sizeof(messageSize));
@@ -93,7 +94,7 @@ int main(int argc, char *argv[]){
 			receivedBytes = receiveMessage(&socketNucleo, messageRcv, atoi(messageRcv));
 
 			//deserializar estructuras del stack
-			deserializarListaIndiceDeCodigo(PCBRecibido->indiceDeStack, messageRcv);
+			deserializarListaStack(PCBRecibido->indiceDeStack, messageRcv);
 
 			//Create list for IndiceDeEtiquetas
 			deserializarListaIndiceDeEtiquetas(PCBRecibido->indiceDeEtiquetas, messageWithBasicPCB->indiceDeEtiquetasTamanio);
@@ -212,6 +213,7 @@ int ejecutarPrograma(t_PCB* PCB){
 
 	}else{
 		analizadorLinea(codigoRecibido,funciones,funciones_kernel);
+		ultimoPosicionPC++;
 	}
 
 	return exitCode;
@@ -463,14 +465,14 @@ void serializarES(t_es *value, t_nombre_dispositivo buffer, int valueSize){
 
 t_puntero definirVariable(t_nombre_variable identificador){
 	t_puntero posicionDeLaVariable;
-	t_vars* ultimaPosicionOcupada;
+	t_vars* ultimaPosicionOcupada = NULL;
 	t_vars* variableAAgregar = malloc(sizeof(t_vars));
 	variableAAgregar->direccionValorDeVariable = malloc(sizeof(t_memoryLocation));
 	variableAAgregar->identificador=identificador;
 
 	ultimaPosicionOcupada = buscarEnElStackPosicionPagina(PCBRecibido);
 
-	if(ultimoPosicionPC == PCBRecibido->ProgramCounter){
+	if( (ultimoPosicionPC == PCBRecibido->ProgramCounter) && (ultimaPosicionOcupada != NULL)){ //check if is the first row in stack
 		t_registroStack* ultimoRegistro = malloc(sizeof(t_registroStack));
 
 		if(ultimaPosicionOcupada->direccionValorDeVariable->offset == frameSize){
@@ -486,40 +488,54 @@ t_puntero definirVariable(t_nombre_variable identificador){
 		ultimoRegistro=list_get(PCBRecibido->indiceDeStack, PCBRecibido->indiceDeStack->elements_count);
 		list_add(ultimoRegistro->vars, (void*)variableAAgregar);
 
-		posicionDeLaVariable= (int) &variableAAgregar->direccionValorDeVariable;
+		posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
 
-		return posicionDeLaVariable;
+
 	}else{
-		t_registroStack* registroAAgregar=malloc(sizeof(t_registroStack));
+		t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
 
-		if(ultimaPosicionOcupada->direccionValorDeVariable->offset==frameSize){
-			variableAAgregar->direccionValorDeVariable->pag=ultimaPosicionOcupada->direccionValorDeVariable->pag+1;
-			variableAAgregar->direccionValorDeVariable->offset=ultimaPosicionOcupada->direccionValorDeVariable->offset+4;
-			variableAAgregar->direccionValorDeVariable->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
-		}else{
-			variableAAgregar->direccionValorDeVariable->pag=ultimaPosicionOcupada->direccionValorDeVariable->pag;
-			variableAAgregar->direccionValorDeVariable->offset=ultimaPosicionOcupada->direccionValorDeVariable->offset+4;
+		if(ultimaPosicionOcupada->direccionValorDeVariable->offset == frameSize){
+			variableAAgregar->direccionValorDeVariable->pag = ultimaPosicionOcupada->direccionValorDeVariable->pag + 1; //increasing 1 page to last one
+			variableAAgregar->direccionValorDeVariable->offset = ultimaPosicionOcupada->direccionValorDeVariable->offset + sizeof(int); // sizeof(int) because of all variables values in AnsisOP are integer
+			variableAAgregar->direccionValorDeVariable->size = ultimaPosicionOcupada->direccionValorDeVariable->size;
+		}else{//we suppossed that the variable value is NEVER going to be greater than the page size
+			variableAAgregar->direccionValorDeVariable->pag = ultimaPosicionOcupada->direccionValorDeVariable->pag;
+			variableAAgregar->direccionValorDeVariable->offset = ultimaPosicionOcupada->direccionValorDeVariable->offset + sizeof(int); // sizeof(int) because of all variables values in AnsisOP are integer
 			variableAAgregar->direccionValorDeVariable->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
 		}
 
 		list_add(registroAAgregar->vars,(void*)variableAAgregar);
-		registroAAgregar->pos = PCBRecibido->indiceDeStack->elements_count - 1;
+
+		if(list_is_empty(PCBRecibido->indiceDeStack)){
+			registroAAgregar->pos = 0;//first element in registro stack
+		}else{
+			registroAAgregar->pos = PCBRecibido->indiceDeStack->elements_count - 1;
+		}
 
 		list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
-		posicionDeLaVariable= (int) &variableAAgregar->direccionValorDeVariable;
+		posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
 
-		return posicionDeLaVariable;
 	}
+
+	return posicionDeLaVariable;
 }
 
 t_vars* buscarEnElStackPosicionPagina(t_PCB* pcb){
 	t_registroStack* ultimoRegistro;
 	t_vars* ultimaPosicionLlena;
-	ultimoRegistro=list_get(pcb->indiceDeStack,pcb->indiceDeStack->elements_count);
-	ultimaPosicionLlena=list_get(ultimoRegistro->vars,ultimoRegistro->vars->elements_count);
-	//TODO 1) TENER EN CUENTA la pagina donde arranca el stack
-	//TODO 2) TENER EN CUENTA argumentos para ultima posicion
+	ultimoRegistro = list_get(pcb->indiceDeStack, pcb->indiceDeStack->elements_count);
+
+	if(list_is_empty(ultimoRegistro->args)){//first row in stack
+		ultimaPosicionLlena=list_get(ultimoRegistro->vars,ultimoRegistro->vars->elements_count);
+		//TODO 1) TENER EN CUENTA la pagina donde arranca el stack
+		//TODO 2) TENER EN CUENTA argumentos para ultima posicion
+	}else if (list_is_empty(ultimoRegistro->vars)){
+		ultimaPosicionLlena=list_get(ultimoRegistro->args,ultimoRegistro->args->elements_count);
+		//TODO 1) TENER EN CUENTA la pagina donde arranca el stack
+		//TODO 2) TENER EN CUENTA argumentos para ultima posicion
+	}
+
 	return ultimaPosicionLlena;
 }
 
