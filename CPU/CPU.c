@@ -744,7 +744,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
 
 	//Envia info al proceso a NUCLEO
 	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
-	respuesta->operacion = 8;//TODO ver codigo de operacion
+	respuesta->operacion = 8;//8 Grabar semaforo (WAIT)
 	respuesta->processID = PCBRecibido->PID;
 
 	int payloadSize = sizeof(respuesta->operacion) + sizeof(respuesta->processID);
@@ -756,15 +756,18 @@ void wait(t_nombre_semaforo identificador_semaforo){
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
 	//send to Nucleo to execute WAIT function for "identificador_semaforo"
-	enum_semaforo semID;
-	char* sizeAEnviar=malloc(sizeof(int));
 	int semaforoLen=strlen(identificador_semaforo)+1;
-	memcpy(sizeAEnviar,&semaforoLen,sizeof(int));
-	char*respuestaNucleo=malloc(sizeof(int));
+	char* respuestaNucleo = malloc(sizeof(int));
 	int respuestaRecibida;
-	sendMessage(&socketNucleo, &semID, sizeof(int));
-	sendMessage(&socketNucleo, sizeAEnviar , semaforoLen);
-	sendMessage(&socketNucleo, identificador_semaforo , semaforoLen);
+
+	// envio al Nucleo el tamanio del semaforo
+	sendMessage(&socketNucleo, (void*) semaforoLen , sizeof(semaforoLen));
+
+	// envio al Nucleo el semaforo
+	string_append(&identificador_semaforo, "\0");
+	sendMessage(&socketNucleo, identificador_semaforo, semaforoLen);
+
+	// recibir
 	receiveMessage(&socketNucleo,respuestaNucleo,sizeof(int));
 	memcpy(&respuestaRecibida,respuestaNucleo,sizeof(int));
 	if(respuestaRecibida==1){
@@ -777,7 +780,7 @@ void signal(t_nombre_semaforo identificador_semaforo){
 
 	//Envia info al proceso a NUCLEO
 	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
-	respuesta->operacion = 8;//TODO ver codigo de operacion
+	respuesta->operacion = 9;//9 es liberarSemafro (SIGNAL)
 	respuesta->processID = PCBRecibido->PID;
 
 	int payloadSize = sizeof(respuesta->operacion) + sizeof(respuesta->processID);
@@ -789,13 +792,14 @@ void signal(t_nombre_semaforo identificador_semaforo){
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
 	//send to Nucleo to execute SIGNAL function for "identificador_semaforo"
-	enum_semaforo semID;
-	char* sizeAEnviar=malloc(sizeof(int));
 	int semaforoLen=strlen(identificador_semaforo)+1;
-	memcpy(sizeAEnviar,&semaforoLen,sizeof(int));
-	sendMessage(&socketNucleo,&semID , sizeof(int));
-	sendMessage(&socketNucleo, sizeAEnviar , semaforoLen);
-	sendMessage(&socketNucleo, identificador_semaforo , semaforoLen);
+
+	// envio al Nucleo el tamanio del semaforo
+	sendMessage(&socketNucleo, (void*) semaforoLen , sizeof(semaforoLen));
+
+	// envio al Nucleo el semaforo
+	string_append(&identificador_semaforo, "\0");
+	sendMessage(&socketNucleo, identificador_semaforo, semaforoLen);
 
 }
 
