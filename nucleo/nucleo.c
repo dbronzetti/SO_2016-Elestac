@@ -589,9 +589,13 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		break;}
 	case 8:{	//Grabar semaforo TODO: (y enviar al CPU)?
 
-		//TODO Deserializar mensajePrivilegiado
-		t_privilegiado *mensajePrivilegiado = malloc(sizeof(t_privilegiado));
-		receiveMessage(&socketLibre,(void*)mensajePrivilegiado, sizeof(t_privilegiado));
+		char* tamanioSerializado=malloc(sizeof(int));
+		int tamanio;
+		int exitCode = EXIT_FAILURE;
+		exitCode = receiveMessage(&socketLibre, tamanioSerializado, sizeof(int));
+		exitCode= receiveMessage(&socketLibre);
+		memcpy(&tamanio, &tamanioSerializado, sizeof(int));
+
 
 		if (estaEjecutando(message->processID)==1){ // 1: Programa ejecutandose (no esta en ninguna cola)
 			int * valorSemaforo = pideSemaforo(mensajePrivilegiado->semaforo);
@@ -611,7 +615,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 			}
 		}
 		break;}
-	case 9:{	//Libera semaforo
+	case 9:{	//Libera semaforo SIGNAL
 
 		//TODO Deserializar mensajePrivilegiado
 		t_privilegiado *mensajePrivilegiado = malloc(sizeof(t_privilegiado));
