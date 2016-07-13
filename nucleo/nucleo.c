@@ -209,7 +209,6 @@ void handShake (void *parameter){
 					pthread_mutex_lock(&listadoCPU);
 					list_add(listaCPU, (void*)datosCPU);
 					pthread_mutex_unlock(&listadoCPU);
-					free(datosCPU);
 				}
 
 				break;
@@ -299,8 +298,6 @@ void processMessageReceived (void *parameter){
 
 					finalizarPid(PID);
 
-					finalizaProceso(serverData->socketClient, PID, 2); //TODO 2 porque finaliza correctamente
-
 					//TODO enviarle el mensaje del log a la Consola asociada y destruir PCB
 					return;
 				}
@@ -382,12 +379,9 @@ void runScript(char* codeScript, int socketConsola){
 	pthread_mutex_lock(&listadoConsola);
 	list_add(listaConsola, (void*) datosConsola);
 	pthread_mutex_unlock(&listadoConsola);
-	free(datosConsola);
 
 	planificarProceso();
 
-	free(PCB);
-	free(datosProceso);
 	metadata_destruir(miMetaData);
 
 }
@@ -482,7 +476,7 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 
 		//Saco el primer elemento de la cola, porque ya lo planifique.
 		pthread_mutex_lock(&cListos);
-		queue_pop(colaListos);
+		t_proceso* proceso = queue_pop(colaListos);
 		pthread_mutex_unlock(&cListos);
 
 		sendMessage(&serverData->socketClient, bufferEnviar, bufferSize);
@@ -498,7 +492,7 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		//2) processCPUMessages se hace dentro de processMessageReceived (case CPU)
 
 		free(bufferEnviar);
-
+		free(proceso);
 }
 
 void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
@@ -516,7 +510,6 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 	switch (message->operacion) {
 	case 1:{ 	//Entrada Salida
 		t_es infoES;
-		pthread_mutex_lock(&activeProcessMutex);
 		char *datosEntradaSalida = malloc(sizeof(t_es));
 
 		//change active PID
@@ -538,7 +531,6 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		EntradaSalida(infoES.dispositivo, infoES.tiempo);
 
 		free(datosEntradaSalida);
-		pthread_mutex_unlock(&activeProcessMutex);
 		break;}
 	case 2:{ 	//Finaliza Proceso Bien
 		finalizaProceso(socketLibre, message->processID,message->operacion);
@@ -575,7 +567,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 		grabarValor(&mensajePrivilegiado->variable,&mensajePrivilegiado->valor);
 		break;}
-	case 8:{	//Grabar semaforo y enviar al CPU
+	case 8:{	//Grabar semaforo TODO: (y enviar al CPU)?
 
 		//TODO Deserializar mensajePrivilegiado
 		t_privilegiado *mensajePrivilegiado = malloc(sizeof(t_privilegiado));
@@ -602,7 +594,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		}
 		free(proceso);
 		break;}
-	case 9:{//Libera semaforo
+	case 9:{	//Libera semaforo
 
 		//TODO Deserializar mensajePrivilegiado
 		t_privilegiado *mensajePrivilegiado = malloc(sizeof(t_privilegiado));
@@ -615,7 +607,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 		if (socketConsola==-1){
 			printf("No se encontro Consola para el PID: %d \n",message->processID);
-			break;
+			break;//TODO verificar que no continue; return;
 		}
 
 		//Received value from CPU
@@ -633,11 +625,28 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 			int socketConsola = buscarSocketConsola(message->processID);
 			if (socketConsola==-1){
 				printf("No se encontro Consola para el PID: %d \n",message->processID);
-				break;
+				break;//TODO verificar que no continue; return;
 			}
-			char *texto = string_new();
-			// TODO strcpy(texto,message->textoImprimir);
-			sendMessage(&socketConsola, (void*) texto, sizeof(int));
+			char* tamanioSerializado;
+			int tamanio;
+			char* texto = string_new();
+
+			//Recibo el tamanio del texto
+			receiveMessage(&socketLibre,tamanioSerializado,sizeof(int));
+			memcpy(&tamanio,&tamanioSerializado, sizeof(int));
+
+			//Recibo el texto
+			receiveMessage(&socketLibre,texto,tamanio);
+
+			// Envia el tamanio del texto al proceso CONSOLA
+			log_info(logNucleo, "Enviar tamanio: '%s', a PID #%d\n", tamanio, message->processID);
+			string_append(&texto,"\0");
+			sendMessage(&socketConsola, (void*) tamanio, sizeof(tamanio));
+
+			// Envia el texto al proceso CONSOLA
+			log_info(logNucleo, "Enviar texto: '%s', a PID #%d\n", texto, message->processID);
+			sendMessage(&socketConsola, texto, tamanio);
+
 			break;}
 	default:
 		printf("Mensaje recibido invalido. \n");
@@ -682,7 +691,6 @@ void atenderCorteQuantum(int socket,int PID){
 	//Mando nuevamente a PLanificar
 	planificarProceso();
 
-	free(datosProceso);
 }
 
 void finalizaProceso(int socket, int PID, int estado) {
@@ -899,8 +907,9 @@ void atenderBloqueados() {
 			infoProceso->PID = datos->PID;
 			infoProceso->ProgramCounter = datos->ProgramCounter;
 			pthread_mutex_lock(&cBloqueados);
-			queue_pop(colaBloqueados);
+			t_proceso* proceso = queue_pop(colaBloqueados);
 			pthread_mutex_unlock(&cBloqueados);
+			free(proceso);
 			if (informacionDeProceso->finalizar == 0) {
 				pthread_mutex_lock(&cListos);
 				queue_push(colaListos, (void*) infoProceso);
@@ -914,8 +923,8 @@ void atenderBloqueados() {
 		} else {
 			printf("Proceso no encontrado en la lista.\n");
 		}
-		free(infoProceso);
 	}
+
 }
 
 void actualizarPC(int PID, int ProgramCounter) {
@@ -1145,7 +1154,6 @@ void iniciarPrograma(int PID, char *codeScript) {
 
 }
 
-//TODO invocar al procesar estado exit
 void finalizarPrograma(int PID){
 
 	int bufferSize = 0;
@@ -1184,11 +1192,11 @@ void deserializarES(t_es* datos, char* bufferReceived) {
 			sizeof(datos->ProgramCounter));
 	offset += sizeof(datos->ProgramCounter);
 
-	//2) DispositivoLen
+	//3) DispositivoLen
 	memcpy(&dispositivoLen, bufferReceived + offset, sizeof(dispositivoLen));
 	offset += sizeof(dispositivoLen);
 
-	//3) Dispositivo
+	//4) Dispositivo
 	datos->dispositivo = malloc(dispositivoLen);
 	memcpy(datos->dispositivo, bufferReceived + offset, dispositivoLen);
 

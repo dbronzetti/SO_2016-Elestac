@@ -37,9 +37,9 @@ void crearArchivoDeConfiguracion(char *configFile);
 void sendRequestToUMC();
 void waitRequestFromNucleo(int *socketClient, char * messageRcv);
 
-void manejarES(char* instruccion,int PID, int pcActualizado, int banderaFinQuantum);
-void serializarES(t_es *dispositivoEnviar, char *dispositivoSerializado);
-char* leerParametro(char* instruccion);
+void manejarES(int PID, int pcActualizado, int* banderaFinQuantum, int tiempoBloqueo);
+void serializarES(t_es *value, t_nombre_dispositivo buffer, int valueSize);
+
 //Encabezamientos primitivas
 
 t_puntero definirVariable(t_nombre_variable nombreVariable);

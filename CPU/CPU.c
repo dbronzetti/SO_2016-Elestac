@@ -333,70 +333,74 @@ void crearArchivoDeConfiguracion(char *configFile){
 }
 
 
-/*********** TODO 			funciones de entrada salida a considerar (manejarES y leerParametro)				**********/
-// Modificalas y usalas como quieras perro
+/*********** TODO 			funcion de entrada salida a considerar 	(comparar con primitiva)		**********/
 
-void manejarES(char* instruccion,int PID, int pcActualizado, int banderaFinQuantum){
+void manejarES(int PID, int pcActualizado, int* banderaFinQuantum, int tiempoBloqueo){
 	printf("ENTRADA SALIDA...\n");
 
-	//lee el parametro de Entrada-Salida (tiempo de bloqueo...)
-	char* parametroIniciar = leerParametro(instruccion);
-	int tiempoBloqueo = atoi(parametroIniciar);
+	//Prepara estructuras para mandarle al NUCLEO
+	t_MessageCPU_Nucleo* entradaSalida = malloc(sizeof(t_MessageCPU_Nucleo));
+	entradaSalida->operacion = 1;
+	entradaSalida->processID = PID;
+	*banderaFinQuantum = 1;//TODO esto se puede hacer afuera
+
+	int payloadSize = sizeof(entradaSalida->operacion) + sizeof(entradaSalida->processID);
+	int bufferSize = sizeof(bufferSize) + payloadSize ;
+
+	char* bufferRespuesta = malloc(bufferSize);
+	//Serializar y enviar al NUCLEO
+	serializeCPU_Nucleo(entradaSalida, bufferRespuesta, payloadSize);
+	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
 	//Prepara estructuras para mandarle al NUCLEO
-	t_MessageCPU_Nucleo entradaSalida;
-	entradaSalida.operacion = 1;
-	entradaSalida.processID = PID;
-	banderaFinQuantum = 1;
-
 	t_es* datosParaPlanifdeES = malloc(sizeof(t_es));
 	datosParaPlanifdeES->ProgramCounter = pcActualizado;
 	datosParaPlanifdeES->tiempo = tiempoBloqueo;
-	//TODO cambiar forma a payload y buffersize
-	char* bufferRespuesta = malloc(sizeof(t_MessageCPU_Nucleo));
 
-	//TODO crear serializar CPU a NUCLEO
-	//serializeCPU_Nucleo(entradaSalida, &bufferRespuesta);
+	int payloadSizeES = sizeof(datosParaPlanifdeES->tiempo) + sizeof(datosParaPlanifdeES->ProgramCounter)
+			+ strlen(datosParaPlanifdeES->dispositivo)+1;
+	int bufferSizeES = sizeof(bufferSize) + payloadSize ;
 
-	sendMessage(&socketNucleo, bufferRespuesta, sizeof(t_MessageCPU_Nucleo));
-
-	char* bufferDatosES = malloc(sizeof(t_es));
-
-	//serializar Entrada Salida
-	serializarES(datosParaPlanifdeES, bufferDatosES);
-
-	sendMessage(&socketNucleo, bufferDatosES, sizeof(t_es));
+	char* bufferDatosES = malloc(bufferSizeES);
+	//Entrada Salida: Serializar y enviar al NUCLEO
+	serializarES(datosParaPlanifdeES, bufferDatosES,payloadSizeES);
+	sendMessage(&socketNucleo, bufferDatosES, bufferSizeES);
 
 	log_info(logCPU, "proceso: %d en entrada-salida de tiempo: %d \n", PID,tiempoBloqueo);
 
 	free(bufferRespuesta);
+	free(entradaSalida);
 	free(bufferDatosES);
 	free(datosParaPlanifdeES);
 
+
 }
 
-void serializarES(t_es *dispositivoEnviar, char *dispositivoSerializado){
-	//TODO no se esta enviando el tamanio del dispositivo que es un char* ni se esta considerando el \0 en el offset
-	memcpy(dispositivoSerializado,dispositivoEnviar->dispositivo , strlen(dispositivoEnviar->dispositivo));
-	int offset = strlen(dispositivoEnviar->dispositivo);
+void serializarES(t_es *value, t_nombre_dispositivo buffer, int valueSize){
+	int offset = 0;
+	//TODO Verificar que se este enviando el tamanio del dispositivo que es un char* y q se este considerando el \0 en el offset
 
-	memcpy(dispositivoSerializado + offset,(void*) dispositivoEnviar->tiempo, sizeof(int));
+	//valueSize
+	memcpy(buffer, &valueSize, sizeof(valueSize));
+	offset += sizeof(valueSize);
+
+	//tiempo
+	memcpy(buffer + offset, (void*) value->tiempo, sizeof(int));
 	offset += sizeof(int);
 
-	memcpy(dispositivoSerializado + offset,(void*) dispositivoEnviar->ProgramCounter, sizeof(int));
+	//ProgramCounter
+	memcpy(buffer + offset, (void*) value->ProgramCounter, sizeof(int));
+	offset += sizeof(int);
+
+	//dispositivo length
+	int dispositivoLen = strlen(value->dispositivo) + 1;
+	memcpy(buffer + offset, &dispositivoLen, sizeof(dispositivoLen));
+	offset += sizeof(dispositivoLen);
+
+	//Dispositivo
+	memcpy(buffer + offset, value->dispositivo, dispositivoLen);
 
 }
-
-char* leerParametro(char* instruccion){
-	//Arma array de strings de laterales del SPACE
-	char** desdeSpace = string_split(instruccion, " ");
-
-	char* parametro = string_new();
-	//copia en parametro lo que hay despues del space menos ";"
-	strncpy (parametro, desdeSpace[1], sizeof(desdeSpace[1])-1);
-	return parametro;
-}
-
 
 t_puntero definirVariable(t_nombre_variable identificador){
 	t_puntero posicionDeLaVariable;
@@ -604,7 +608,7 @@ void retornar(t_valor_variable retorno){
 
 void imprimir(t_valor_variable valor_mostrar){
 
-	//Envia aviso que finaliza incorrectamente el proceso a NUCLEO
+	//Envia info al proceso a NUCLEO
 	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
 	respuesta->operacion = 10;
 	respuesta->processID = PCB->PID;
@@ -617,14 +621,33 @@ void imprimir(t_valor_variable valor_mostrar){
 
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
-	//Envio mensaje con valor a imprimir - send to Nucleo valueChar to be printed on Consola
+	//Envio valor a imprimir - send to Nucleo valueChar to be printed on Consola
 	sendMessage (&socketNucleo, valor_mostrar, sizeof(t_valor_variable));
 
 }
 
 void imprimirTexto(char *texto){
 
-	sendMessage (&socketNucleo, texto, sizeof(texto)); // TODO string_lenght(texto) ??
+	//Envia info al proceso a NUCLEO
+	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
+	respuesta->operacion = 11;
+	respuesta->processID = PCB->PID;
+
+	int payloadSize = sizeof(respuesta->operacion) + sizeof(respuesta->processID);
+	int bufferSize = sizeof(bufferSize) + payloadSize ;
+
+	char* bufferRespuesta = malloc(bufferSize);
+	serializeCPU_Nucleo(respuesta, bufferRespuesta, payloadSize);
+
+	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+
+	// Envia el tamanio del texto al proceso NUCLEO
+	string_append(&texto,"\0");
+	int textoLen = strlen(texto) + 1;
+	sendMessage(&socketNucleo, (void*) textoLen, sizeof(textoLen));
+
+	// Envia el texto al proceso NUCLEO
+	sendMessage(&socketNucleo, texto, textoLen);
 
 }
 
@@ -635,39 +658,68 @@ void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo) {
 	int sizeDS = 0;
 	char* dispositivoSerializado = malloc(sizeof(sizeDS));
 
-	serializarES(dispositivoEnviar, dispositivoSerializado);
+	//serializarES(dispositivoEnviar, dispositivoSerializado);
 
 	sendMessage(&socketNucleo, dispositivoSerializado, sizeof(t_es));
-	// definir enum_dispositivos
+	//************   TODO 		VER LA FUNCION manejarES QUE PUEDE SER ESTA MISMA      ********************
 }
 
 void wait(t_nombre_semaforo identificador_semaforo){
+
+	//Envia info al proceso a NUCLEO
+	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
+	respuesta->operacion = 8;//TODO ver codigo de operacion
+	respuesta->processID = PCB->PID;
+
+	int payloadSize = sizeof(respuesta->operacion) + sizeof(respuesta->processID);
+	int bufferSize = sizeof(bufferSize) + payloadSize ;
+
+	char* bufferRespuesta = malloc(bufferSize);
+	serializeCPU_Nucleo(respuesta, bufferRespuesta, payloadSize);
+
+	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+
+	//send to Nucleo to execute WAIT function for "identificador_semaforo"
 	enum_semaforo semID;
 	char* sizeAEnviar=malloc(sizeof(int));
-	int cantidadDeCaracteres=strlen(identificador_semaforo);
-	memcpy(sizeAEnviar,&cantidadDeCaracteres,sizeof(int));
+	int semaforoLen=strlen(identificador_semaforo)+1;
+	memcpy(sizeAEnviar,&semaforoLen,sizeof(int));
 	char*respuestaNucleo=malloc(sizeof(int));
 	int respuestaRecibida;
 	sendMessage(&socketNucleo, &semID, sizeof(int));
-	sendMessage(&socketNucleo, sizeAEnviar , strlen(identificador_semaforo));
-	sendMessage(&socketNucleo, identificador_semaforo , strlen(identificador_semaforo));
+	sendMessage(&socketNucleo, sizeAEnviar , semaforoLen);
+	sendMessage(&socketNucleo, identificador_semaforo , semaforoLen);
 	receiveMessage(&socketNucleo,respuestaNucleo,sizeof(int));
 	memcpy(&respuestaRecibida,respuestaNucleo,sizeof(int));
 	if(respuestaRecibida==1){
 		//TODO devolver PCB al nucleo
 	}
-	//send to Nucleo to execute WAIT function for "identificador_semaforo"
 
 }
 
 void signal(t_nombre_semaforo identificador_semaforo){
+
+	//Envia info al proceso a NUCLEO
+	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
+	respuesta->operacion = 8;//TODO ver codigo de operacion
+	respuesta->processID = PCB->PID;
+
+	int payloadSize = sizeof(respuesta->operacion) + sizeof(respuesta->processID);
+	int bufferSize = sizeof(bufferSize) + payloadSize ;
+
+	char* bufferRespuesta = malloc(bufferSize);
+	serializeCPU_Nucleo(respuesta, bufferRespuesta, payloadSize);
+
+	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+
+	//send to Nucleo to execute SIGNAL function for "identificador_semaforo"
 	enum_semaforo semID;
 	char* sizeAEnviar=malloc(sizeof(int));
-	int cantidadDeCaracteres=strlen(identificador_semaforo);
-	memcpy(sizeAEnviar,&cantidadDeCaracteres,sizeof(int));
+	int semaforoLen=strlen(identificador_semaforo)+1;
+	memcpy(sizeAEnviar,&semaforoLen,sizeof(int));
 	sendMessage(&socketNucleo,&semID , sizeof(int));
-	sendMessage(&socketNucleo, sizeAEnviar , strlen(identificador_semaforo));
-	sendMessage(&socketNucleo, identificador_semaforo , strlen(identificador_semaforo));
+	sendMessage(&socketNucleo, sizeAEnviar , semaforoLen);
+	sendMessage(&socketNucleo, identificador_semaforo , semaforoLen);
 
 }
 
@@ -693,3 +745,4 @@ t_memoryLocation* buscarUltimaPosicionOcupada(t_PCB* pcbEjecutando){
 	return NULL;
 }
 
+// TODO Tener en cuenta en donde se hacen los free
