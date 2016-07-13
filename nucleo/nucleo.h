@@ -18,8 +18,10 @@
 #include "commons/config.h"
 #include "commons/log.h"
 #include <signal.h>
-#include <time.h>
 #include <sys/types.h>
+#include <bits/types.h>
+#include <sys/time.h>
+#include <time.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <math.h>
