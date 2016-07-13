@@ -186,252 +186,274 @@ void deserializeHandShake(t_MessageGenericHandshake *value, char *bufferReceived
 
 }
 
-void serializarPCB(t_MessageNucleo_CPU* value, char* buffer, int valueSize){
-	int offset = 0;
+void serializarRegistroStack(t_registroStack* registroASerializar, char* registroSerializado, int *offset){
 
-	serializeNucleo_CPU(value,buffer,valueSize);
+	serializarStack(registroASerializar, registroSerializado, offset);
 
-	//TODO analizar si lo esta enviando en las funciones de serializar listas
-	offset += sizeof(value->indiceDeEtiquetasTamanio);
+	serializeListaArgs(registroASerializar->args, registroSerializado, offset);
 
-	serializarListaIndiceDeCodigo(value->indiceDeCodigo,buffer + offset);
-	offset += sizeof(t_registroIndiceCodigo)*value->indiceDeCodigo->elements_count;
-
-	serializarListaStack(value->indiceDeStack, buffer + offset);
+	serializarListasVars(registroASerializar->vars, registroSerializado, offset);
 
 }
 
-void serializarRegistroStack(t_registroStack* registroASerializar, char* registroSerializado){
-	int offset =0 ;
-	serializarStack(registroASerializar, registroSerializado + offset);
-	offset += sizeof(int)*2 + sizeof(t_memoryLocation);
+void deserializarRegistroStack(t_registroStack* registroRecibido, char* registroSerializado, int *offset){
 
-	serializeListaArgs(registroASerializar->args,registroSerializado + offset);
-	offset += sizeof(t_memoryLocation)* registroASerializar->args->elements_count;
+	deserializarStack(registroRecibido, registroSerializado, offset);
 
-	serializarListasVars(registroASerializar->vars, registroSerializado + offset);
-	offset += sizeof(t_vars)* registroASerializar->vars->elements_count;
+	deserializeListasArgs(registroRecibido->args, registroSerializado, offset);
 
-}
-
-void deserializarRegistroStack(t_registroStack* registroRecibido, char* registroSerializado){
-	int offset = 0 ;
-
-	deserializarStack(registroRecibido, registroSerializado);
-	offset += sizeof(registroRecibido->retVar) + sizeof(registroRecibido->retPos) + sizeof(registroRecibido->pos);
-
-	int offsetListaArgs = deserializeListasArgs(registroRecibido->args, registroSerializado + offset);
-	offset += offsetListaArgs - sizeof(registroRecibido->args->elements_count);
-
-	int offsetListaVars = deserializarListasVars(registroRecibido->vars, registroSerializado + offset);
-	offset += offsetListaVars - sizeof(registroRecibido->vars->elements_count);
+	deserializarListasVars(registroRecibido->vars, registroSerializado, offset);
 
 }
 
 void serializarListaStack(t_list* listaASerializar, char* listaSerializada){
 	int offset = 0;
-	memcpy(listaSerializada, &listaASerializar->elements_count, sizeof(listaASerializar->elements_count));
-	int i;
 	t_registroStack* registroStack = malloc(sizeof(t_registroStack));
-	for(i = 0 ; i<listaASerializar->elements_count;i++){
 
+	memcpy(listaSerializada, &listaASerializar->elements_count, sizeof(listaASerializar->elements_count));
+	offset += sizeof(listaASerializar->elements_count);
+
+	int i;
+	for(i = 0 ; i < listaASerializar->elements_count; i++){
+		//get the element from the list by index
 		registroStack = list_get(listaASerializar,i);
-		serializarRegistroStack(registroStack,listaSerializada + offset);
-		offset += sizeof(t_registroStack);
 
+		//serialize the element to the buffer
+		serializarRegistroStack(registroStack,listaSerializada, &offset);
 	}
+
+	free(registroStack);
 }
 
 void deserializarListaStack(t_list* listaARecibir, char* listaSerializada){
 	int offset = 0;
-	int cantidadDeElementos;
-	memcpy(cantidadDeElementos, listaSerializada + offset, sizeof(listaARecibir->elements_count));
-	offset+=sizeof(int);
+	int cantidadDeElementos = 0;
+
+	//Getting element count
+	memcpy(&cantidadDeElementos, listaSerializada ,sizeof(listaARecibir->elements_count));
+	offset += sizeof(listaARecibir->elements_count);
+
 	int i;
-	t_registroStack* registroStack = malloc(sizeof(t_registroStack));
-	for(i=0; i<cantidadDeElementos;i++){
-		deserializarStack(registroStack,listaSerializada + offset);
-		list_add(listaARecibir,registroStack);
-		offset += sizeof(t_registroStack);
+	for(i=0; i< cantidadDeElementos; i++){
+		t_registroStack* registroStack = malloc(sizeof(t_registroStack));
+		registroStack->retVar = (t_memoryLocation*) malloc(sizeof(t_memoryLocation));
+
+		deserializarRegistroStack(registroStack, listaSerializada, &offset);
+		list_add(listaARecibir, registroStack);
 
 	}
 
 }
 
-void serializarVars(t_vars* miRegistro, char* value) {
-	int offset = 0;
+void serializarVars(t_vars* miRegistro, char* value, int *offset) {
 
-	memcpy(value + offset,&miRegistro->identificador,sizeof(miRegistro->identificador));
-	offset=sizeof(miRegistro->identificador);
-	serializeMemoryLocation(miRegistro->direccionValorDeVariable, value+offset);
+	//Request more memory for the new element to be serialized
+	value = realloc(value, *offset + sizeof(miRegistro->identificador));
+	memcpy(value + *offset, &miRegistro->identificador, sizeof(miRegistro->identificador));
+	*offset += sizeof(miRegistro->identificador);
 
-}
-
-void deserializarVars(t_vars* unaVariable, char* variablesRecibidas) {
-	int offset = 0;
-
-	memcpy(&unaVariable->identificador,variablesRecibidas+offset,sizeof(unaVariable->identificador));
-	offset+=sizeof(unaVariable->identificador);
-	deserializeMemoryLocation(unaVariable->direccionValorDeVariable,variablesRecibidas+offset);
+	serializeMemoryLocation(miRegistro->direccionValorDeVariable, value, offset);
 
 }
 
-void serializeMemoryLocation(t_memoryLocation* unaPosicion, char* value) {
-	int offset = 0;
+void deserializarVars(t_vars* unaVariable, char* variablesRecibidas, int *offset) {
 
-	memcpy(value + offset, &unaPosicion->offset, sizeof(int));
-	offset = +sizeof(unaPosicion->offset);
-	memcpy(value + offset, &unaPosicion->pag, sizeof(int));
-	offset = +sizeof(unaPosicion->pag);
-	memcpy(value + offset, &unaPosicion->size, sizeof(int));
-	offset = +sizeof(unaPosicion->size);
+	memcpy(&unaVariable->identificador,variablesRecibidas + *offset, sizeof(unaVariable->identificador));
+	*offset += sizeof(unaVariable->identificador);
+
+	unaVariable->direccionValorDeVariable = (t_memoryLocation*) malloc(sizeof(t_memoryLocation));
+
+	deserializeMemoryLocation(unaVariable->direccionValorDeVariable, variablesRecibidas, offset);
 
 }
 
-void deserializeMemoryLocation(t_memoryLocation* unaPosicion, char* posicionRecibida) {
-	int offset = 0;
-	memcpy(&unaPosicion->offset, posicionRecibida + offset, sizeof(int));
-	offset = +sizeof(unaPosicion->offset);
-	memcpy(&unaPosicion->pag, posicionRecibida + offset, sizeof(int));
-	offset = +sizeof(unaPosicion->pag);
-	memcpy(&unaPosicion->size, posicionRecibida + offset, sizeof(int));
+void serializeMemoryLocation(t_memoryLocation* unaPosicion, char* value, int *offset) {
+
+	//Request more memory for the new element to be serialized
+	value = realloc(value, *offset + sizeof(unaPosicion->offset) + sizeof(unaPosicion->pag) + sizeof(unaPosicion->size));
+
+	memcpy(value + *offset, &unaPosicion->offset, sizeof(unaPosicion->offset));
+	*offset += sizeof(unaPosicion->offset);
+	memcpy(value + *offset, &unaPosicion->pag, sizeof(unaPosicion->pag));
+	*offset += sizeof(unaPosicion->pag);
+	memcpy(value + *offset, &unaPosicion->size, sizeof(unaPosicion->size));
+	*offset += sizeof(unaPosicion->size);
+
+}
+
+void deserializeMemoryLocation(t_memoryLocation* unaPosicion, char* posicionRecibida, int *offset) {
+
+	memcpy(&unaPosicion->offset, posicionRecibida + *offset, sizeof(unaPosicion->offset));
+	*offset += sizeof(unaPosicion->offset);
+	memcpy(&unaPosicion->pag, posicionRecibida + *offset, sizeof(unaPosicion->pag));
+	*offset += sizeof(unaPosicion->pag);
+	memcpy(&unaPosicion->size, posicionRecibida + *offset, sizeof(unaPosicion->size));
+	*offset += sizeof(unaPosicion->size);
 }
 
 
-void serializarListasVars(t_list* listaASerializar, char* listaSerializada) {
-	int offset = 0;
+void serializarListasVars(t_list* listaASerializar, char* listaSerializada, int *offset) {
 	t_vars* unaVariable = malloc(sizeof(t_vars));
-	memcpy(listaSerializada + offset, &listaASerializar->elements_count,
-			sizeof(listaASerializar->elements_count));
-	offset = +sizeof(listaASerializar->elements_count);
+
+	//Request more memory for the new element to be serialized
+	listaSerializada = realloc(listaSerializada, *offset + sizeof(listaASerializar->elements_count));
+
+	memcpy(listaSerializada + *offset, &listaASerializar->elements_count, sizeof(listaASerializar->elements_count));
+	*offset += sizeof(listaASerializar->elements_count);
+
 	int i;
 	for (i = 0; i < listaASerializar->elements_count; i++) {
+
+		//get the element from the list by index
 		unaVariable = list_get(listaASerializar, i);
-		serializarVars(unaVariable, listaSerializada + offset);
+
+		//serialize the element to the buffer
+		serializarVars(unaVariable, listaSerializada, offset);
 	}
+
+	free(unaVariable);
 }
 
-int deserializarListasVars(t_list* listaVars,char* listaSerializada){
-	int offset=0;
-	int cantidadDeElementos;
-	memcpy(&cantidadDeElementos,listaSerializada+offset,sizeof(int));
-	offset+=sizeof(int);
+void deserializarListasVars(t_list* listaVars,char* listaSerializada, int *offset){
+	int cantidadDeElementos = 0;
+
+	//Getting element count
+	memcpy(&cantidadDeElementos, listaSerializada + *offset, sizeof(listaVars->elements_count));
+	*offset += sizeof(listaVars->elements_count);
+
 	int i;
-	for(i=0;i<cantidadDeElementos;i++){
-		t_vars* unaVariable=malloc(sizeof(t_memoryLocation));
-		deserializarVars(unaVariable,listaSerializada+offset);
-		offset+=sizeof(t_vars);
-		list_add(listaVars,unaVariable);
+	for(i=0; i < cantidadDeElementos; i++){
+		t_vars* unaVariable = malloc(sizeof(t_vars));
+		deserializarVars(unaVariable, listaSerializada, offset);
+		list_add(listaVars, unaVariable);
 	}
-	return offset;
 }
 
-void serializarStack(t_registroStack* registroStack, char* registroSerializado) {
-	int offset = 0;
-	memcpy(registroSerializado + offset, &registroStack->pos, sizeof(int));
-	memcpy(registroSerializado + offset, &registroStack->retPos, sizeof(int));
-	serializeMemoryLocation(registroStack->retVar, registroSerializado + offset);
+void serializarStack(t_registroStack* registroStack, char* registroSerializado, int *offset) {
+
+	//Request more memory for the new element to be serialized
+	registroSerializado = realloc(registroSerializado, *offset + sizeof(registroStack->pos) + sizeof(registroStack->retPos));
+
+	memcpy(registroSerializado + *offset, &registroStack->pos, sizeof(registroStack->pos));
+	*offset += sizeof(registroStack->pos);
+
+	memcpy(registroSerializado + *offset, &registroStack->retPos, sizeof(registroStack->retPos));
+	*offset += sizeof(registroStack->retPos);
+
+	serializeMemoryLocation(registroStack->retVar, registroSerializado, offset);
 }
 
-void deserializarStack(t_registroStack* estructuraARecibir, char* registroStack) {
-	int offset = 0;
-	memcpy(&estructuraARecibir->pos, registroStack, sizeof(int));
-	offset = +sizeof(estructuraARecibir->pos);
-	memcpy(&estructuraARecibir->retPos, registroStack + offset, sizeof(int));
-	offset = +sizeof(estructuraARecibir->retPos);
-	deserializeMemoryLocation(estructuraARecibir->retVar,registroStack + offset);
+void deserializarStack(t_registroStack* estructuraARecibir, char* registroStack, int *offset) {
+
+	memcpy(&estructuraARecibir->pos, registroStack + *offset, sizeof(estructuraARecibir->pos));
+	*offset += sizeof(estructuraARecibir->pos);
+
+	memcpy(&estructuraARecibir->retPos, registroStack + *offset, sizeof(estructuraARecibir->pos));
+	*offset += sizeof(estructuraARecibir->retPos);
+
+	deserializeMemoryLocation(estructuraARecibir->retVar, registroStack, offset);
 
 }
 
-void serializeListaArgs(t_list* listaASerializar, char* listaSerializada) {
-	int offset = 0;
+void serializeListaArgs(t_list* listaASerializar, char* listaSerializada, int *offset) {
 	t_memoryLocation* unaPosicion = malloc(sizeof(t_memoryLocation));
-	memcpy(listaSerializada, &listaASerializar->elements_count,
-			sizeof(listaASerializar->elements_count));
-	offset = +sizeof(listaASerializar->elements_count);
+
+	memcpy(listaSerializada, &listaASerializar->elements_count,	sizeof(listaASerializar->elements_count));
+	*offset += sizeof(listaASerializar->elements_count);
+
 	int i;
 	for (i = 0; i < listaASerializar->elements_count; i++) {
-		unaPosicion = list_get(listaASerializar, i);
-		serializeMemoryLocation(unaPosicion, listaSerializada + offset);
+		//get the element from the list by index
+		unaPosicion = list_get(listaASerializar,i);
+
+		//serialize the element to the buffer
+		serializeMemoryLocation(unaPosicion, listaSerializada, offset);
 	}
+
+	free(unaPosicion);
+
 }
 
-int deserializeListasArgs(t_list* listaArgs,char* listaSerializada){
-	int offset=0;
-	int cantidadDeElementos;
-	memcpy(&cantidadDeElementos,listaSerializada+offset,sizeof(int));
-	offset+=sizeof(int);
+void deserializeListasArgs(t_list* listaArgs, char* listaSerializada, int *offset){
+
+	//Getting element count
+	int cantidadDeElementos = 0;
+	memcpy(&cantidadDeElementos, listaSerializada + *offset, sizeof(listaArgs->elements_count));
+	*offset += sizeof(listaArgs->elements_count);
+
 	int i;
-	for(i=0;i<cantidadDeElementos;i++){
-		t_memoryLocation* posicionDeMemoria=malloc(sizeof(t_memoryLocation));
-		deserializeMemoryLocation(posicionDeMemoria,listaSerializada+offset);
-		offset+=sizeof(t_memoryLocation);
-		list_add(listaArgs,posicionDeMemoria);
+	for(i=0; i < cantidadDeElementos; i++){
+		t_memoryLocation* posicionDeMemoria = malloc(sizeof(t_memoryLocation));
+		deserializeMemoryLocation(posicionDeMemoria, listaSerializada, offset);
+		list_add(listaArgs, posicionDeMemoria);
 	}
-	return offset;
+
 }
 
 void serializarIndiceDeCodigo(t_registroIndiceCodigo* registroEnviar, char* registroSerializado){
-	int offset = 0 ;
+	int offset = 0;
 
 	memcpy(registroSerializado + offset, &registroEnviar->inicioDeInstruccion,sizeof(registroEnviar->inicioDeInstruccion));
 	offset += sizeof(registroEnviar->inicioDeInstruccion);
 
 	memcpy(registroSerializado + offset, &registroEnviar->longitudInstruccionEnBytes,sizeof(registroEnviar->longitudInstruccionEnBytes));
-	offset += sizeof(registroEnviar->longitudInstruccionEnBytes);
 
 }
 
 void deserializarIndiceDeCodigo(t_registroIndiceCodigo* registroARecibir, char* registroSerializado){
 	int offset = 0;
 
-	memcpy(&registroARecibir->inicioDeInstruccion,registroSerializado + offset,sizeof(registroARecibir->inicioDeInstruccion));
-	offset+=sizeof(registroARecibir->inicioDeInstruccion);
+	memcpy(&registroARecibir->inicioDeInstruccion,registroSerializado + offset, sizeof(registroARecibir->inicioDeInstruccion));
+	offset += sizeof(registroARecibir->inicioDeInstruccion);
 
-	memcpy(&registroARecibir->longitudInstruccionEnBytes,registroSerializado + offset,sizeof(registroARecibir->longitudInstruccionEnBytes));
-	offset+=sizeof(registroARecibir->longitudInstruccionEnBytes);
+	memcpy(&registroARecibir->longitudInstruccionEnBytes,registroSerializado + offset, sizeof(registroARecibir->longitudInstruccionEnBytes));
 
 }
 
 void serializarListaIndiceDeCodigo(t_list* listaASerializar, char* listaSerializada){
 	int offset = 0 ;
 	t_registroIndiceCodigo* registroObtenido = malloc(sizeof(t_registroIndiceCodigo));
-	memcpy(listaSerializada, &listaASerializar->elements_count,
-			sizeof(listaASerializar->elements_count));
-	offset = +sizeof(listaASerializar->elements_count);
+
+	memcpy(listaSerializada, &listaASerializar->elements_count,	sizeof(listaASerializar->elements_count));
+	offset += sizeof(listaASerializar->elements_count);
+
 	int i;
 	for (i = 0; i < listaASerializar->elements_count; i++) {
+		//Request more memory for the new element to be serialized
+		listaSerializada = realloc(listaSerializada, offset + sizeof(t_registroIndiceCodigo));
+
+		//get the element from the list by index
 		registroObtenido = list_get(listaASerializar,i);
+
+		//serialize the element to the buffer
 		serializarIndiceDeCodigo(registroObtenido, listaSerializada + offset);
+
 		offset += sizeof(t_registroIndiceCodigo);
 	}
+
+	free(registroObtenido);
 
 }
 
 void deserializarListaIndiceDeCodigo(t_list* listaARecibir, char* listaSerializada){
 	int offset = 0;
 	int cantidadDeElementos = 0;
-	t_registroIndiceCodigo* registroIndiceDeCodigo;
-	memcpy(&cantidadDeElementos,listaSerializada+offset,sizeof(int));
-	offset+=sizeof(int);
+
+	//Getting element count
+	memcpy(&cantidadDeElementos, listaSerializada ,sizeof(listaARecibir->elements_count));
+	offset += sizeof(listaARecibir->elements_count);
+
 	int i;
-	for(i=0;i<cantidadDeElementos;i++){
+	for(i=0; i<cantidadDeElementos; i++){
+		t_registroIndiceCodigo* registroIndiceDeCodigo = malloc(sizeof(t_registroIndiceCodigo));
 		deserializarIndiceDeCodigo(registroIndiceDeCodigo, listaSerializada + offset);
 		list_add(listaARecibir, registroIndiceDeCodigo);
-		offset+=sizeof(t_registroIndiceCodigo);
-
+		offset += sizeof(t_registroIndiceCodigo);
 	}
+
 }
 
-void serializarIndiceDeEtiquetas(t_registroIndiceEtiqueta* registroAEnviar,char* registroSerializado){
-	int offset=0;
-	memcpy(registroSerializado+offset,strlen(registroAEnviar->funcion),strlen(registroAEnviar->funcion));
-	offset+=sizeof(strlen(registroAEnviar->funcion));
-	memcpy(registroSerializado+offset,registroAEnviar->funcion,strlen(registroAEnviar->funcion));
-	offset+=strlen(registroAEnviar->funcion);
-	memcpy(registroSerializado,registroAEnviar->posicionDeLaEtiqueta,sizeof(registroAEnviar->posicionDeLaEtiqueta));
-}
-
+/* TODO verificar si efectivamente se tiene que usar en algun lado ya que el indice de etiquetas no es mas una lista
 void serializarListaIndiceDeEtiquetas(t_list* listaASerializar,char* listaSerializada){
 	int offset=0;
 	memcpy(listaSerializada,&listaASerializar->elements_count,sizeof(listaASerializar->elements_count));
@@ -459,6 +481,15 @@ void DeserializarListaIndiceDeEtiquetas(t_list* listaRecibida,char* listaSeriali
 	}
 }
 
+void serializarIndiceDeEtiquetas(t_registroIndiceEtiqueta* registroAEnviar,char* registroSerializado){
+	int offset=0;
+	memcpy(registroSerializado + offset,strlen(registroAEnviar->funcion),strlen(registroAEnviar->funcion));
+	offset += sizeof(strlen(registroAEnviar->funcion));
+	memcpy(registroSerializado+offset,registroAEnviar->funcion,strlen(registroAEnviar->funcion));
+	offset += strlen(registroAEnviar->funcion);
+	memcpy(registroSerializado,registroAEnviar->posicionDeLaEtiqueta,sizeof(registroAEnviar->posicionDeLaEtiqueta));
+}
+
 void DeserializarIndiceDeEtiquetas(t_registroIndiceEtiqueta* registroRecibido,char* registroSerializado){
 	int offset=0;
 	int tamanioDeLaCadena;
@@ -470,7 +501,7 @@ void DeserializarIndiceDeEtiquetas(t_registroIndiceEtiqueta* registroRecibido,ch
 	memcpy(registroRecibido->posicionDeLaEtiqueta,registroSerializado+ offset,sizeof(registroRecibido->posicionDeLaEtiqueta));
 
 }
-
+*/
 /********************** PROTOCOL USAGE *****************************/
 
 

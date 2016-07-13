@@ -148,7 +148,7 @@ void deserializarES(t_es* datos, char* bufferRecived);
 int *pideSemaforo(t_nombre_semaforo semaforo);
 void grabarSemaforo(t_nombre_semaforo semaforo,int valor);
 void liberaSemaforo(t_nombre_semaforo semaforo);
-void  bloqueoSemaforo(t_proceso *proceso, t_nombre_semaforo semaforo);
+void  bloqueoSemaforo(int processID, t_nombre_semaforo semaforo);
 
 void wait(t_nombre_semaforo identificador_semaforo);
 void signal(t_nombre_semaforo identificador_semaforo);

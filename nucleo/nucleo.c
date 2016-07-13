@@ -464,8 +464,8 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		contextoProceso->processID = datosPCB->PID;
 		contextoProceso->stackPointer = datosPCB->StackPointer;
 		contextoProceso->cantidadDePaginas = datosPCB->cantidadDePaginas;
-		//contextoProceso->indiceDeCodigo = datosPCB->indiceDeCodigo;//TODO
-		//contextoProceso->indiceDeStack = datosPCB->indiceDeStack;
+		//contextoProceso->indiceDeCodigo = ;//TODO
+		//contextoProceso->indiceDeStack = ;
 		strcpy(contextoProceso->indiceDeEtiquetas, datosPCB->indiceDeEtiquetas);
 		contextoProceso->indiceDeEtiquetasTamanio = strlen(datosPCB->indiceDeEtiquetas) + 1;
 
@@ -477,15 +477,38 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		int bufferSize = sizeof(bufferSize) + payloadSize ;
 
 		char* bufferEnviar = malloc(bufferSize);
-		//TODO serializar estructuras del stack
+		//Serializar mensaje basico del PCB
 		serializeNucleo_CPU(contextoProceso, bufferEnviar, payloadSize);
+
+		//Hacer send al CPU de lo que se serializo arriba
+		sendMessage(&serverData->socketClient, bufferEnviar, bufferSize);
+
+		//serializar estructuras del indice de codigo
+		char* bufferIndiceCodigo =  malloc(sizeof(datosPCB->indiceDeCodigo->elements_count));
+		serializarListaIndiceDeCodigo(datosPCB->indiceDeCodigo, bufferIndiceCodigo);
+
+		//send tamaño de lista indice codigo
+		sendMessage(&serverData->socketClient, strlen(bufferIndiceCodigo), sizeof(int));
+		//send lista indice codigo
+		sendMessage(&serverData->socketClient, bufferIndiceCodigo, strlen(bufferIndiceCodigo));
+
+		free(bufferIndiceCodigo);
+
+		//serializar estructuras del stack e indice de codigo
+		char* bufferIndiceStack =  malloc(sizeof(datosPCB->indiceDeStack->elements_count));
+		serializarListaStack(datosPCB->indiceDeStack, bufferIndiceStack);
+
+		//send tamaño de lista indice codigo
+		sendMessage(&serverData->socketClient, strlen(bufferIndiceStack), sizeof(int));
+		//send lista indice codigo
+		sendMessage(&serverData->socketClient, bufferIndiceStack, strlen(bufferIndiceStack));
+
+		free(bufferIndiceStack);
 
 		//Saco el primer elemento de la cola, porque ya lo planifique.
 		pthread_mutex_lock(&cListos);
 		queue_pop(colaListos);
 		pthread_mutex_unlock(&cListos);
-
-		sendMessage(&serverData->socketClient, bufferEnviar, bufferSize);
 
 		//Cambio Estado del Proceso
 		int estado = 2;
@@ -516,7 +539,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 	switch (message->operacion) {
 	case 1:{ 	//Entrada Salida
 		t_es infoES;
-		pthread_mutex_lock(&activeProcessMutex);
+		pthread_mutex_lock(&activeProcessMutex);//TODO analizar si se debe bloquear el proceso entero PUEDE HABER DEADLOCK aca!!!
 		char *datosEntradaSalida = malloc(sizeof(t_es));
 
 		//change active PID
@@ -581,17 +604,15 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		t_privilegiado *mensajePrivilegiado = malloc(sizeof(t_privilegiado));
 		receiveMessage(&socketLibre,(void*)mensajePrivilegiado, sizeof(t_privilegiado));
 
-		t_proceso* proceso = malloc(sizeof(t_proceso));
-		proceso->PID = message->processID;
-
-		if (estaEjecutando(proceso->PID)==1){ // 1: Programa ejecutandose (no esta en ninguna cola)
+		if (estaEjecutando(message->processID)==1){ // 1: Programa ejecutandose (no esta en ninguna cola)
 			int * valorSemaforo = pideSemaforo(mensajePrivilegiado->semaforo);
 			int valorAEnviar;
 			if(*valorSemaforo<=0){
+
 				valorAEnviar = 1;
-				printf("Recibi proceso %d mando a bloquear por semaforo \n", (proceso->PID)%6+1);
+				printf("Recibi proceso %d mando a bloquear por semaforo \n", (message->processID)%6+1);
 				sendMessage(&socketLibre, (void*)valorAEnviar,sizeof(int));// 1 si se bloquea. 0 si no se bloquea
-				bloqueoSemaforo(proceso,mensajePrivilegiado->semaforo);
+				bloqueoSemaforo(message->processID,mensajePrivilegiado->semaforo);
 				//Libero la CPU que ocupaba el proceso
 				liberarCPU(socketLibre);
 			}else{
@@ -600,7 +621,6 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 				sendMessage(&socketLibre, &valorAEnviar, sizeof(int));
 			}
 		}
-		free(proceso);
 		break;}
 	case 9:{//Libera semaforo
 
@@ -652,27 +672,38 @@ void atenderCorteQuantum(int socket,int PID){
 	//Libero la CPU
 	liberarCPU(socket);
 
-	//Cambio el PC del Proceso, le sumo el quantum y quantum_spleep al PC actual.
+	//Cambio el PC del Proceso, le sumo el quantum al PC actual.
 	t_PCB* infoProceso;
 	int buscar = buscarPCB(PID);
 	pthread_mutex_lock(&listadoProcesos);
 	infoProceso = (t_PCB*)list_get(listaProcesos,buscar);
 	pthread_mutex_unlock(&listadoProcesos);
 	int pcnuevo;
-	pcnuevo = infoProceso->ProgramCounter + configNucleo.quantum + configNucleo.quantum_sleep;
-	actualizarPC(PID,pcnuevo);
+	pcnuevo = infoProceso->ProgramCounter + configNucleo.quantum;
+	infoProceso->ProgramCounter =  pcnuevo;
+
+	//TODO RECIBIR PCB MODIFICADO DEL CPU! (lo que hace falta en realidad es el stack fundamentalmente y ver si es necesario algo mas que haya modificado el CPU)
+	/*
+	 * 1) receive tamanioBuffer
+	 * 2) receive buffer segun tamanioBuffer
+	 * 3) malloc de listaARecibir segundo el tamanio recibido.
+	 * 4) deserializarListaStack(listaARecibir, buffer);
+	 * 5) borrar lista en infoProceso->indiceDeStack OJO se tiene que crear el elementDestroyer para cada registro del indiceDeStack (LA MISMA QUE SE DEBERIA USAR PARA ELIMINAR UN PCB)
+	 * 6) infoProceso->indiceDeStack = listaARecibir;
+	 */
+
 	//Agrego el proceso a la Cola de Listos
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
 	datosProceso->PID = PID;
 	datosProceso->ProgramCounter = pcnuevo;
 	if (infoProceso->finalizar == 0){
 
-	//Cambio el estado del proceso
-	int estado = 1;
-	cambiarEstadoProceso(PID, estado);
-	pthread_mutex_lock(&cListos);
-	queue_push(colaListos,(void*)datosProceso);
-	pthread_mutex_unlock(&cListos);
+		//Cambio el estado del proceso
+		int estado = 1;
+		cambiarEstadoProceso(PID, estado);
+		pthread_mutex_lock(&cListos);
+		queue_push(colaListos,(void*)datosProceso);
+		pthread_mutex_unlock(&cListos);
 	} else {
 		pthread_mutex_lock(&cFinalizar);
 		queue_push(colaFinalizar, (void*) datosProceso);
@@ -682,7 +713,6 @@ void atenderCorteQuantum(int socket,int PID){
 	//Mando nuevamente a PLanificar
 	planificarProceso();
 
-	free(datosProceso);
 }
 
 void finalizaProceso(int socket, int PID, int estado) {
@@ -1034,12 +1064,24 @@ void liberaSemaforo(t_nombre_semaforo semaforo) {
 	printf("No se encontro el id del semaforo. \n");
 }
 
-void  bloqueoSemaforo(t_proceso *proceso, t_nombre_semaforo semaforo) {
+void  bloqueoSemaforo(int processID, t_nombre_semaforo semaforo){
 	int i=0;
 
 	while (configNucleo.sem_ids[i] != NULL) {
 		if (strcmp(configNucleo.sem_ids[i], semaforo) == 0) {
+			//look for PCB for getting program counter
+			t_PCB* PCB;
+			int buscar = buscarPCB(processID);
+			pthread_mutex_lock(&listadoProcesos);
+			PCB = (t_PCB*)list_get(listaProcesos,buscar);
+			pthread_mutex_unlock(&listadoProcesos);
+
+			t_proceso* proceso = malloc(sizeof(t_proceso));
+			proceso->PID = processID;
+			proceso->ProgramCounter = PCB->ProgramCounter;
+
 			//Aca esta funcionando con el \n  OJO
+			//TODO mutex para esta cola
 			queue_push(colas_semaforos[i], proceso);
 			return;
 		}
@@ -1062,8 +1104,6 @@ void armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData){
 		list_add(unBloqueControl.indiceDeCodigo,(void*)registroAAgregar);
 	}
 }
-
-
 
 void armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData){
 
@@ -1233,7 +1273,7 @@ void crearArchivoDeConfiguracion(char *configFile){
 
 	i = 0;
 	while (configNucleo.sem_init [i] != NULL){
-		colas_semaforos[i] = malloc(sizeof(t_queue*));
+		colas_semaforos[i] = malloc(sizeof(t_queue));
 		colas_semaforos[i] = queue_create();
 		i++;
 	}

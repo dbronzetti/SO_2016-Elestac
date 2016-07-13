@@ -116,10 +116,9 @@ int main(int argc, char *argv[]){
 						sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
 						free(bufferRespuesta);
-
 					}
 
-					if(j == PCBRecibido->indiceDeCodigo->elements_count){
+					if(PCBRecibido->ProgramCounter == PCBRecibido->indiceDeCodigo->elements_count){
 
 						log_info(logCPU, "Proceso %d - Finalizado correctamente", PCBRecibido->PID);
 						//Envia aviso que finaliza correctamente el proceso a NUCLEO
