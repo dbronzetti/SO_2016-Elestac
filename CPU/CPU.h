@@ -4,7 +4,6 @@
 #include "sockets.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
 #include <parser/metadata_program.h>
 #include <commons/collections/list.h>
 #include <commons/config.h>
@@ -28,14 +27,15 @@ int socketNucleo = 0;
 int QUANTUM_SLEEP = 0 ;
 int QUANTUM = 0;
 t_log* logCPU;
-t_PCB* PCB;
+t_PCB* PCBRecibido = NULL;
+t_list *listaIndiceEtiquetas = NULL;
 int ultimoPosicionPC;
 
 int ejecutarPrograma(t_PCB *PCB);
 int connectTo(enum_processes processToConnect, int *socketClient);
 void crearArchivoDeConfiguracion(char *configFile);
-void sendRequestToUMC();
 void waitRequestFromNucleo(int *socketClient, char * messageRcv);
+void deserializarListaIndiceDeEtiquetas(char* charEtiquetas, int listaSize);
 
 void manejarES(int PID, int pcActualizado, int* banderaFinQuantum, int tiempoBloqueo);
 void serializarES(t_es *value, t_nombre_dispositivo buffer, int valueSize);

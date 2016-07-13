@@ -458,17 +458,15 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		contextoProceso->processID = datosPCB->PID;
 		contextoProceso->stackPointer = datosPCB->StackPointer;
 		contextoProceso->cantidadDePaginas = datosPCB->cantidadDePaginas;
-		//contextoProceso->indiceDeCodigo = ;//TODO
-		//contextoProceso->indiceDeStack = ;
 		strcpy(contextoProceso->indiceDeEtiquetas, datosPCB->indiceDeEtiquetas);
 		contextoProceso->indiceDeEtiquetasTamanio = strlen(datosPCB->indiceDeEtiquetas) + 1;
 
 		int payloadSize = sizeof(contextoProceso->programCounter) + (sizeof(contextoProceso->processID))
 			+ sizeof(contextoProceso->stackPointer)+ sizeof(contextoProceso->cantidadDePaginas) + sizeof(contextoProceso->operacion)
-			+ sizeof(contextoProceso->quantum) + sizeof(contextoProceso->quantum_sleep) ;
-			//TODO falta sumarle las listas
+			+ sizeof(contextoProceso->quantum) + sizeof(contextoProceso->quantum_sleep)
+			+ sizeof(contextoProceso->indiceDeEtiquetasTamanio) + strlen(datosPCB->indiceDeEtiquetas) + 1;// +1 because '\0'
 
-		int bufferSize = sizeof(bufferSize) + payloadSize ;
+		int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
 		char* bufferEnviar = malloc(bufferSize);
 		//Serializar mensaje basico del PCB
@@ -482,19 +480,19 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		serializarListaIndiceDeCodigo(datosPCB->indiceDeCodigo, bufferIndiceCodigo);
 
 		//send tamaño de lista indice codigo
-		sendMessage(&serverData->socketClient, strlen(bufferIndiceCodigo), sizeof(int));
+		sendMessage(&serverData->socketClient, (void*) strlen(bufferIndiceCodigo), sizeof(int));
 		//send lista indice codigo
 		sendMessage(&serverData->socketClient, bufferIndiceCodigo, strlen(bufferIndiceCodigo));
 
 		free(bufferIndiceCodigo);
 
-		//serializar estructuras del stack e indice de codigo
+		//serializar estructuras del stack
 		char* bufferIndiceStack =  malloc(sizeof(datosPCB->indiceDeStack->elements_count));
 		serializarListaStack(datosPCB->indiceDeStack, bufferIndiceStack);
 
-		//send tamaño de lista indice codigo
-		sendMessage(&serverData->socketClient, strlen(bufferIndiceStack), sizeof(int));
-		//send lista indice codigo
+		//send tamaño de lista indice stack
+		sendMessage(&serverData->socketClient, (void*) strlen(bufferIndiceStack), sizeof(int));
+		//send lista indice stack
 		sendMessage(&serverData->socketClient, bufferIndiceStack, strlen(bufferIndiceStack));
 
 		free(bufferIndiceStack);
@@ -533,8 +531,6 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 	switch (message->operacion) {
 	case 1:{ 	//Entrada Salida
 		t_es infoES;
-
-		pthread_mutex_lock(&activeProcessMutex);//TODO analizar si se debe bloquear el proceso entero PUEDE HABER DEADLOCK aca!!!
 		char *datosEntradaSalida = malloc(sizeof(t_es));
 		//change active PID
 		activePID = message->processID;
@@ -1118,7 +1114,7 @@ void armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData){
 
 void armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData){
 
-	unBloqueControl.indiceDeEtiquetas = miMetaData->etiquetas;
+	strcpy(unBloqueControl.indiceDeEtiquetas, miMetaData->etiquetas);
 
 	log_error(logNucleo,"'indiceDeEtiquetas' size: %d\n", miMetaData->etiquetas_size);
 }
@@ -1176,7 +1172,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 	message->cantPages = cantPages + configNucleo.stack_size;
 
 	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->cantPages);
-	bufferSize = sizeof(bufferSize) + payloadSize;
+	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize;
 	char *buffer = malloc(bufferSize);
 
 	//Serializar mensaje
@@ -1208,7 +1204,7 @@ void finalizarPrograma(int PID){
 	message->cantPages = -1; //DEFAULT value when the operation doesn't need it
 
 	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->cantPages);
-	bufferSize = sizeof(bufferSize) + payloadSize;
+	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize;
 
 	char *buffer = malloc(bufferSize);
 
