@@ -453,55 +453,6 @@ void deserializarListaIndiceDeCodigo(t_list* listaARecibir, char* listaSerializa
 
 }
 
-/* TODO verificar si efectivamente se tiene que usar en algun lado ya que el indice de etiquetas no es mas una lista
-void serializarListaIndiceDeEtiquetas(t_list* listaASerializar,char* listaSerializada){
-	int offset=0;
-	memcpy(listaSerializada,&listaASerializar->elements_count,sizeof(listaASerializar->elements_count));
-	offset+=sizeof(listaASerializar->elements_count);
-	int i;
-	t_registroIndiceEtiqueta* registroObtenido;
-	for(i=0;i<listaASerializar->elements_count;i++){
-		registroObtenido=list_get(listaASerializar,i);
-		serializarIndiceDeEtiquetas(registroObtenido,listaSerializada+offset);
-		offset+=(sizeof(t_registroIndiceEtiqueta)+sizeof(int));
-	}
-}
-
-void DeserializarListaIndiceDeEtiquetas(t_list* listaRecibida,char* listaSerializada){
-	int	offset=0;
-	int cantidadDeElementos=0;
-	memcpy(cantidadDeElementos,listaSerializada,sizeof(int));
-	offset+=sizeof(int);
-	int i;
-	t_registroIndiceEtiqueta* registroObtenido=malloc(sizeof(t_registroIndiceEtiqueta));
-	for(i=0;i<cantidadDeElementos;i++){
-		DeserializarIndiceDeEtiquetas(registroObtenido,listaSerializada+offset);
-		list_add(listaRecibida,registroObtenido);
-		offset+=sizeof(t_registroIndiceEtiqueta)+sizeof(int);
-	}
-}
-
-void serializarIndiceDeEtiquetas(t_registroIndiceEtiqueta* registroAEnviar,char* registroSerializado){
-	int offset=0;
-	memcpy(registroSerializado + offset,strlen(registroAEnviar->funcion),strlen(registroAEnviar->funcion));
-	offset += sizeof(strlen(registroAEnviar->funcion));
-	memcpy(registroSerializado+offset,registroAEnviar->funcion,strlen(registroAEnviar->funcion));
-	offset += strlen(registroAEnviar->funcion);
-	memcpy(registroSerializado,registroAEnviar->posicionDeLaEtiqueta,sizeof(registroAEnviar->posicionDeLaEtiqueta));
-}
-
-void DeserializarIndiceDeEtiquetas(t_registroIndiceEtiqueta* registroRecibido,char* registroSerializado){
-	int offset=0;
-	int tamanioDeLaCadena;
-
-	memcpy(tamanioDeLaCadena,registroSerializado+offset,sizeof(int));
-	offset+=sizeof(strlen(registroRecibido->funcion));
-	memcpy(registroRecibido->funcion,registroSerializado+offset,tamanioDeLaCadena);
-	offset+=strlen(registroRecibido->funcion);
-	memcpy(registroRecibido->posicionDeLaEtiqueta,registroSerializado+ offset,sizeof(registroRecibido->posicionDeLaEtiqueta));
-
-}
-*/
 /********************** PROTOCOL USAGE *****************************/
 
 

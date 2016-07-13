@@ -107,12 +107,6 @@ void deserializarIndiceDeCodigo(t_registroIndiceCodigo* registroARecibir, char* 
 void serializarListaIndiceDeCodigo(t_list* listaASerializar, char* listaSerializada);
 void deserializarListaIndiceDeCodigo(t_list* listaARecibir, char* listaSerializada);
 
-void serializarListaIndiceDeEtiquetas(t_list* listaASerializar,char* listaSerializada);
-void DeserializarListaIndiceDeEtiquetas(t_list* listaRecibida,char* listaSerializada);
-
-void serializarIndiceDeEtiquetas(t_registroIndiceEtiqueta* registroAEnviar,char* registroSerializado);
-void DeserializarIndiceDeEtiquetas(t_registroIndiceEtiqueta* registroRecibido,char* registroSerializado);
-
 char *getProcessString (enum_processes process);
 
 //IMPORTANTE!!! --> Nomeclatura de Serializadores y Deserealizadores

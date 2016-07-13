@@ -5,7 +5,6 @@ int main(int argc, char *argv[]){
 	char *configurationFile = NULL;
 	char* messageRcv = NULL;
 	char *logFile = NULL;
-	t_PCB *PCBRecibido = NULL;
 
 	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS TODO => Agregar logs con librerias
 
@@ -48,50 +47,61 @@ int main(int argc, char *argv[]){
 
 		if(exitCode == EXIT_SUCCESS){
 			printf("CPU connected to NUCLEO successfully\n");
+			messageRcv = malloc(sizeof(int));//for receiving message size
 			waitRequestFromNucleo(&socketNucleo, messageRcv);
 		}
 
 		//exitCode=receiveMessage(&socketNucleo,PCBrecibido,sizeof(t_PCB));
 
 		if(messageRcv !=  NULL){
-			printf("Construyendo PCB\n");
+			int messageSize = 0;
+			int receivedBytes = 0;
 			//TODO deserealizar y construir PCB
+			t_MessageNucleo_CPU* messageWithBasicPCB = malloc(sizeof(t_MessageNucleo_CPU));
 
-			/* AYUDA para deserealizar indice de etiqueta
-			int offset = 0;
-			while ( offset < miMetaData->etiquetas_size ){
-				t_registroIndiceEtiqueta *regIndiceEtiqueta = malloc(sizeof(t_registroIndiceEtiqueta));
+			deserializeCPU_Nucleo(messageWithBasicPCB, messageRcv);
 
-				int j = 0;
-				for (j = 0; miMetaData->etiquetas[offset + j] != '\0'; j++);
+			log_info(logCPU,"Construyendo PCB para PID #%d\n",messageWithBasicPCB->processID);
 
-				regIndiceEtiqueta->funcion = malloc(j);
-				memset(regIndiceEtiqueta->funcion,'\0', j);
+			PCBRecibido->PID = messageWithBasicPCB->processID;
+			PCBRecibido->ProgramCounter = messageWithBasicPCB->programCounter;
+			PCBRecibido->StackPointer = messageWithBasicPCB->stackPointer;
+			PCBRecibido->cantidadDePaginas = messageWithBasicPCB->cantidadDePaginas;
+			PCBRecibido->indiceDeEtiquetas = messageWithBasicPCB->indiceDeEtiquetas;
+			PCBRecibido->indiceDeCodigo = list_create();
+			PCBRecibido->indiceDeStack = list_create();
+			QUANTUM = messageWithBasicPCB->quantum;
+			QUANTUM_SLEEP = messageWithBasicPCB->quantum_sleep;
 
-				regIndiceEtiqueta->funcion = string_substring(miMetaData->etiquetas, offset, j);
-				offset += j + 1;//+1 por '\0's
+			//receive tamaño de lista indice codigo
+			messageRcv = realloc(messageRcv, sizeof(messageSize));
+			receivedBytes = receiveMessage(&socketNucleo, messageRcv, sizeof(messageSize));
 
-				log_trace(logNucleo,"funcion: %s\n", regIndiceEtiqueta->funcion);
+			//receive lista indice codigo
+			messageRcv = realloc(messageRcv, atoi(messageRcv));
+			receivedBytes = receiveMessage(&socketNucleo, messageRcv, atoi(messageRcv));
 
-				memcpy(&regIndiceEtiqueta->posicionDeLaEtiqueta, miMetaData->etiquetas +offset, sizeof(regIndiceEtiqueta->posicionDeLaEtiqueta));
-				offset += sizeof(regIndiceEtiqueta->posicionDeLaEtiqueta);
+			//deserializar estructuras del indice de codigo
+			deserializarListaIndiceDeCodigo(PCBRecibido->indiceDeCodigo, messageRcv);
 
-				log_trace(logNucleo,"posicionDeLaEtiqueta: %d\n", regIndiceEtiqueta->posicionDeLaEtiqueta);
+			//receive tamaño de lista indice stack
+			messageRcv = realloc(messageRcv, sizeof(messageSize));
+			receivedBytes = receiveMessage(&socketNucleo, messageRcv, sizeof(messageSize));
 
-				list_add(unBloqueControl.indiceDeEtiquetas,(void*)regIndiceEtiqueta);
+			//receive lista indice stack
+			messageRcv = realloc(messageRcv, atoi(messageRcv));
+			receivedBytes = receiveMessage(&socketNucleo, messageRcv, atoi(messageRcv));
 
-			}
+			//deserializar estructuras del stack
+			deserializarListaIndiceDeCodigo(PCBRecibido->indiceDeStack, messageRcv);
 
-			log_trace(logNucleo,"list 'indiceDeEtiquetas' size: %d\n", list_size(unBloqueControl.indiceDeEtiquetas));
-			*/
+			//Create list for IndiceDeEtiquetas
+			deserializarListaIndiceDeEtiquetas(PCBRecibido->indiceDeEtiquetas, messageWithBasicPCB->indiceDeEtiquetasTamanio);
 
 			printf("El PCB fue recibido correctamente\n");
 			//contadorDeProgramas=+1;
 
-			//deseializarPCB(pcbRecibido,PCBrecibido);
-
 			int j;
-			//TODO CAMBIAR 'QUANTUM' y  'QUANTUM_SLEEP' por lo que se recibio
 			for(j=0;j < QUANTUM;j++){
 
 				exitCode = ejecutarPrograma(PCBRecibido);
@@ -118,6 +128,7 @@ int main(int argc, char *argv[]){
 						free(bufferRespuesta);
 					}
 
+					//TODO esto esta mal, esta enviando 2 mensajes seguidos con dos operaciones distintas al NUCLEO - REORGANIZAR!!!!!!!
 					if(PCBRecibido->ProgramCounter == PCBRecibido->indiceDeCodigo->elements_count){
 
 						log_info(logCPU, "Proceso %d - Finalizado correctamente", PCBRecibido->PID);
@@ -144,6 +155,10 @@ int main(int argc, char *argv[]){
 
 		}
 
+		free(messageRcv);
+		//TODO Destruir PCBRecibido
+		//TODO Destruir listaIndiceEtiquetas
+
 	}
 
 	return EXIT_SUCCESS;
@@ -164,7 +179,9 @@ int ejecutarPrograma(t_PCB* PCB){
 	posicionEnMemoria->offset=instruccionActual->inicioDeInstruccion%frameSize;
 	posicionEnMemoria->size=instruccionActual->longitudInstruccionEnBytes;
 
-	//TODO serializarPosicionDeMemoria(direccionAEnviar,posicionEnMemoria,tamanio);
+	//TODO serializar mensaje para UMC y enviar
+	//serializeCPU_UMC()
+
 	sendMessage(&socketUMC,direccionAEnviar,sizeof(t_memoryLocation));
 
 	int returnCode = EXIT_SUCCESS;//DEFAULT
@@ -301,23 +318,59 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 	return exitcode;
 }
 
-void sendRequestToUMC(){
-
-}
-
 void waitRequestFromNucleo(int *socketClient, char * messageRcv){
 	//Receive message size
 	int messageSize = 0;
-	messageRcv = malloc(sizeof(messageSize));
 	int receivedBytes = receiveMessage(socketClient, messageRcv, sizeof(messageSize));
 
 	if ( receivedBytes > 0 ){
+		//Get Payload size
+		messageSize = atoi(messageRcv);
+
+		//Receive process from which the message is going to be interpreted
+		enum_processes fromProcess;
+		messageRcv = realloc(messageRcv, sizeof(fromProcess));
+		receivedBytes = receiveMessage(socketClient, messageRcv, sizeof(fromProcess));
+		fromProcess = (enum_processes) messageRcv;
+
 		//Receive message using the size read before
-		memcpy(&messageSize, messageRcv, sizeof(int));
 		messageRcv = realloc(messageRcv,messageSize);
 		receivedBytes = receiveMessage(socketClient, messageRcv, messageSize);
+
+		log_info(logCPU,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
+
 	}else{
 		messageRcv = NULL;
+	}
+
+}
+
+void deserializarListaIndiceDeEtiquetas(char* charEtiquetas, int listaSize){
+	int offset = 0;
+
+	listaIndiceEtiquetas = list_create();
+
+	while ( offset < listaSize ){
+		t_registroIndiceEtiqueta *regIndiceEtiqueta = malloc(sizeof(t_registroIndiceEtiqueta));
+
+		int j = 0;
+		for (j = 0; charEtiquetas[offset + j] != '\0'; j++);
+
+		regIndiceEtiqueta->funcion = malloc(j);
+		memset(regIndiceEtiqueta->funcion,'\0', j);
+
+		regIndiceEtiqueta->funcion = string_substring(charEtiquetas, offset, j);
+		offset += j + 1;//+1 por '\0's
+
+		log_info(logCPU,"funcion: %s\n", regIndiceEtiqueta->funcion);
+
+		memcpy(&regIndiceEtiqueta->posicionDeLaEtiqueta, charEtiquetas +offset, sizeof(regIndiceEtiqueta->posicionDeLaEtiqueta));
+		offset += sizeof(regIndiceEtiqueta->posicionDeLaEtiqueta);
+
+		log_info(logCPU,"posicionDeLaEtiqueta: %d\n", regIndiceEtiqueta->posicionDeLaEtiqueta);
+
+		list_add(listaIndiceEtiquetas,(void*)regIndiceEtiqueta);
+
 	}
 
 }
@@ -409,9 +462,9 @@ t_puntero definirVariable(t_nombre_variable identificador){
 	variableAAgregar->direccionValorDeVariable = malloc(sizeof(t_memoryLocation));
 	variableAAgregar->identificador=identificador;
 
-	ultimaPosicionOcupada = buscarEnElStackPosicionPagina(PCB);
+	ultimaPosicionOcupada = buscarEnElStackPosicionPagina(PCBRecibido);
 
-	if(ultimoPosicionPC == PCB->ProgramCounter){
+	if(ultimoPosicionPC == PCBRecibido->ProgramCounter){
 		t_registroStack* ultimoRegistro = malloc(sizeof(t_registroStack));
 
 		if(ultimaPosicionOcupada->direccionValorDeVariable->offset == frameSize){
@@ -424,7 +477,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 			variableAAgregar->direccionValorDeVariable->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
 		}
 
-		ultimoRegistro=list_get(PCB->indiceDeStack,PCB->indiceDeStack->elements_count);
+		ultimoRegistro=list_get(PCBRecibido->indiceDeStack, PCBRecibido->indiceDeStack->elements_count);
 		list_add(ultimoRegistro->vars, (void*)variableAAgregar);
 
 		posicionDeLaVariable= (int) &variableAAgregar->direccionValorDeVariable;
@@ -444,9 +497,9 @@ t_puntero definirVariable(t_nombre_variable identificador){
 		}
 
 		list_add(registroAAgregar->vars,(void*)variableAAgregar);
-		registroAAgregar->pos = PCB->indiceDeStack->elements_count - 1;
+		registroAAgregar->pos = PCBRecibido->indiceDeStack->elements_count - 1;
 
-		list_add(PCB->indiceDeStack,registroAAgregar);
+		list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
 		posicionDeLaVariable= (int) &variableAAgregar->direccionValorDeVariable;
 
@@ -464,9 +517,6 @@ t_vars* buscarEnElStackPosicionPagina(t_PCB* pcb){
 	return ultimaPosicionLlena;
 }
 
-
-
-
 t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
 	bool condicionVariable(t_vars* unaVariable){
 		return (unaVariable->identificador==identificador_variable);
@@ -475,9 +525,9 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
 	t_registroStack* registroBuscado=malloc(sizeof(t_registroStack));
 	t_vars* posicionBuscada=malloc(sizeof(t_memoryLocation));
 	t_puntero posicionEncontrada;
-	for(i=0;i<PCB->indiceDeStack->elements_count;i++){
-		registroBuscado=list_get(PCB->indiceDeStack,i);
-		posicionBuscada=list_find(registroBuscado->vars,(void*)condicionVariable);
+	for(i=0; i < PCBRecibido->indiceDeStack->elements_count; i++){
+		registroBuscado = list_get(PCBRecibido->indiceDeStack,i);
+		posicionBuscada = list_find(registroBuscado->vars,(void*)condicionVariable);
 	}
 	posicionEncontrada =(int) &posicionBuscada->direccionValorDeVariable;
 
@@ -549,27 +599,28 @@ void irAlLabel(t_nombre_etiqueta etiqueta){
 	t_memoryLocation* ultimaPosicionDeMemoria=malloc(sizeof(t_memoryLocation));
 	t_memoryLocation* nuevaPosicionDeMemoria=malloc(sizeof(t_memoryLocation));
 	t_vars* infoVariable=malloc(sizeof(t_vars));
+
 	int condicionEtiquetas(t_nombre_etiqueta unaEtiqueta,t_registroIndiceEtiqueta registroIndiceEtiqueta){
 		return (registroIndiceEtiqueta.funcion==unaEtiqueta);
 	}
-	ultimaPosicionDeMemoria=buscarUltimaPosicionOcupada(PCB);
+
+	ultimaPosicionDeMemoria=buscarUltimaPosicionOcupada(PCBRecibido);
 	nuevaPosicionDeMemoria->offset=ultimaPosicionDeMemoria->offset+4;
 	if(ultimaPosicionDeMemoria->offset==frameSize){
-		nuevaPosicionDeMemoria->pag=ultimaPosicionDeMemoria->pag;}
-	else{
+		nuevaPosicionDeMemoria->pag=ultimaPosicionDeMemoria->pag;
+	}else{
 		nuevaPosicionDeMemoria->pag=ultimaPosicionDeMemoria->pag+1;
-
 	}
-	nuevaPosicionDeMemoria->size=ultimaPosicionDeMemoria->size;
-	nuevoRegistroStack->retPos=PCB->ProgramCounter;
+
+	nuevaPosicionDeMemoria->size = ultimaPosicionDeMemoria->size;
+	nuevoRegistroStack->retPos = PCBRecibido->ProgramCounter;
 	list_add(nuevoRegistroStack->args,nuevaPosicionDeMemoria);
-	nuevoRegistroStack->pos=PCB->indiceDeStack->elements_count+1;
-	registroAnterior=list_get(PCB->indiceDeStack,PCB->indiceDeStack->elements_count);
-	infoVariable=(t_vars*)list_get(registroAnterior->vars,registroAnterior->vars->elements_count);
-	nuevoRegistroStack->retVar=infoVariable->direccionValorDeVariable;
-	//TODO PCB->indiceDeEtiquetas NO ES MAS UNA LISTA POR LA SERIALIZACION - CAMBIAR A LA LISTA ARMADA DESPUES DE DESEREALIZARLO
-	registroBuscado=(t_registroIndiceEtiqueta*)list_find(PCB->indiceDeEtiquetas,(void*)condicionEtiquetas);
-	PCB->ProgramCounter=registroBuscado->posicionDeLaEtiqueta;
+	nuevoRegistroStack->pos = PCBRecibido->indiceDeStack->elements_count+1;
+	registroAnterior = list_get(PCBRecibido->indiceDeStack, PCBRecibido->indiceDeStack->elements_count);
+	infoVariable = (t_vars*)list_get(registroAnterior->vars,registroAnterior->vars->elements_count);
+	nuevoRegistroStack->retVar = infoVariable->direccionValorDeVariable;
+	registroBuscado = (t_registroIndiceEtiqueta*) list_find(listaIndiceEtiquetas,(void*)condicionEtiquetas);
+	PCBRecibido->ProgramCounter = registroBuscado->posicionDeLaEtiqueta;
 
 }
 
@@ -587,12 +638,12 @@ void retornar(t_valor_variable retorno){
 	t_registroStack* registroActual;
 
 	bool condicionRetorno(t_registroStack* unRegistro){
-		return (unRegistro->retPos==registroARegresar->pos);
+		return (unRegistro->retPos == registroARegresar->pos);
 	}
-	registroARegresar=(t_registroStack*)list_find(PCB->indiceDeStack,(void*)condicionRetorno);
-	PCB->ProgramCounter=registroARegresar->retPos;
-	PCB->StackPointer=registroARegresar->pos;
-	registroActual=list_get(PCB->indiceDeStack,PCB->StackPointer);
+	registroARegresar=(t_registroStack*)list_find(PCBRecibido->indiceDeStack,(void*)condicionRetorno);
+	PCBRecibido->ProgramCounter=registroARegresar->retPos;
+	PCBRecibido->StackPointer=registroARegresar->pos;
+	registroActual=list_get(PCBRecibido->indiceDeStack,PCBRecibido->StackPointer);
 	char* valorRetorno;
 	char* retornar; //TODO VER PARA QUE SE USA!!!!!
 
@@ -611,7 +662,7 @@ void imprimir(t_valor_variable valor_mostrar){
 	//Envia aviso que finaliza incorrectamente el proceso a NUCLEO
 	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
 	respuesta->operacion = 10;
-	respuesta->processID = PCB->PID;
+	respuesta->processID = PCBRecibido->PID;
 
 	int payloadSize = sizeof(respuesta->operacion) + sizeof(respuesta->processID);
 	int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;

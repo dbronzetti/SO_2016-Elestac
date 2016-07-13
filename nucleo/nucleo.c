@@ -492,13 +492,13 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 
 		free(bufferIndiceCodigo);
 
-		//serializar estructuras del stack e indice de codigo
+		//serializar estructuras del stack
 		char* bufferIndiceStack =  malloc(sizeof(datosPCB->indiceDeStack->elements_count));
 		serializarListaStack(datosPCB->indiceDeStack, bufferIndiceStack);
 
-		//send tamaño de lista indice codigo
+		//send tamaño de lista indice stack
 		sendMessage(&serverData->socketClient, (void*) strlen(bufferIndiceStack), sizeof(int));
-		//send lista indice codigo
+		//send lista indice stack
 		sendMessage(&serverData->socketClient, bufferIndiceStack, strlen(bufferIndiceStack));
 
 		free(bufferIndiceStack);
