@@ -133,7 +133,7 @@ void newClients (void *parameter){
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
 
 	t_serverData *serverData = (t_serverData*) parameter;
-	//TODO disparar un thread para acceptar cada cliente nuevo (debido a que el accept es bloqueante) y para hacer el handshake
+	// disparar un thread para acceptar cada cliente nuevo (debido a que el accept es bloqueante) y para hacer el handshake
 /**************************************/
 	//Create thread attribute detached
 //			pthread_attr_t acceptClientThreadAttr;
@@ -203,7 +203,7 @@ void handShake (void *parameter){
 				close(serverData->socketClient);
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
-				if (exitCode == EXIT_SUCCESS){//TODO si uso connectTo => debo considerar este bloque
+				if (exitCode == EXIT_SUCCESS){// Si uso connectTo => debo considerar este bloque
 					t_datosCPU *datosCPU = malloc(sizeof(t_datosCPU));
 					datosCPU->numSocket = serverData->socketClient;
 					pthread_mutex_lock(&listadoCPU);
@@ -518,7 +518,6 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 
 void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 	printf("Processing CPU message \n");
-	t_valor_variable* valorVariable;
 
 	t_MessageCPU_Nucleo *message=malloc(sizeof(t_MessageCPU_Nucleo));
 
@@ -567,61 +566,92 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		break;}
 	case 6:{	//Obtener valor y enviarlo al CPU
 
-		//TODO Deserializar mensajePrivilegiado
-		t_privilegiado *mensajePrivilegiado = malloc(sizeof(t_privilegiado));
-		receiveMessage(&socketLibre,(void*)mensajePrivilegiado, sizeof(t_privilegiado));
+		// 1) Recibir tamanio de la variable
+		int variableLen = malloc(sizeof(int));
+		receiveMessage(&socketLibre, &variableLen, sizeof(int));
 
-		valorVariable = obtenerValor(&mensajePrivilegiado->variable);
+		// 2) Recibir la variable
+		t_nombre_variable variable = malloc(variableLen);
+		t_nombre_variable variableSerializada = string_new();
+		receiveMessage(&socketLibre, variableSerializada,variableLen);
+		memcpy(&variable, variableSerializada, variableLen);
+
+		t_valor_variable* valorVariable = obtenerValor(&variable);
 
 		if (valorVariable == NULL){
-				printf("No encontre variable %s %d id \n",&mensajePrivilegiado->variable,strlen(&mensajePrivilegiado->variable));
+				printf("No encontre variable %s %d id \n",&variable,strlen(&variable));
 			}
 
-		sendMessage(&socketLibre, (void*) &valorVariable, sizeof(t_valor_variable));
+		sendMessage(&socketLibre, valorVariable, sizeof(t_valor_variable));
 		break;}
 	case 7:{	//Grabar valor
+		// 1) Recibir valor
+		t_valor_variable* valorSerializado = malloc(sizeof(t_valor_variable));
+		t_valor_variable* valor;
+		receiveMessage(&socketLibre, valorSerializado, sizeof(t_valor_variable));
+		memcpy(&valor, valorSerializado, sizeof(t_valor_variable));
 
-		//TODO Deserializar mensajePrivilegiado
-		t_privilegiado *mensajePrivilegiado = malloc(sizeof(t_privilegiado));
-		receiveMessage(&socketLibre,(void*)mensajePrivilegiado, sizeof(t_privilegiado));
+		//t_valor_variable* valor = malloc(sizeof(t_valor_variable));
+		//receiveMessage(&socketLibre, valor, sizeof(t_valor_variable));
 
-		grabarValor(&mensajePrivilegiado->variable,&mensajePrivilegiado->valor);
+		// 2) Recibir tamanio de la variable
+		int variableLen = malloc(sizeof(int));
+		receiveMessage(&socketLibre, &variableLen, sizeof(int));
+
+		// 3) Recibir la variable
+		t_nombre_variable* variable = string_new();
+		receiveMessage(&socketLibre, variable,variableLen);
+		//TODO Deserializar variable
+
+		grabarValor(variable, valor);
 		break;}
-	case 8:{	//Grabar semaforo TODO: (y enviar al CPU)?
+	case 8:{	// WAIT - Grabar semaforo y enviar al CPU
 
+		//Recibo el tamanio del wait
 		char* tamanioSerializado=malloc(sizeof(int));
 		int tamanio;
-		int exitCode = EXIT_FAILURE;
-		exitCode = receiveMessage(&socketLibre, tamanioSerializado, sizeof(int));
-		exitCode= receiveMessage(&socketLibre);
+		receiveMessage(&socketLibre, tamanioSerializado, sizeof(int));
 		memcpy(&tamanio, &tamanioSerializado, sizeof(int));
 
+		//Recibo el semaforo wait
+		char* semaforoSerializado = string_new();
+		t_nombre_semaforo semaforo = malloc(sizeof(t_nombre_semaforo));
+		receiveMessage(&socketLibre, semaforoSerializado, tamanio );
+		memcpy(&semaforo, semaforoSerializado, tamanio);
 
 		if (estaEjecutando(message->processID)==1){ // 1: Programa ejecutandose (no esta en ninguna cola)
-			int * valorSemaforo = pideSemaforo(mensajePrivilegiado->semaforo);
+			int * valorSemaforo = pideSemaforo(semaforo);
 			int valorAEnviar;
 			if(*valorSemaforo<=0){
 
 				valorAEnviar = 1;
 				printf("Recibi proceso %d mando a bloquear por semaforo \n", (message->processID)%6+1);
 				sendMessage(&socketLibre, (void*)valorAEnviar,sizeof(int));// 1 si se bloquea. 0 si no se bloquea
-				bloqueoSemaforo(message->processID,mensajePrivilegiado->semaforo);
+				bloqueoSemaforo(message->processID,semaforo);
 				//Libero la CPU que ocupaba el proceso
 				liberarCPU(socketLibre);
 			}else{
-				grabarSemaforo(mensajePrivilegiado->semaforo,*pideSemaforo(mensajePrivilegiado->semaforo)-1);
+				grabarSemaforo(semaforo,*pideSemaforo(semaforo)-1);
 				valorAEnviar=0;
 				sendMessage(&socketLibre, &valorAEnviar, sizeof(int));
 			}
 		}
 		break;}
-	case 9:{	//Libera semaforo SIGNAL
+	case 9:{	// SIGNAL	- 	Libera semaforo
 
-		//TODO Deserializar mensajePrivilegiado
-		t_privilegiado *mensajePrivilegiado = malloc(sizeof(t_privilegiado));
-		receiveMessage(&socketLibre,(void*)mensajePrivilegiado, sizeof(t_privilegiado));
+		//Recibo el tamanio del signal
+		int tamanio;
+		char* tamanioSerializado = malloc(sizeof(int));
+		receiveMessage(&socketLibre,(void*)tamanioSerializado, sizeof(int));
+		memcpy(&tamanio, &tamanioSerializado, sizeof(int));
 
-		liberaSemaforo(mensajePrivilegiado->semaforo);
+		//Recibo el semaforo wait
+		char* semaforoSerializado = string_new();
+		t_nombre_semaforo semaforo = malloc(sizeof(t_nombre_semaforo));
+		receiveMessage(&socketLibre, semaforo, tamanio);
+		memcpy(&semaforo, semaforoSerializado, tamanio);
+
+		liberaSemaforo(semaforo);
 		break;}
 	case 10:{	//Imprimir VALOR por Consola
 		int socketConsola = buscarSocketConsola(message->processID);
@@ -633,42 +663,41 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 		//Received value from CPU
 		t_valor_variable* valor = malloc(sizeof(t_valor_variable));
-		receiveMessage(&socketLibre,(void*)valor, sizeof(t_valor_variable));
+		receiveMessage(&socketLibre, valor, sizeof(t_valor_variable));
 
 		log_info(logNucleo, "Enviar valor '%s' a PID #%d\n", valor, message->processID);
 
-		sendMessage(&socketConsola, (void*) valor, sizeof(t_valor_variable));
+		sendMessage(&socketConsola, valor, sizeof(t_valor_variable));
 
 		free(valor);
 		break;
 	}
 	case 11:{	//Imprimir TEXTO por Consola
-			int socketConsola = buscarSocketConsola(message->processID);
-			if (socketConsola==-1){
-				printf("No se encontro Consola para el PID: %d \n",message->processID);
-				break;//TODO verificar que no continue; return;
-			}
-			char* tamanioSerializado;
-			int tamanio;
-			char* texto = string_new();
+		int socketConsola = buscarSocketConsola(message->processID);
+		if (socketConsola==-1){
+			printf("No se encontro Consola para el PID: %d \n",message->processID);
+			break;//TODO verificar que no continue; return;
+		}
 
-			//Recibo el tamanio del texto
-			receiveMessage(&socketLibre,tamanioSerializado,sizeof(int));
-			memcpy(&tamanio,&tamanioSerializado, sizeof(int));
+		int tamanio;
+		char* texto = string_new();
 
-			//Recibo el texto
-			receiveMessage(&socketLibre,texto,tamanio);
+		//Recibo el tamanio del texto
+		receiveMessage(&socketLibre, &tamanio,sizeof(int));
 
-			// Envia el tamanio del texto al proceso CONSOLA
-			log_info(logNucleo, "Enviar tamanio: '%s', a PID #%d\n", tamanio, message->processID);
-			string_append(&texto,"\0");
-			sendMessage(&socketConsola, (void*) tamanio, sizeof(tamanio));
+		//Recibo el texto
+		receiveMessage(&socketLibre,texto,tamanio);
 
-			// Envia el texto al proceso CONSOLA
-			log_info(logNucleo, "Enviar texto: '%s', a PID #%d\n", texto, message->processID);
-			sendMessage(&socketConsola, texto, tamanio);
+		// Envia el tamanio del texto al proceso CONSOLA
+		log_info(logNucleo, "Enviar tamanio: '%s', a PID #%d\n", tamanio, message->processID);
+		string_append(&texto,"\0");
+		sendMessage(&socketConsola, &tamanio, sizeof(tamanio));
 
-			break;}
+		// Envia el texto al proceso CONSOLA
+		log_info(logNucleo, "Enviar texto: '%s', a PID #%d\n", texto, message->processID);
+		sendMessage(&socketConsola, texto, tamanio);
+
+		break;}
 	default:
 		printf("Mensaje recibido invalido. \n");
 		//printf("CPU desconectado.\n");
@@ -1430,7 +1459,7 @@ void analizarIO(int sig, siginfo_t *si, void *uc) {
 	pthread_mutex_unlock(&cBloqueados);
 
 	if (queue_size(colaBloqueados) != 0) {
-		proceso = (t_proceso*)list_get(colaBloqueados->elements, queue_size(colaBloqueados) - 1);
+		proceso = (t_bloqueado*)list_get(colaBloqueados->elements, queue_size(colaBloqueados) - 1);
 		makeTimer(timers[io], configNucleo.io_ids_values[io] * proceso->tiempo); //2ms
 	}
 }
@@ -1451,9 +1480,9 @@ int makeTimer(timer_t *timerID, int expireMS)
 	te.sigev_notify = SIGEV_SIGNAL;
 	te.sigev_signo = sigNo;
 	te.sigev_value.sival_ptr = timerID;
-	//timer_create(CLOCK_REALTIME, &te, timerID);
-//	its.it_value.tv_sec =  floor(expireMS / 1000);
+	timer_create(CLOCK_REALTIME, &te, timerID);
+	its.it_value.tv_sec =  floor(expireMS / 1000);
 	its.it_value.tv_nsec = expireMS % 1000 * 1000000;
-	//timer_settime(*timerID, 0, &its, NULL);
+	timer_settime(*timerID, 0, &its, NULL);
 	return 1;
 }

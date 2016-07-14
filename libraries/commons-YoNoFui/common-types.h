@@ -17,11 +17,6 @@ typedef enum{
 	escritura_pagina
 } enum_operationsUMC_SWAP;
 
-typedef enum{
-	id_wait=0,
-	id_signal,
-}enum_semaforo;
-
 typedef struct{
 	int pag;
 	int offset;
@@ -62,11 +57,6 @@ struct bloqueDeControl{
 	char *indiceDeEtiquetas;
 	t_list *indiceDeStack;//cola o pila con registros del tipo t_registroStack
 }typedef t_PCB;
-
-struct variableCompartidaAEnviar{
-	t_valor_variable valorVariable;
-	t_nombre_compartida nombreCompartida;
-}typedef struct_compartida;
 
 typedef struct datosEntradaSalida {
 	int tiempo;
