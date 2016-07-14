@@ -393,7 +393,6 @@ void crearArchivoDeConfiguracion(char *configFile){
 
 void serializarES(t_es *value, t_nombre_dispositivo buffer, int valueSize){
 	int offset = 0;
-	//TODO Verificar que se este enviando el tamanio del dispositivo que es un char* y q se este considerando el \0 en el offset
 
 	//valueSize
 	memcpy(buffer, &valueSize, sizeof(valueSize));
@@ -446,6 +445,22 @@ t_puntero definirVariable(t_nombre_variable identificador){
 			posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
 
 			free(ultimoRegistro);
+		}else{//executing different program counter
+			t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
+			registroAAgregar->retVar = NULL; //Memory position to return BY DEFAULT
+			registroAAgregar->retPos = -1; //DEFAULT VALUE
+			registroAAgregar->args = list_create();
+			registroAAgregar->vars = list_create();
+			registroAAgregar->pos = PCBRecibido->indiceDeStack->elements_count - 1;
+
+			cargarValoresNuevaPosicion(ultimaPosicionOcupada, variableAAgregar->direccionValorDeVariable);
+
+			//Every time a record to IndiceStack is created have to be loaded all its variables
+			list_add(registroAAgregar->vars,(void*)variableAAgregar);
+
+			list_add(PCBRecibido->indiceDeStack,registroAAgregar);
+
+			posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
 		}
 
 	}else{
