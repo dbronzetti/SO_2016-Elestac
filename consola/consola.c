@@ -68,7 +68,11 @@ int main(int argc, char **argv) {
 			printf("codigo del programa:%s \n", codeScript);
 			printf("Tamanio del archivo: %d\n", tamanioArchivo);
 
-			exitCode = sendMessage(&socketNucleo, codeScript,strlen(codeScript));
+			string_append(&codeScript,"\0");// "\0" para terminar el string
+			int programCodeLen = tamanioArchivo + 1; //+1 por el '\0'
+			//Enviar 1ro el tamanio y luego el programa
+			sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
+			exitCode = sendMessage(&socketNucleo, codeScript,programCodeLen);
 
 			fgets(inputTeclado, sizeof(inputTeclado), stdin);
 
@@ -76,7 +80,7 @@ int main(int argc, char **argv) {
 		}
 		case 2: {
 			printf("Comando Reconocido.\n");
-			sendMessage(&socketNucleo, (void*)tamanioArchivo, sizeof(int));
+			sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
 			break;
 		}
 		case 3: {
@@ -210,6 +214,7 @@ void crearArchivoDeConfiguracion(char *configFile){
 }
 
 //TODO invocar la siguiente funcion en el main
+//TODO Recibo del Nucleo por partes => no haria falta deserializarlo ?? Verificar si hay que modificar esta funcion
 int reconocerOperacion() {
 	char* tamanioSerializado=malloc(sizeof(int));
 	int tamanio;
@@ -237,7 +242,7 @@ int reconocerOperacion() {
 		free(valorAMostrarSerializado);
 		break;
 	}
-	case 3: {
+	case 3: {//TODO ver por que recibiria operacion = 3 del nucleo?
 		exit(-1);
 		break;
 	}

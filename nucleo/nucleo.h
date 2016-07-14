@@ -19,12 +19,14 @@
 #include "commons/log.h"
 #include <signal.h>
 #include <sys/types.h>
-#include <bits/types.h>
-#include <sys/time.h>
-#include <time.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <math.h>
+
+
+#include <sys/time.h>
+
+
 
 // Estructuras
 typedef struct {
@@ -85,6 +87,7 @@ pthread_mutex_t listadoProcesos;
 pthread_mutex_t cListos;
 pthread_mutex_t cBloqueados;
 pthread_mutex_t cFinalizar;
+pthread_mutex_t cSemaforos;
 pthread_mutex_t socketMutex;
 pthread_mutex_t activeProcessMutex;
 pthread_mutex_t mutex_config;

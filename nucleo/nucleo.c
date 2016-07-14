@@ -133,20 +133,21 @@ void newClients (void *parameter){
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
 
 	t_serverData *serverData = (t_serverData*) parameter;
+
 	// disparar un thread para acceptar cada cliente nuevo (debido a que el accept es bloqueante) y para hacer el handshake
-/**************************************/
+	/**************************************/
 	//Create thread attribute detached
-//			pthread_attr_t acceptClientThreadAttr;
-//			pthread_attr_init(&acceptClientThreadAttr);
-//			pthread_attr_setdetachstate(&acceptClientThreadAttr, PTHREAD_CREATE_DETACHED);
-//
-//			//Create thread for checking new connections in server socket
-//			pthread_t acceptClientThread;
-//			pthread_create(&acceptClientThread, &acceptClientThreadAttr, (void*) acceptClientConnection1, &serverData);
-//
-//			//Destroy thread attribute
-//			pthread_attr_destroy(&acceptClientThreadAttr);
-/************************************/
+	//			pthread_attr_t acceptClientThreadAttr;
+	//			pthread_attr_init(&acceptClientThreadAttr);
+	//			pthread_attr_setdetachstate(&acceptClientThreadAttr, PTHREAD_CREATE_DETACHED);
+	//
+	//			//Create thread for checking new connections in server socket
+	//			pthread_t acceptClientThread;
+	//			pthread_create(&acceptClientThread, &acceptClientThreadAttr, (void*) acceptClientConnection1, &serverData);
+	//
+	//			//Destroy thread attribute
+	//			pthread_attr_destroy(&acceptClientThreadAttr);
+	/************************************/
 
 	exitCode = acceptClientConnection(&serverData->socketServer, &serverData->socketClient);
 
@@ -154,7 +155,6 @@ void newClients (void *parameter){
 		log_warning(logNucleo,"There was detected an attempt of wrong connection\n");
 		close(serverData->socketClient);
 	}else{
-		//TODO posiblemente aca haya que disparar otro thread para que haga el recv y continue recibiendo conexiones al mismo tiempo
 		//Create thread attribute detached
 		pthread_attr_t handShakeThreadAttr;
 		pthread_attr_init(&handShakeThreadAttr);
@@ -277,33 +277,35 @@ void processMessageReceived (void *parameter){
 				log_info(logNucleo, "Processing CONSOLA message received\n");
 				pthread_mutex_lock(&activeProcessMutex);
 
-				//Receive message using the size read before
+				/*//Receive message using the size read before
 				messageRcv = realloc(messageRcv, messageSize);
 				receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
-				char *message = malloc(sizeof(messageSize));
+				char *message = malloc(sizeof(messageSize));*/
 
-				//Deserializar messageRcv para el codigo del programa
-				memcpy(message, messageRcv,sizeof(messageSize));
-
-				//Deserializar messageRcv para el tamanio
-				int opFinalizar;
-				memcpy(&opFinalizar, messageRcv, sizeof(int));
+				int* tamanio = malloc(sizeof(int));
+				receiveMessage(&serverData->socketClient, tamanio, sizeof(int));
+				int opFinalizar = *tamanio;
 
 				int PID = buscarPIDConsola(serverData->socketClient);
 				if (PID==-1){
+
 					printf("No se encontro Consola para el socket: %d \n",serverData->socketClient);
 
 				}else if (opFinalizar == -1) { 	//Finaliza Proceso
 
 					finalizarPid(PID);
 
-					//TODO enviarle el mensaje del log a la Consola asociada y destruir PCB
 					return;
 				}
 
-				iniciarPrograma(PID, messageRcv);
-				runScript(messageRcv,socketConsola);
+				//Recibo el codigo del programa
+				char* codeScript = malloc(*tamanio);
+				receiveMessage(&serverData->socketClient, codeScript, *tamanio);
+
+				iniciarPrograma(PID, codeScript);
+				runScript(codeScript,socketConsola);
+
 				pthread_mutex_unlock(&activeProcessMutex);
 			break;
 			}
@@ -349,7 +351,9 @@ void runScript(char* codeScript, int socketConsola){
 
 	PCB->PID = idProcesos;
 	PCB->ProgramCounter = miMetaData->instruccion_inicio;
-	PCB->cantidadDePaginas = ceil((double) (strlen(codeScript) + 1)/ (double) frameSize); //TODO chequear por que tira error si esta incluida math.h (en nucleo.h)
+	//En el caso de usar la siguiente linea: VER por que tira error si esta incluida math.h (en nucleo.h)
+	//PCB->cantidadDePaginas = ceil((double) (strlen(codeScript) + 1)/ (double) frameSize);
+	PCB->cantidadDePaginas = (strlen(codeScript) + 1) / frameSize;
 	PCB->StackPointer = 0;
 	PCB->estado = 1;
 	PCB->finalizar = 0;
@@ -393,13 +397,12 @@ void planificarProceso() {
 	}
 	//Veo si hay CPU libre para asignarle
 	int libreCPU = buscarCPULibre();
-	t_serverData *serverData;
 
 	if (libreCPU == -1) {
 		printf("No hay CPU libre.\n");
 		return;
 	}
-
+	t_serverData *serverData;
 	serverData->socketClient = libreCPU;
 
 	//Le envio la informacion a la CPU
@@ -548,7 +551,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		cambiarEstadoProceso(message->processID, estado);
 
 		EntradaSalida(infoES.dispositivo, infoES.tiempo);
-
+		//TODO manejar el array de E/S del archivo de configuracion
 		free(datosEntradaSalida);
 		break;}
 	case 2:{ 	//Finaliza Proceso Bien
@@ -564,60 +567,51 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		printf("Corto por Quantum.\n");
 		atenderCorteQuantum(socketLibre, message->processID);
 		break;}
+	//TODO CHEQUEAR QUE DE ACA HASTA EL FINAL DEL SWITCH (EN CADA CASE) SEA CORRECTO EL MANEJO DE LOS MENSAJES
 	case 6:{	//Obtener valor y enviarlo al CPU
 
 		// 1) Recibir tamanio de la variable
-		int variableLen = malloc(sizeof(int));
-		receiveMessage(&socketLibre, &variableLen, sizeof(int));
+		int* variableLen = malloc(sizeof(int));
+		receiveMessage(&socketLibre, variableLen, sizeof(int));
 
 		// 2) Recibir la variable
-		t_nombre_variable variable = malloc(variableLen);
-		t_nombre_variable variableSerializada = string_new();
-		receiveMessage(&socketLibre, variableSerializada,variableLen);
-		memcpy(&variable, variableSerializada, variableLen);
+		t_nombre_compartida variable = malloc(*variableLen);
+		receiveMessage(&socketLibre, variable, *variableLen);
 
-		t_valor_variable* valorVariable = obtenerValor(&variable);
+		t_valor_variable* valorVariable = obtenerValor(variable);
 
 		if (valorVariable == NULL){
-				printf("No encontre variable %s %d id \n",&variable,strlen(&variable));
-			}
+			printf("No encontre variable %s %d id \n",variable, *variableLen);
+		}
 
 		sendMessage(&socketLibre, valorVariable, sizeof(t_valor_variable));
 		break;}
 	case 7:{	//Grabar valor
-		// 1) Recibir valor
-		t_valor_variable* valorSerializado = malloc(sizeof(t_valor_variable));
-		t_valor_variable* valor;
-		receiveMessage(&socketLibre, valorSerializado, sizeof(t_valor_variable));
-		memcpy(&valor, valorSerializado, sizeof(t_valor_variable));
 
-		//t_valor_variable* valor = malloc(sizeof(t_valor_variable));
-		//receiveMessage(&socketLibre, valor, sizeof(t_valor_variable));
+		// 1) Recibir valor
+		t_valor_variable* valor = malloc(sizeof(t_valor_variable));
+		receiveMessage(&socketLibre, valor, sizeof(t_valor_variable));
 
 		// 2) Recibir tamanio de la variable
-		int variableLen = malloc(sizeof(int));
-		receiveMessage(&socketLibre, &variableLen, sizeof(int));
+		int* variableLen = malloc(sizeof(int));
+		receiveMessage(&socketLibre, variableLen, sizeof(int));
 
 		// 3) Recibir la variable
-		t_nombre_variable* variable = string_new();
-		receiveMessage(&socketLibre, variable,variableLen);
-		//TODO Deserializar variable
+		t_nombre_compartida variable = malloc(*variableLen);
+		receiveMessage(&socketLibre, variable, *variableLen);
 
 		grabarValor(variable, valor);
+
 		break;}
 	case 8:{	// WAIT - Grabar semaforo y enviar al CPU
 
 		//Recibo el tamanio del wait
-		char* tamanioSerializado=malloc(sizeof(int));
-		int tamanio;
-		receiveMessage(&socketLibre, tamanioSerializado, sizeof(int));
-		memcpy(&tamanio, &tamanioSerializado, sizeof(int));
+		int* tamanio = malloc(sizeof(int));
+		receiveMessage(&socketLibre, tamanio, sizeof(int));
 
 		//Recibo el semaforo wait
-		char* semaforoSerializado = string_new();
-		t_nombre_semaforo semaforo = malloc(sizeof(t_nombre_semaforo));
-		receiveMessage(&socketLibre, semaforoSerializado, tamanio );
-		memcpy(&semaforo, semaforoSerializado, tamanio);
+		t_nombre_semaforo semaforo = malloc(*tamanio);
+		receiveMessage(&socketLibre, semaforo, *tamanio);
 
 		if (estaEjecutando(message->processID)==1){ // 1: Programa ejecutandose (no esta en ninguna cola)
 			int * valorSemaforo = pideSemaforo(semaforo);
@@ -626,7 +620,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 				valorAEnviar = 1;
 				printf("Recibi proceso %d mando a bloquear por semaforo \n", (message->processID)%6+1);
-				sendMessage(&socketLibre, (void*)valorAEnviar,sizeof(int));// 1 si se bloquea. 0 si no se bloquea
+				sendMessage(&socketLibre, &valorAEnviar,sizeof(int));// 1 si se bloquea. 0 si no se bloquea
 				bloqueoSemaforo(message->processID,semaforo);
 				//Libero la CPU que ocupaba el proceso
 				liberarCPU(socketLibre);
@@ -640,33 +634,33 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 	case 9:{	// SIGNAL	- 	Libera semaforo
 
 		//Recibo el tamanio del signal
-		int tamanio;
-		char* tamanioSerializado = malloc(sizeof(int));
-		receiveMessage(&socketLibre,(void*)tamanioSerializado, sizeof(int));
-		memcpy(&tamanio, &tamanioSerializado, sizeof(int));
+		int* tamanio = malloc(sizeof(int));
+		receiveMessage(&socketLibre, tamanio, sizeof(int));
 
 		//Recibo el semaforo wait
-		char* semaforoSerializado = string_new();
-		t_nombre_semaforo semaforo = malloc(sizeof(t_nombre_semaforo));
-		receiveMessage(&socketLibre, semaforo, tamanio);
-		memcpy(&semaforo, semaforoSerializado, tamanio);
+		t_nombre_semaforo semaforo = malloc(*tamanio);
+		receiveMessage(&socketLibre, semaforo, *tamanio);
 
 		liberaSemaforo(semaforo);
+
 		break;}
 	case 10:{	//Imprimir VALOR por Consola
 		int socketConsola = buscarSocketConsola(message->processID);
 
 		if (socketConsola==-1){
 			printf("No se encontro Consola para el PID: %d \n",message->processID);
-			break;//TODO verificar que no continue; return;
+			return;
 		}
 
 		//Received value from CPU
 		t_valor_variable* valor = malloc(sizeof(t_valor_variable));
 		receiveMessage(&socketLibre, valor, sizeof(t_valor_variable));
 
-		log_info(logNucleo, "Enviar valor '%s' a PID #%d\n", valor, message->processID);
+		//Enviar operacion=1 para que la Consola sepa que es un valor
+		int operacion = 1;
+		sendMessage(&socketConsola, &operacion, sizeof(int));
 
+		log_info(logNucleo, "Enviar valor '%s' a PID #%d\n", valor, message->processID);
 		sendMessage(&socketConsola, valor, sizeof(t_valor_variable));
 
 		free(valor);
@@ -676,26 +670,30 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		int socketConsola = buscarSocketConsola(message->processID);
 		if (socketConsola==-1){
 			printf("No se encontro Consola para el PID: %d \n",message->processID);
-			break;//TODO verificar que no continue; return;
+			return;
 		}
 
-		int tamanio;
-		char* texto = string_new();
+		int* tamanio = malloc(sizeof(int));
+		char* texto = malloc(*tamanio);
 
 		//Recibo el tamanio del texto
-		receiveMessage(&socketLibre, &tamanio,sizeof(int));
+		receiveMessage(&socketLibre, tamanio,sizeof(int));
 
 		//Recibo el texto
-		receiveMessage(&socketLibre,texto,tamanio);
+		receiveMessage(&socketLibre, texto, *tamanio);
+
+		//Enviar operacion=2 para que la Consola sepa que es un un texto
+		int operacion = 2;
+		sendMessage(&socketConsola, &operacion, sizeof(int));
 
 		// Envia el tamanio del texto al proceso CONSOLA
-		log_info(logNucleo, "Enviar tamanio: '%s', a PID #%d\n", tamanio, message->processID);
+		log_info(logNucleo, "Enviar tamanio: '%d', a PID #%d\n", *tamanio, message->processID);
 		string_append(&texto,"\0");
-		sendMessage(&socketConsola, &tamanio, sizeof(tamanio));
+		sendMessage(&socketConsola, tamanio, sizeof(int));
 
 		// Envia el texto al proceso CONSOLA
 		log_info(logNucleo, "Enviar texto: '%s', a PID #%d\n", texto, message->processID);
-		sendMessage(&socketConsola, texto, tamanio);
+		sendMessage(&socketConsola, texto, *tamanio);
 
 		break;}
 	default:
@@ -754,7 +752,7 @@ void atenderCorteQuantum(int socket,int PID){
 
 }
 
-//TODO cada vez que se finaliza proceso se debe avisar a la consola ascociada
+//Cada vez que se finaliza proceso se debe avisar a la consola ascociada
 void finalizaProceso(int socket, int PID, int estado) {
 
 	int posicion = buscarPCB(PID);
@@ -780,6 +778,18 @@ void finalizaProceso(int socket, int PID, int estado) {
 	liberarCPU(socket);
 
 	finalizarPrograma(PID);
+
+	int socketConsola = buscarSocketConsola(PID);
+
+	// Envia el tamanio del texto y luego el texto al proceso Consola
+	char texto[] = "Se finaliza el proceso por peticion de la Consola";
+	int textoLen = strlen(texto)+1;
+	sendMessage(&socketConsola, &textoLen, sizeof(textoLen));
+
+	log_info(logNucleo, "Enviar texto: '%s', a PID #%d\n", texto, PID);
+	sendMessage(&socketConsola, texto, textoLen);
+	//TODO VER COMO SE RECIBE ESTO EN LA CONSOLA
+	//TODO Destruir PCB
 
 	//Mando a revisar si hay alguno en la lista para ejecutar.
 	planificarProceso();
@@ -993,7 +1003,9 @@ void actualizarPC(int PID, int ProgramCounter) {
 	int cambiar = buscarPCB(PID);
 	if (cambiar != -1) {
 		t_PCB* datosProceso;
+		pthread_mutex_lock(&listadoProcesos);
 		datosProceso = (t_PCB*) list_get(listaProcesos, cambiar);
+		pthread_mutex_unlock(&listadoProcesos);
 		datosProceso->ProgramCounter = ProgramCounter;
 	} else {
 		printf("Error al cambiar el PC del proceso, proceso no encontrado en la lista.\n");
@@ -1089,7 +1101,6 @@ void liberaSemaforo(t_nombre_semaforo semaforo) {
 			return;
 /*
 		//Aca esta funcionando con el \n OJO
-		//TODO: mutex configNucleo??
 			configNucleo.sem_ids_values[i]++;
 			printf("VALOR SEM: %d\n",configNucleo->sem_ids_values[i]);
 			if (proceso = queue_pop(colas_semaforos[i])) {
@@ -1122,8 +1133,9 @@ void  bloqueoSemaforo(int processID, t_nombre_semaforo semaforo){
 			proceso->ProgramCounter = PCB->ProgramCounter;
 
 			//Aca esta funcionando con el \n  OJO
-			//TODO mutex para esta cola
+			pthread_mutex_lock(&cSemaforos);
 			queue_push(colas_semaforos[i], proceso);
+			pthread_mutex_unlock(&cSemaforos);
 			return;
 		}
 		i++;
@@ -1197,7 +1209,9 @@ void iniciarPrograma(int PID, char *codeScript) {
 	int bufferSize = 0;
 	int payloadSize = 0;
 	int contentLen = strlen(codeScript) + 1;	//+1 because of '\0'
-	int cantPages = ceil((double) contentLen /(double) frameSize); //TODO chequear por que tira error si esta incluida math.h (en nucleo.h)
+	//En el caso de usar la siguiente linea: VER por que tira error si esta incluida math.h (en nucleo.h)
+	//int cantPages = ceil((double) contentLen /(double) frameSize);
+	int cantPages = (strlen(codeScript) + 1) / frameSize;
 
 	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
 
@@ -1260,8 +1274,7 @@ void deserializarES(t_es* datos, char* bufferReceived) {
 	offset += sizeof(datos->tiempo);
 
 	//2) ProgramCounter
-	memcpy(&datos->ProgramCounter, bufferReceived + offset,
-			sizeof(datos->ProgramCounter));
+	memcpy(&datos->ProgramCounter, bufferReceived + offset, sizeof(datos->ProgramCounter));
 	offset += sizeof(datos->ProgramCounter);
 
 	//3) DispositivoLen
@@ -1272,7 +1285,7 @@ void deserializarES(t_es* datos, char* bufferReceived) {
 	datos->dispositivo = malloc(dispositivoLen);
 	memcpy(datos->dispositivo, bufferReceived + offset, dispositivoLen);
 
-	//TODO Verificar que se este enviando el tamanio del dispositivo que es un char* y que se este considerando el \0 en el offset
+	//Verificar que se este enviando el tamanio del dispositivo que es un char* y que se este considerando el \0 en el offset
 }
 
 void crearArchivoDeConfiguracion(char *configFile){
@@ -1306,13 +1319,13 @@ void crearArchivoDeConfiguracion(char *configFile){
 	}
 	//initializing sem ids values
 	i = 0;
-	while ((configNucleo.sem_ids[i] != NULL) && (configNucleo.sem_init[i] != NULL)) {
+	while ((configNucleo.sem_ids[i] != NULL) && (configNucleo.sem_init[i] != NULL)) {//TODO ver si se puede usar char**
 		configNucleo.sem_ids_values[i] = configNucleo.sem_init[i]; // TODO inicializar valores de semaforos
 		i++;
 	}
 
 	i = 0;
-	while (configNucleo.sem_init [i] != NULL){
+	while (configNucleo.sem_init [i] != NULL){//TODO ver si se puede usar char**
 		colas_semaforos[i] = malloc(sizeof(t_queue));
 		colas_semaforos[i] = queue_create();
 		i++;
@@ -1417,9 +1430,8 @@ void administrarBloqueosIO(t_bloqueado *proceso, char *ioString, int unidadesBlo
 	//printf("NUCLEO: mando  %s proceso %d a BLOCK por IO\n",ioString, proceso->pcb->pid);
 	while (configNucleo.io_ids[i] != NULL){
 		if (strcmp(configNucleo.io_ids[i], ioString) == 0) {
-			//TODO: ojo con el \n
+			// ojo con el \n
 			proceso->tiempo = unidadesBloqueado;
-			//TODO: mutex
 			if (queue_size(colaBloqueados) == 0) {
 				pthread_mutex_lock(&cBloqueados);
 				queue_push(colaBloqueados, proceso);
@@ -1447,7 +1459,6 @@ void analizarIO(int sig, siginfo_t *si, void *uc) {
 	int *tidp;
 	int i=0, io;
 	while (configNucleo.io_sleep != NULL) {
-		//TODO: mutex
 		if (timers[i] == si->si_value.sival_ptr) {io = i;}
 		i++;
 	}
@@ -1463,6 +1474,7 @@ void analizarIO(int sig, siginfo_t *si, void *uc) {
 		makeTimer(timers[io], configNucleo.io_ids_values[io] * proceso->tiempo); //2ms
 	}
 }
+//TODO Tambien puede servir la siguiente funcion:     char *temporal_get_string_time()
 
 int makeTimer(timer_t *timerID, int expireMS)
 {
@@ -1480,9 +1492,10 @@ int makeTimer(timer_t *timerID, int expireMS)
 	te.sigev_notify = SIGEV_SIGNAL;
 	te.sigev_signo = sigNo;
 	te.sigev_value.sival_ptr = timerID;
-	timer_create(CLOCK_REALTIME, &te, timerID);
-	its.it_value.tv_sec =  floor(expireMS / 1000);
+	//TODO Descomentar las siguientes lineas y ver por que tira error si esta incluida time.h
+//	timer_create(CLOCK_REALTIME, &te, timerID);
+//	its.it_value.tv_sec =  floor(expireMS / 1000);
 	its.it_value.tv_nsec = expireMS % 1000 * 1000000;
-	timer_settime(*timerID, 0, &its, NULL);
+//	timer_settime(*timerID, 0, &its, NULL);
 	return 1;
 }
