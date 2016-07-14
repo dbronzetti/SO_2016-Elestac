@@ -463,54 +463,49 @@ void serializarES(t_es *value, t_nombre_dispositivo buffer, int valueSize){
 
 }
 
+void finalizar(void){
+
+	//TODO 1) ANALIZA SI ES EL FINAL DEL PROGRAMA
+	//TODO 2) RETORNAR A PUNTO PREVIO DE PROGRAM COUNTER Y ELIMINAR REGISTRO DE STACK CORRESPONDIENTE A LA FUNCION (BUSCAR EL QUE TENGA RETPOS)
+
+}
+
 t_puntero definirVariable(t_nombre_variable identificador){
 	t_puntero posicionDeLaVariable;
-	t_vars* ultimaPosicionOcupada = NULL;
+	t_memoryLocation* ultimaPosicionOcupada = NULL;
 	t_vars* variableAAgregar = malloc(sizeof(t_vars));
 	variableAAgregar->direccionValorDeVariable = malloc(sizeof(t_memoryLocation));
-	variableAAgregar->identificador=identificador;
+	variableAAgregar->identificador = identificador;
 
-	ultimaPosicionOcupada = buscarEnElStackPosicionPagina(PCBRecibido);
+	if(!list_is_empty(PCBRecibido->indiceDeStack)){
 
-	if( (ultimoPosicionPC == PCBRecibido->ProgramCounter) && (ultimaPosicionOcupada != NULL)){ //check if is the first row in stack
-		t_registroStack* ultimoRegistro = malloc(sizeof(t_registroStack));
+		ultimaPosicionOcupada = buscarEnElStackPosicionPagina(PCBRecibido);
 
-		if(ultimaPosicionOcupada->direccionValorDeVariable->offset == frameSize){
-			variableAAgregar->direccionValorDeVariable->pag = ultimaPosicionOcupada->direccionValorDeVariable->pag + 1; //increasing 1 page to last one
-			variableAAgregar->direccionValorDeVariable->offset = ultimaPosicionOcupada->direccionValorDeVariable->offset + sizeof(int); // sizeof(int) because of all variables values in AnsisOP are integer
-			variableAAgregar->direccionValorDeVariable->size = ultimaPosicionOcupada->direccionValorDeVariable->size;
-		}else{//we suppossed that the variable value is NEVER going to be greater than the page size
-			variableAAgregar->direccionValorDeVariable->pag = ultimaPosicionOcupada->direccionValorDeVariable->pag;
-			variableAAgregar->direccionValorDeVariable->offset = ultimaPosicionOcupada->direccionValorDeVariable->offset + sizeof(int); // sizeof(int) because of all variables values in AnsisOP are integer
-			variableAAgregar->direccionValorDeVariable->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
+		if( (ultimoPosicionPC == PCBRecibido->ProgramCounter) && (ultimaPosicionOcupada != NULL)){ //check if is the first row in stack
+			t_registroStack* ultimoRegistro = malloc(sizeof(t_registroStack));
+
+			cargarValoresNuevaPosicion(ultimaPosicionOcupada, variableAAgregar->direccionValorDeVariable);
+
+			ultimoRegistro = list_get(PCBRecibido->indiceDeStack, PCBRecibido->indiceDeStack->elements_count);
+			list_add(ultimoRegistro->vars, (void*)variableAAgregar);
+
+			posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
+
+			free(ultimoRegistro);
 		}
-
-		ultimoRegistro=list_get(PCBRecibido->indiceDeStack, PCBRecibido->indiceDeStack->elements_count);
-		list_add(ultimoRegistro->vars, (void*)variableAAgregar);
-
-		posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
-
 
 	}else{
 		t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
+		registroAAgregar->retVar = NULL; //Memory position to return BY DEFAULT
+		registroAAgregar->retPos = -1; //DEFAULT VALUE
+		registroAAgregar->args = list_create();
+		registroAAgregar->vars = list_create();
+		registroAAgregar->pos = 0;//first element in registro stack
 
-		if(ultimaPosicionOcupada->direccionValorDeVariable->offset == frameSize){
-			variableAAgregar->direccionValorDeVariable->pag = ultimaPosicionOcupada->direccionValorDeVariable->pag + 1; //increasing 1 page to last one
-			variableAAgregar->direccionValorDeVariable->offset = ultimaPosicionOcupada->direccionValorDeVariable->offset + sizeof(int); // sizeof(int) because of all variables values in AnsisOP are integer
-			variableAAgregar->direccionValorDeVariable->size = ultimaPosicionOcupada->direccionValorDeVariable->size;
-		}else{//we suppossed that the variable value is NEVER going to be greater than the page size
-			variableAAgregar->direccionValorDeVariable->pag = ultimaPosicionOcupada->direccionValorDeVariable->pag;
-			variableAAgregar->direccionValorDeVariable->offset = ultimaPosicionOcupada->direccionValorDeVariable->offset + sizeof(int); // sizeof(int) because of all variables values in AnsisOP are integer
-			variableAAgregar->direccionValorDeVariable->size=ultimaPosicionOcupada->direccionValorDeVariable->size;
-		}
+		cargarValoresNuevaPosicion(ultimaPosicionOcupada, variableAAgregar->direccionValorDeVariable);
 
+		//Every time a record to IndiceStack is created have to be loaded all its variables
 		list_add(registroAAgregar->vars,(void*)variableAAgregar);
-
-		if(list_is_empty(PCBRecibido->indiceDeStack)){
-			registroAAgregar->pos = 0;//first element in registro stack
-		}else{
-			registroAAgregar->pos = PCBRecibido->indiceDeStack->elements_count - 1;
-		}
 
 		list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
@@ -521,25 +516,61 @@ t_puntero definirVariable(t_nombre_variable identificador){
 	return posicionDeLaVariable;
 }
 
-t_vars* buscarEnElStackPosicionPagina(t_PCB* pcb){
-	t_registroStack* ultimoRegistro;
-	t_vars* ultimaPosicionLlena;
-	ultimoRegistro = list_get(pcb->indiceDeStack, pcb->indiceDeStack->elements_count);
+void cargarValoresNuevaPosicion(t_memoryLocation* ultimaPosicionOcupada, t_memoryLocation* variableAAgregar){
 
-	if(list_is_empty(ultimoRegistro->args)){//first row in stack
-		ultimaPosicionLlena=list_get(ultimoRegistro->vars,ultimoRegistro->vars->elements_count);
+	if (ultimaPosicionOcupada == NULL){
+		ultimaPosicionOcupada = malloc(sizeof(ultimaPosicionOcupada));
 		//TODO 1) TENER EN CUENTA la pagina donde arranca el stack
-		//TODO 2) TENER EN CUENTA argumentos para ultima posicion
-	}else if (list_is_empty(ultimoRegistro->vars)){
-		ultimaPosicionLlena=list_get(ultimoRegistro->args,ultimoRegistro->args->elements_count);
-		//TODO 1) TENER EN CUENTA la pagina donde arranca el stack
-		//TODO 2) TENER EN CUENTA argumentos para ultima posicion
+		ultimaPosicionOcupada->pag = 0; //DEFAULT value for first row
+		ultimaPosicionOcupada->offset = 0; //DEFAULT value for first row
+		ultimaPosicionOcupada->size = sizeof(int); //DEFAULT value for first row
+
+	}else{
+
+		if(ultimaPosicionOcupada->offset == (frameSize - sizeof(int)) ){//(frameSize - sizeof(int)) is because the offset is always the start position
+			variableAAgregar->pag = ultimaPosicionOcupada->pag + 1; //increasing 1 page to last one
+			variableAAgregar->offset = 0 ; // sizeof(int) because of all variables values in AnsisOP are integer
+			variableAAgregar->size = ultimaPosicionOcupada->size;
+		}else{//we suppossed that the variable value is NEVER going to be greater than the page size
+			variableAAgregar->pag = ultimaPosicionOcupada->pag;
+			variableAAgregar->offset = ultimaPosicionOcupada->offset + sizeof(int); // sizeof(int) because of all variables values in AnsisOP are integer
+			variableAAgregar->size = ultimaPosicionOcupada->size;
+		}
+	}
+
+}
+
+t_memoryLocation* buscarEnElStackPosicionPagina(t_PCB* pcb){
+
+	t_memoryLocation* ultimaPosicionLlena = malloc(sizeof(t_memoryLocation));
+
+	if(!list_is_empty(pcb->indiceDeStack)){//first row in stack
+		t_registroStack* ultimoRegistro = malloc(sizeof(t_registroStack));
+		ultimoRegistro = list_get(pcb->indiceDeStack, pcb->indiceDeStack->elements_count -1 );
+
+		if(list_is_empty(ultimoRegistro->args)){//first row in stack
+			t_vars* ultimaRegistroVars = NULL;
+			ultimaRegistroVars = list_get(ultimoRegistro->vars, ultimoRegistro->vars->elements_count -1);
+			memcpy(ultimaPosicionLlena, ultimaRegistroVars->direccionValorDeVariable, sizeof(t_memoryLocation));
+		}else{
+			if (list_is_empty(ultimoRegistro->vars)){
+				ultimaPosicionLlena = list_get(ultimoRegistro->args, ultimoRegistro->args->elements_count -1);
+			}else{
+				t_vars* ultimaRegistroVars = NULL;
+				ultimaRegistroVars = list_get(ultimoRegistro->vars, ultimoRegistro->vars->elements_count -1);
+				memcpy(ultimaPosicionLlena, ultimaRegistroVars->direccionValorDeVariable, sizeof(t_memoryLocation));
+			}
+		}
+
+		free(ultimoRegistro);
 	}
 
 	return ultimaPosicionLlena;
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
+	//TODO REVISAR Y CONFIRMAR SI ESTA BIEN
+
 	bool condicionVariable(t_vars* unaVariable){
 		return (unaVariable->identificador==identificador_variable);
 	}
@@ -557,6 +588,9 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
 }
 
 t_valor_variable dereferenciar(t_puntero direccion_variable){
+
+	//TODO MAL!!! SERIALIZAR A UMC COMO CORRESPONDE (ENVIAR \0 PARA TOTAL DEL CONTENIDO DE LA VARIABLE) ---> SE PUEDE TOMAR COMO EJEMPLO EL ASIGNAR
+
 	t_valor_variable *varValue = malloc(sizeof(t_valor_variable));
 	t_memoryLocation *posicionSenialada = malloc(sizeof(t_memoryLocation));
 	/*memcpy(&posicionSenialada->offset,&direccion_variable,4);
@@ -571,15 +605,40 @@ t_valor_variable dereferenciar(t_puntero direccion_variable){
 
 void asignar(t_puntero direccion_variable, t_valor_variable valor){
 	//Envio la posicion que tengo que asignar a la umc
-	char* direccionVariable=malloc(sizeof(t_memoryLocation));
-	memcpy(direccionVariable,&direccion_variable,sizeof(t_memoryLocation));
-	sendMessage(&socketUMC,direccionVariable,sizeof(t_memoryLocation));
-	char* valorVariable=malloc(sizeof(t_valor_variable));
-	memcpy(valorVariable,&valor,sizeof(t_valor_variable));
-	sendMessage(&socketUMC,valorVariable,sizeof(t_valor_variable));
+
+	// inform new program to swap and check if it could write it.
+	int bufferSize = 0;
+	int payloadSize = 0;
+
+	//overwrite page content in swap (swap out)
+	t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
+	message->virtualAddress = (t_memoryLocation*) malloc(sizeof(t_memoryLocation));
+	message->PID = PCBRecibido->PID;
+	message->operation = escritura_pagina;
+	message->virtualAddress = (t_memoryLocation*) direccion_variable;
+
+	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(t_memoryLocation);
+	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
+
+	char *buffer = malloc(bufferSize);
+
+	serializeCPU_UMC(message, buffer, payloadSize);
+
+	//Send information to UMC - message serialized with virtualAddress information
+	sendMessage(&socketUMC, buffer, bufferSize);
+
+	//1) First send with size of the message
+	sendMessage(&socketUMC, (void*) sizeof(t_valor_variable), sizeof(t_valor_variable));
+	//2) Second send with value with previous size sent
+	sendMessage(&socketUMC,&valor,sizeof(t_valor_variable));
+
+	free(message->virtualAddress);
+	free(message);
+	free(buffer);
 }
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
+	//TODO REVISAR Y CONFIRMAR SI ESTA BIEN
 	t_valor_variable valorVariableDeserializado;
 	char* valorVariableSerializado = NULL;
 
@@ -602,6 +661,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 }
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
+	//TODO REVISAR Y CONFIRMAR SI ESTA BIEN
 	struct_compartida variableCompuesta;
 	char* struct_serializado=malloc(sizeof(struct_compartida));
 	t_valor_variable value;
@@ -614,68 +674,85 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_va
 }
 
 void irAlLabel(t_nombre_etiqueta etiqueta){
-	t_registroIndiceEtiqueta* registroBuscado=malloc(sizeof(t_memoryLocation));
-	t_registroStack* registroAnterior=malloc(sizeof(t_memoryLocation));
+	t_registroIndiceEtiqueta* registroBuscado = malloc(sizeof(t_registroIndiceEtiqueta));
 
-	t_registroStack* nuevoRegistroStack=malloc(sizeof(t_registroStack));
-	t_memoryLocation* ultimaPosicionDeMemoria=malloc(sizeof(t_memoryLocation));
-	t_memoryLocation* nuevaPosicionDeMemoria=malloc(sizeof(t_memoryLocation));
-	t_vars* infoVariable=malloc(sizeof(t_vars));
-
-	int condicionEtiquetas(t_nombre_etiqueta unaEtiqueta,t_registroIndiceEtiqueta registroIndiceEtiqueta){
-		return (registroIndiceEtiqueta.funcion==unaEtiqueta);
+	int condicionEtiquetas(t_registroIndiceEtiqueta registroIndiceEtiqueta){
+		return (registroIndiceEtiqueta.funcion == etiqueta);
 	}
 
-	ultimaPosicionDeMemoria=buscarUltimaPosicionOcupada(PCBRecibido);
-	nuevaPosicionDeMemoria->offset=ultimaPosicionDeMemoria->offset+4;
-	if(ultimaPosicionDeMemoria->offset==frameSize){
-		nuevaPosicionDeMemoria->pag=ultimaPosicionDeMemoria->pag;
-	}else{
-		nuevaPosicionDeMemoria->pag=ultimaPosicionDeMemoria->pag+1;
-	}
-
-	nuevaPosicionDeMemoria->size = ultimaPosicionDeMemoria->size;
-	nuevoRegistroStack->retPos = PCBRecibido->ProgramCounter;
-	list_add(nuevoRegistroStack->args,nuevaPosicionDeMemoria);
-	nuevoRegistroStack->pos = PCBRecibido->indiceDeStack->elements_count+1;
-	registroAnterior = list_get(PCBRecibido->indiceDeStack, PCBRecibido->indiceDeStack->elements_count);
-	infoVariable = (t_vars*)list_get(registroAnterior->vars,registroAnterior->vars->elements_count);
-	nuevoRegistroStack->retVar = infoVariable->direccionValorDeVariable;
 	registroBuscado = (t_registroIndiceEtiqueta*) list_find(listaIndiceEtiquetas,(void*)condicionEtiquetas);
-	PCBRecibido->ProgramCounter = registroBuscado->posicionDeLaEtiqueta;
+
+	//get program counter needed
+	ultimoPosicionPC = registroBuscado->posicionDeLaEtiqueta;
+
+	free(registroBuscado);
 
 }
 
+//AFTER THIS FUNCTION IS ALWAYS CALLED definirVariable
 void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
-	t_valor_variable retorno = -1;//TODO VER DEFAULT VALUE
+
+	//Saving context and adding new entry to indiceStack
+	t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
+	registroAAgregar->retVar = malloc(sizeof(t_memoryLocation));
+	registroAAgregar->retVar = (t_memoryLocation*) donde_retornar; //Memory position where the return has to load the function output
+	registroAAgregar->retPos = ultimoPosicionPC; //At the end of the function it has to return to the current program counter
+	registroAAgregar->args = list_create();
+	registroAAgregar->vars = list_create();
+
+	if(!list_is_empty(PCBRecibido->indiceDeStack)){
+		t_registroStack* ultimoRegistro = malloc(sizeof(t_registroStack));
+		ultimoRegistro = list_get(PCBRecibido->indiceDeStack, PCBRecibido->indiceDeStack->elements_count - 1);
+		registroAAgregar->pos = ultimoRegistro->pos + 1;
+		free(ultimoRegistro);
+	}else{
+		registroAAgregar->pos = 0;
+	}
+
+	t_memoryLocation* ultimaPosicionOcupada = NULL;
+	ultimaPosicionOcupada = buscarEnElStackPosicionPagina(PCBRecibido);
+
+	//WE SUPPOSED THAT ALWAYS THE ARGS CREATION IS GOING TO BE THE FIRST ONE (before vargs records)
+	t_memoryLocation* nuevoRegistroArgs = malloc(sizeof(t_memoryLocation));
+
+	cargarValoresNuevaPosicion(ultimaPosicionOcupada, nuevoRegistroArgs);
+
+	list_add(registroAAgregar->args,(void*)nuevoRegistroArgs);
+
+	list_add(PCBRecibido->indiceDeStack,registroAAgregar);
+
+	//Cambiar de program counter segun etiqueta
 	irAlLabel(etiqueta);
 
-	retornar(retorno);
 }
 
 void retornar(t_valor_variable retorno){
 
 	t_registroStack* registroARegresar;
-	t_memoryLocation* retVar = NULL;
 	t_registroStack* registroActual;
 
 	bool condicionRetorno(t_registroStack* unRegistro){
 		return (unRegistro->retPos == registroARegresar->pos);
 	}
-	registroARegresar=(t_registroStack*)list_find(PCBRecibido->indiceDeStack,(void*)condicionRetorno);
-	PCBRecibido->ProgramCounter=registroARegresar->retPos;
-	PCBRecibido->StackPointer=registroARegresar->pos;
-	registroActual=list_get(PCBRecibido->indiceDeStack,PCBRecibido->StackPointer);
-	char* valorRetorno;
-	char* retornar; //TODO VER PARA QUE SE USA!!!!!
 
-	memcpy(valorRetorno,&registroActual->retVar->offset,4);
-	memcpy(valorRetorno,&registroActual->retVar->pag,4);
-	memcpy(valorRetorno,&registroActual->retVar->size,4);
-	sendMessage(&socketUMC,valorRetorno,sizeof(t_memoryLocation));
-	memcpy(&valorRetorno,&retorno,4);
-	sendMessage(&socketUMC,valorRetorno,4);
+	registroARegresar = (t_registroStack*)list_find(PCBRecibido->indiceDeStack,(void*)condicionRetorno);
+	ultimoPosicionPC = registroARegresar->retPos;
+	PCBRecibido->StackPointer = registroARegresar->pos;
+	registroActual = list_get(PCBRecibido->indiceDeStack,PCBRecibido->StackPointer);
 
+	char* valorRetorno = malloc(sizeof(registroActual->retVar));
+	int offset = 0;
+
+	//1) Send memory location to UMC
+	serializeMemoryLocation(registroActual->retVar, valorRetorno, &offset);
+	sendMessage(&socketUMC, valorRetorno, sizeof(registroActual));
+
+	//2) Send value to UMC (variable values are always int)
+	valorRetorno = realloc(valorRetorno, sizeof(t_valor_variable));
+	memcpy(valorRetorno, &retorno, sizeof(t_valor_variable));
+	sendMessage(&socketUMC, valorRetorno, sizeof(t_valor_variable));
+
+	free(valorRetorno);
 }
 
 
@@ -803,18 +880,22 @@ void signal(t_nombre_semaforo identificador_semaforo){
 
 }
 
+//TODO VERIFICAR SI ESTA FUNCION SE USA O SE PUEDE BORRAR
 t_memoryLocation* buscarUltimaPosicionOcupada(t_PCB* pcbEjecutando){
-	t_registroStack* ultimoRegistro=malloc(sizeof(t_registroStack));
+	t_registroStack* ultimoRegistro = malloc(sizeof(t_registroStack));
 	t_vars* ultimaPosicionDeMemoriaOcupadaVars;
 	t_memoryLocation* ultimaPosicionDeMemoriaOcupadaArgs;
-	ultimoRegistro=list_get(pcbEjecutando->indiceDeStack,pcbEjecutando->indiceDeStack->elements_count);
-	ultimaPosicionDeMemoriaOcupadaArgs=list_get(ultimoRegistro->args,ultimoRegistro->args->elements_count);
-	ultimaPosicionDeMemoriaOcupadaVars=list_get(ultimoRegistro->vars,ultimoRegistro->vars->elements_count);
-	if(ultimaPosicionDeMemoriaOcupadaArgs->pag>ultimaPosicionDeMemoriaOcupadaVars->direccionValorDeVariable->pag){
+
+	ultimoRegistro = list_get(pcbEjecutando->indiceDeStack,pcbEjecutando->indiceDeStack->elements_count);
+	ultimaPosicionDeMemoriaOcupadaArgs = list_get(ultimoRegistro->args,ultimoRegistro->args->elements_count);
+	ultimaPosicionDeMemoriaOcupadaVars = list_get(ultimoRegistro->vars,ultimoRegistro->vars->elements_count);
+
+	if(ultimaPosicionDeMemoriaOcupadaArgs->pag > ultimaPosicionDeMemoriaOcupadaVars->direccionValorDeVariable->pag){
 		return ultimaPosicionDeMemoriaOcupadaArgs;
 	}else{
 		return ultimaPosicionDeMemoriaOcupadaVars->direccionValorDeVariable;
 	}
+
 	if(ultimaPosicionDeMemoriaOcupadaArgs->pag==ultimaPosicionDeMemoriaOcupadaVars->direccionValorDeVariable->pag){
 		if(ultimaPosicionDeMemoriaOcupadaArgs->offset>ultimaPosicionDeMemoriaOcupadaVars->direccionValorDeVariable->offset){
 			return ultimaPosicionDeMemoriaOcupadaArgs;
