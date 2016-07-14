@@ -41,7 +41,7 @@ void manejarES(int PID, int pcActualizado, int* banderaFinQuantum, int tiempoBlo
 void serializarES(t_es *value, t_nombre_dispositivo buffer, int valueSize);
 
 //Encabezamientos primitivas
-
+void finalizar(void);
 t_puntero definirVariable(t_nombre_variable nombreVariable);
 t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable);
 t_valor_variable dereferenciar(t_puntero direccion_variable);
@@ -58,7 +58,8 @@ void wait(t_nombre_semaforo identificador_semaforo);
 void signal(t_nombre_semaforo identificador_semaforo);
 
 int condicionBuscarVarible(t_vars* variableBuscada,t_vars* otraVariable);
-t_vars* buscarEnElStackPosicionPagina(t_PCB* pcb);
+void cargarValoresNuevaPosicion(t_memoryLocation* ultimaPosicionOcupada, t_memoryLocation* variableAAgregar);
+t_memoryLocation* buscarEnElStackPosicionPagina(t_PCB* pcb);
 t_memoryLocation* buscarUltimaPosicionOcupada(t_PCB* pcbEjecutando);
 
 #endif /* CPU_H_ */
