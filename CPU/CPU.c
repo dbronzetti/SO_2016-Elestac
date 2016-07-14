@@ -634,11 +634,11 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 
 	int valorDeError;
 
-	valorDeError=sendMessage(&socketNucleo,variable,sizeof(char));
+	valorDeError=sendMessage(&socketNucleo, variable, variableLen);
 	if(valorDeError!=-1){
 		printf("Los datos se enviaron correctamente");
 		if(receiveMessage(&socketNucleo,valorVariableSerializado,sizeof(t_valor_variable))!=-1){
-
+			//TODO verificar que no es necesario deserializar
 			memcpy(&valorVariableDeserializado, valorVariableSerializado, sizeof(t_valor_variable));
 		}
 	}else{
@@ -874,6 +874,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
 
 	// recibir respuesta del Nucleo
 	receiveMessage(&socketNucleo,respuestaNucleo,sizeof(int));
+	//TODO verificar que no hace falta deserializar
 	memcpy(&respuestaRecibida,respuestaNucleo,sizeof(int));
 	if(respuestaRecibida==1){
 		//TODO devolver PCB al nucleo
