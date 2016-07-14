@@ -21,12 +21,11 @@
 #include <sys/types.h>
 #include <pthread.h>
 #include <semaphore.h>
+
+
 #include <math.h>
-
-
+#include <time.h>
 #include <sys/time.h>
-
-
 
 // Estructuras
 typedef struct {
@@ -37,13 +36,13 @@ typedef struct {
 	int quantum;
 	int quantum_sleep;
 	char** sem_ids;
-	int** sem_ids_values;
-	int* sem_init;
+	int* sem_ids_values;
+	char** sem_init;
 	char** io_ids;
 	int* io_ids_values;
-	int* io_sleep;
+	char** io_sleep;
 	char** shared_vars;
-	int** shared_vars_values;
+	int* shared_vars_values;
 	int stack_size;
 	int pageSize;
 } t_configFile;
@@ -78,8 +77,6 @@ typedef struct {
 	int numSocket;
 } t_datosConsola;
 
-t_queue** colas_semaforos;
-
 //Semaforos
 pthread_mutex_t listadoCPU;
 pthread_mutex_t listadoConsola;
@@ -113,6 +110,7 @@ t_list* listaProcesos;
 t_queue* colaListos;
 t_queue* colaBloqueados;
 t_queue* colaFinalizar;
+t_queue** colas_semaforos;
 
 //Variables Globales
 int idProcesos = 1;
@@ -142,6 +140,7 @@ int buscarSocketConsola(int PID);
 int estaEjecutando(int PID);
 void actualizarPC(int PID, int ProgramCounter);
 void crearArchivoDeConfiguracion(char* configFile);
+void *initialize(int tamanio);
 
 //Encabezamiento de Funciones de Stack
 
@@ -155,16 +154,14 @@ t_valor_variable* obtenerValor(t_nombre_compartida variable);
 void grabarValor(t_nombre_compartida variable, t_valor_variable* valor);
 void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
 void deserializarES(t_es* datos, char* bufferRecived);
-int makeTimer(timer_t *timerID, int expireMS);
+static int makeTimer (timer_t *timerID, int expireMS);
 void administrarBloqueosIO(t_bloqueado *proceso, char *ioString, int unidadesBloqueado);
 void analizarIO(int sig, siginfo_t *si, void *uc);
 
 int *pideSemaforo(t_nombre_semaforo semaforo);
 void grabarSemaforo(t_nombre_semaforo semaforo,int valor);
-void liberaSemaforo(t_nombre_semaforo semaforo);
+void liberaSemaforo(t_nombre_semaforo semaforo);//SIGNAL
 void bloqueoSemaforo(int processID, char* semaforo);
-void wait(t_nombre_semaforo identificador_semaforo);
-//void signal(t_nombre_semaforo identificador_semaforo);
 
 //Conexiones y Funciones para los mensajes
 

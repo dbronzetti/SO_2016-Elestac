@@ -92,6 +92,7 @@ int main(int argc, char **argv) {
 			printf("Comando invalido, inténtelo nuevamente.\n");
 		}
 	}
+	//exitCode = reconocerOperacion(); //TODO Ver si recibo dentro o fuera del while
 	return exitCode;
 }
 
@@ -213,8 +214,7 @@ void crearArchivoDeConfiguracion(char *configFile){
 
 }
 
-//TODO invocar la siguiente funcion en el main
-//TODO Recibo del Nucleo por partes => no haria falta deserializarlo ?? Verificar si hay que modificar esta funcion
+//TODO Recibo del Nucleo por partes => no haria falta deserializarlo ?? Verificar si hace falta modificar esta funcion
 int reconocerOperacion() {
 	char* tamanioSerializado=malloc(sizeof(int));
 	int tamanio;
@@ -224,7 +224,7 @@ int reconocerOperacion() {
 	exitCode = receiveMessage(&socketNucleo, operacionSerializada, sizeof(int));
 	memcpy(&operacion, &operacionSerializada, sizeof(int));
 	switch (operacion) {
-	case 1: {
+	case 1: {	//Recibo del Nucleo el tamanio y el texto a imprimir
 		exitCode = receiveMessage(&socketNucleo, tamanioSerializado,sizeof(int));
 		memcpy(&tamanio, &tamanioSerializado, sizeof(int));
 		char* textoImprimir=malloc(tamanio);
@@ -233,11 +233,11 @@ int reconocerOperacion() {
 		free(textoImprimir);
 		break;
 	}
-	case 2: {
-		char* valorAMostrarSerializado=malloc(sizeof(int));
-		int valorAMostrar;
-		exitCode = receiveMessage(&socketNucleo, valorAMostrarSerializado,sizeof(int));
-		memcpy(&valorAMostrar, &valorAMostrarSerializado, sizeof(int));
+	case 2: {	//Recibo del Nucleo el valor a mostrar
+		char* valorAMostrarSerializado=malloc(sizeof(t_valor_variable));
+		t_valor_variable valorAMostrar;
+		exitCode = receiveMessage(&socketNucleo, valorAMostrarSerializado,sizeof(t_valor_variable));
+		memcpy(&valorAMostrar, &valorAMostrarSerializado, sizeof(t_valor_variable));
 		printf("Valor Recibido:%i", valorAMostrar);
 		free(valorAMostrarSerializado);
 		break;
