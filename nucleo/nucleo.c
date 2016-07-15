@@ -7,7 +7,7 @@
 
 int main(int argc, char *argv[]) {
 	int exitCode = EXIT_FAILURE; //DEFAULT failure
-	char *configurationFile = NULL;
+	char *configurationFile = NULL; //TODO descomentar lo que sigue para las pruebas
 	char *logFile = NULL;
 	pthread_t serverThread;
 	pthread_t serverConsolaThread;
@@ -273,19 +273,17 @@ void processMessageReceived (void *parameter){
 		log_info(logNucleo,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
 
 		switch (fromProcess){
-			case CONSOLA:{	//TODO en ningun momento la consola me esta enviando todoo lo anterior
+			case CONSOLA:{
 				log_info(logNucleo, "Processing CONSOLA message received\n");
 				pthread_mutex_lock(&activeProcessMutex);
 
-				/*//Receive message using the size read before
+				//Receive message using the size read before
 				messageRcv = realloc(messageRcv, messageSize);
-				receiveMessage(&serverData->socketClient, messageRcv, messageSize);
+				receiveMessage(&serverData->socketClient,(void*)messageRcv, messageSize);
 
-				char *message = malloc(sizeof(messageSize));*/
-
-				int* tamanio = malloc(sizeof(int));
-				receiveMessage(&serverData->socketClient, tamanio, sizeof(int));
-				int opFinalizar = *tamanio;
+				/*int* tamanio = malloc(sizeof(int));
+				receiveMessage(&serverData->socketClient, tamanio, sizeof(int));*/
+				int opFinalizar = messageSize;
 
 				int PID = buscarPIDConsola(serverData->socketClient);
 				if (PID==-1){
@@ -299,12 +297,13 @@ void processMessageReceived (void *parameter){
 					return;
 				}
 
-				//Recibo el codigo del programa
-				char* codeScript = malloc(*tamanio);
-				receiveMessage(&serverData->socketClient, codeScript, *tamanio);
+				//Recibo el codigo del programa (messageRcv)
 
-				iniciarPrograma(PID, codeScript);
-				runScript(codeScript,socketConsola);
+				/*char* codeScript = malloc(messageSize);
+				receiveMessage(&serverData->socketClient, codeScript, messageSize);*/
+
+				iniciarPrograma(PID, messageRcv);
+				runScript(messageRcv,socketConsola);
 
 				pthread_mutex_unlock(&activeProcessMutex);
 			break;
@@ -410,30 +409,28 @@ void planificarProceso() {
 	t_MessageNucleo_CPU* contextoProceso = malloc(sizeof(t_MessageNucleo_CPU));
 	t_proceso* datosProceso;
 
-	contextoProceso->operacion = 0; //No finaliza el proceso
-	contextoProceso->quantum = 0;
-	contextoProceso->quantum_sleep=0;
+	pthread_mutex_lock(&cListos);
+	datosProceso = (t_proceso*) queue_peek(colaListos);
+	pthread_mutex_unlock(&cListos);
 
-	if (queue_is_empty(colaFinalizar)) {
+	int posicion = buscarPCB(datosProceso->PID);
+	if (posicion != -1) {
+		pthread_mutex_lock(&listadoProcesos);
+		datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
+		pthread_mutex_unlock(&listadoProcesos);
 
-		pthread_mutex_lock(&cListos);
-		datosProceso = (t_proceso*) queue_peek(colaListos);
-		pthread_mutex_unlock(&cListos);
+		contextoProceso->quantum = configNucleo.quantum;
+		contextoProceso->quantum_sleep=configNucleo.quantum_sleep;
 
-		int posicion = buscarPCB(datosProceso->PID);
-		if (posicion != -1) {
-			pthread_mutex_lock(&listadoProcesos);
-			datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
-			pthread_mutex_unlock(&listadoProcesos);
+		enviarMsjCPU(datosPCB, contextoProceso, serverData);
+	} else {
+		printf("Proceso no encontrado en la lista.\n");
+	}
 
-			contextoProceso->quantum = configNucleo.quantum;
-			contextoProceso->quantum_sleep=configNucleo.quantum_sleep;
+	/*if (queue_is_empty(colaFinalizar)) {
 
-			enviarMsjCPU(datosPCB, contextoProceso, serverData);
+		//Aca iba lo anerior en el caso de que se le avise al CPU operacion=0
 
-		} else {
-			printf("Proceso no encontrado en la lista.\n");
-		}
 	} else {
 		pthread_mutex_lock(&cFinalizar);
 		datosProceso = (t_proceso*) queue_peek(colaFinalizar);
@@ -444,14 +441,14 @@ void planificarProceso() {
 			datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
 			pthread_mutex_unlock(&listadoProcesos);
 
-// TODO Ver esto en la CPU: Le aviso al CPU que finalice el proceso (op = 1) y luego voy a esperar la Respuesta(processCPUMessages)
+		// Aviso al CPU que finalice el proceso (op = 1) y luego voy a esperar la Respuesta(processCPUMessages)
 			contextoProceso->operacion = 1;
 			enviarMsjCPU(datosPCB, contextoProceso, serverData);
 
 		} else {
 			printf("Proceso no encontrado en la lista.\n");
 		}
-	}
+	}*/
 	//free(contextoProceso);
 }
 
@@ -465,7 +462,7 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		contextoProceso->indiceDeEtiquetasTamanio = strlen(datosPCB->indiceDeEtiquetas) + 1;
 
 		int payloadSize = sizeof(contextoProceso->programCounter) + (sizeof(contextoProceso->processID))
-			+ sizeof(contextoProceso->stackPointer)+ sizeof(contextoProceso->cantidadDePaginas) + sizeof(contextoProceso->operacion)
+			+ sizeof(contextoProceso->stackPointer)+ sizeof(contextoProceso->cantidadDePaginas)
 			+ sizeof(contextoProceso->quantum) + sizeof(contextoProceso->quantum_sleep)
 			+ sizeof(contextoProceso->indiceDeEtiquetasTamanio) + strlen(datosPCB->indiceDeEtiquetas) + 1;// +1 because '\0'
 
@@ -524,6 +521,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 	t_MessageCPU_Nucleo *message=malloc(sizeof(t_MessageCPU_Nucleo));
 
+	//Receive message using the size read before
 	messageRcv = realloc(messageRcv, messageSize);
 	receiveMessage(&socketLibre,(void*)messageRcv, messageSize);
 
@@ -996,11 +994,13 @@ static int makeTimer (timer_t *timerID, int expireMS){
 	evp.sigev_notify = SIGEV_SIGNAL;
 	evp.sigev_signo = sigNo;
 	evp.sigev_value.sival_ptr = timerID;
+
 	//TODO Descomentar las siguientes lineas y ver por que tira error si esta incluida time.h
 //	timer_create(CLOCK_REALTIME, &evp, timerID);
 //	its.it_value.tv_sec =  floor(expireMS / 1000);
 	its.it_value.tv_nsec = expireMS % 1000 * 1000000;
 //	timer_settime(*timerID, 0, &its, NULL);
+
 	return 1;
 }
 

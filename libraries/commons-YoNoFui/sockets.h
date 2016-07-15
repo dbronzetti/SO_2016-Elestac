@@ -60,7 +60,6 @@ typedef struct{
 
 typedef struct{
 	int processID;
-	int operacion;
 	int programCounter;
 	int cantidadDePaginas;// Cantidad de paginas de codigo
 	int stackPointer;
