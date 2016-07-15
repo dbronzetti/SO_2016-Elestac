@@ -295,7 +295,8 @@ void processMessageReceived (void *parameter){
 				}else if (opFinalizar == -1) { 	//Finaliza Proceso
 
 					finalizarPid(PID);
-
+					//OJO con los DEADLOCKS - Si se retorna si desbloquear puede bloquear el proceso.
+					pthread_mutex_unlock(&activeProcessMutex);
 					return;
 				}
 

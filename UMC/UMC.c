@@ -819,7 +819,7 @@ void initializeProgram(int PID, int totalPagesRequired, char *programCode){
 	//1) Send program size to swap
 	string_append(&programCode,"\0");//ALWAYS put \0 for finishing the string
 	int programCodeLen = strlen(programCode) + 1;//+1 because of '\0'
-	sendMessage(&socketSwap, (void*) programCodeLen, sizeof(programCodeLen));
+	sendMessage(&socketSwap, &programCodeLen, sizeof(programCodeLen));
 
 	//2) Send program to swap
 	sendMessage(&socketSwap, programCode, programCodeLen);

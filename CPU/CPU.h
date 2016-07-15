@@ -4,6 +4,7 @@
 #include "sockets.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <parser/metadata_program.h>
 #include <commons/collections/list.h>
 #include <commons/config.h>
