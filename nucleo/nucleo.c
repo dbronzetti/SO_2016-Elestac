@@ -357,8 +357,8 @@ void runScript(char* codeScript, int socketConsola){
 	PCB->StackPointer = 0;
 	PCB->estado = 1;
 	PCB->finalizar = 0;
-	armarIndiceDeCodigo(*PCB, miMetaData);
-	armarIndiceDeEtiquetas(*PCB, miMetaData);
+	armarIndiceDeCodigo(PCB, miMetaData);
+	armarIndiceDeEtiquetas(PCB, miMetaData);
 	PCB->indiceDeStack = list_create();
 
 	idProcesos++;
@@ -1219,24 +1219,23 @@ void bloqueoSemaforo(int processID, t_nombre_semaforo semaforo){
 	printf("No se encontro el id del semaforo. \n");
 }
 
-void armarIndiceDeCodigo(t_PCB unBloqueControl,t_metadata_program* miMetaData){
+void armarIndiceDeCodigo(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
 	int i;
 
 	t_registroIndiceCodigo* registroAAgregar = malloc(sizeof(t_registroIndiceCodigo));
 
 	//First instruction
-
 	for (i=0; i < miMetaData->instrucciones_size ; i++){
 
 		registroAAgregar->inicioDeInstruccion= miMetaData->instrucciones_serializado[i].start;
 		registroAAgregar->longitudInstruccionEnBytes = miMetaData->instrucciones_serializado[i].offset;
-		list_add(unBloqueControl.indiceDeCodigo,(void*)registroAAgregar);
+		list_add(unBloqueControl->indiceDeCodigo,(void*)registroAAgregar);
 	}
 }
 
-void armarIndiceDeEtiquetas(t_PCB unBloqueControl,t_metadata_program* miMetaData){
+void armarIndiceDeEtiquetas(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
 
-	strcpy(unBloqueControl.indiceDeEtiquetas, miMetaData->etiquetas);
+	strcpy(unBloqueControl->indiceDeEtiquetas, miMetaData->etiquetas);
 
 	log_error(logNucleo,"'indiceDeEtiquetas' size: %d\n", miMetaData->etiquetas_size);
 }
