@@ -31,7 +31,7 @@ t_PCB* PCBRecibido = NULL;
 t_list *listaIndiceEtiquetas = NULL;
 int ultimoPosicionPC;
 
-int ejecutarPrograma(t_PCB *PCB);
+int ejecutarPrograma();
 int connectTo(enum_processes processToConnect, int *socketClient);
 void crearArchivoDeConfiguracion(char *configFile);
 void waitRequestFromNucleo(int *socketClient, char * messageRcv);
