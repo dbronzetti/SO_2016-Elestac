@@ -60,7 +60,6 @@ typedef struct{
 
 typedef struct{
 	int processID;
-	int operacion;
 	int programCounter;
 	int cantidadDePaginas;// Cantidad de paginas de codigo
 	int stackPointer;
@@ -127,5 +126,15 @@ void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char *bufferReceived);
 
 void serializeCPU_Nucleo(t_MessageCPU_Nucleo *value, char *buffer, int valueSize);
 void deserializeNucleo_CPU(t_MessageCPU_Nucleo *value, char *bufferReceived);
+
+//Funciones para el PCB
+
+void cleanIndiceDeStack(t_registroStack* registroS);
+
+void destruirPCB(t_PCB* PCB);
+void destruirRegistroIndiceDeCodigo(t_registroIndiceCodigo *registroIC);
+void destruirRegistroIndiceDeStack(t_registroStack* registroS);
+void destruirArgs(t_memoryLocation* args);
+void destruirVars(t_vars* vars);
 
 #endif /*SOCKET_H_*/

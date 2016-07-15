@@ -4,6 +4,9 @@ int main(){
 	crearArchivoDeConfiguracion();
 	crearArchivoDeSwap();
 	FILE* archivoSwap;
+	archivoSwap=fopen(nombre_swap,"r+");
+	fseek(archivoSwap,0,SEEK_SET);
+	fwrite("1",tamanioDePagina,cantidadDePaginas,archivoSwap);
 	char* paginaAEnviar;
 	int socket;
 	bloqueSwap* bloqueInicial=malloc(sizeof(bloqueSwap));

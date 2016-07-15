@@ -636,36 +636,32 @@ void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize
 	memcpy(buffer + offset, &value->processID, sizeof(value->processID));
 	offset += sizeof(value->processID);
 
-	//3)operacion
-	memcpy(buffer + offset, &value->operacion, sizeof(value->operacion));
-	offset += sizeof(value->operacion);
-
-	//4)ProgramCounter
+	//3)ProgramCounter
 	memcpy(buffer + offset, &value->programCounter, sizeof(value->programCounter));
 	offset += sizeof(value->programCounter);
 
-    //5)cantidadDePaginas de codigo
+    //4)cantidadDePaginas de codigo
     memcpy(buffer + offset, &value->cantidadDePaginas, sizeof(value->cantidadDePaginas));
 	offset += sizeof(value->cantidadDePaginas);
 
-	//6)StackPointer
+	//5)StackPointer
 	memcpy(buffer + offset, &value->stackPointer, sizeof(value->stackPointer));
 	offset += sizeof(value->stackPointer);
 
-	//7)quantum_sleep
+	//6)quantum_sleep
 	memcpy(buffer + offset, &value->quantum_sleep, sizeof(value->quantum_sleep));
 	offset += sizeof(value->quantum_sleep);
 
-	//8)quantum
+	//7)quantum
 	memcpy(buffer + offset, &value->quantum, sizeof(value->quantum));
 	offset += sizeof(value->quantum);
 
-    //9)indiceDeEtiquetasTamanio
+    //8)indiceDeEtiquetasTamanio
     value->indiceDeEtiquetasTamanio = strlen(value->indiceDeEtiquetas) + 1;//+1 because of '\0'
 	memcpy(buffer + offset, &value->indiceDeEtiquetasTamanio, sizeof(value->indiceDeEtiquetasTamanio));
 	offset += sizeof(value->indiceDeEtiquetasTamanio);
 
-	//10)indiceDeEtiquetas
+	//9)indiceDeEtiquetas
     memcpy(buffer + offset, value->indiceDeEtiquetas, value->indiceDeEtiquetasTamanio);
 
 }
@@ -677,35 +673,31 @@ void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char * bufferReceived) {
 	memcpy(&value->processID, bufferReceived + offset, sizeof(value->processID));
 	offset += sizeof(value->processID);
 
-	//3)operacion
-	memcpy(&value->operacion, bufferReceived + offset, sizeof(value->operacion));
-	offset += sizeof(value->operacion);
-
-	//4)ProgramCounter
+	//3)ProgramCounter
 	memcpy(&value->programCounter, bufferReceived + offset, sizeof(value->programCounter));
 	offset += sizeof(value->programCounter);
 
-	//5)cantidadDePaginas de codigo
+	//4)cantidadDePaginas de codigo
 	memcpy(&value->cantidadDePaginas, bufferReceived + offset, sizeof(value->cantidadDePaginas));
 	offset += sizeof(value->cantidadDePaginas);
 
-	//6)StackPointer
+	//5)StackPointer
 	memcpy(&value->stackPointer, bufferReceived + offset, sizeof(value->stackPointer));
 	offset += sizeof(value->stackPointer);
 
-	//7)quantum_sleep
+	//6)quantum_sleep
 	memcpy(&value->quantum_sleep, bufferReceived + offset, sizeof(value->quantum_sleep));
 	offset += sizeof(value->quantum_sleep);
 
-	//8)quantum
+	//7)quantum
 	memcpy(&value->quantum, bufferReceived + offset, sizeof(value->quantum));
 	offset += sizeof(value->quantum);
 
-	//9)indiceDeEtiquetasTamanio
+	//8)indiceDeEtiquetasTamanio
 	memcpy(&value->indiceDeEtiquetasTamanio, bufferReceived + offset, sizeof(value->indiceDeEtiquetasTamanio));
 	offset += sizeof(value->indiceDeEtiquetasTamanio);
 
-	//10)indiceDeEtiquetas
+	//9)indiceDeEtiquetas
 	memcpy(&value->indiceDeEtiquetas, bufferReceived + offset, value->indiceDeEtiquetasTamanio);
 
 }
@@ -834,4 +826,36 @@ int socketClient;
 
  */
 
+void cleanIndiceDeStack(t_registroStack* registroS){
+	list_clean_and_destroy_elements(registroS->args,(void*)destruirArgs);
+	list_clean_and_destroy_elements(registroS->vars,(void*)destruirVars);
+	free(registroS->retVar);
+	free(registroS);
+}
 
+void destruirPCB(t_PCB* PCB){
+	list_destroy_and_destroy_elements(PCB->indiceDeCodigo,(void*)destruirRegistroIndiceDeCodigo);
+	list_destroy_and_destroy_elements(PCB->indiceDeStack,(void*)destruirRegistroIndiceDeStack);
+	free(PCB->indiceDeEtiquetas);
+	free(PCB);
+}
+
+void destruirRegistroIndiceDeCodigo(t_registroIndiceCodigo *registroIC){
+	free(registroIC);
+}
+
+void destruirRegistroIndiceDeStack(t_registroStack* registroS){
+	list_destroy_and_destroy_elements(registroS->args,(void*)destruirArgs);
+	list_destroy_and_destroy_elements(registroS->vars,(void*)destruirVars);
+	free(registroS->retVar);
+	free(registroS);
+}
+
+void destruirArgs(t_memoryLocation* args){
+	free(args);
+}
+
+void destruirVars(t_vars* vars){
+	free(vars->direccionValorDeVariable);
+	free(vars);
+}

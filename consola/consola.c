@@ -4,6 +4,7 @@
  */
 
 #include "consola.h"
+
 int socketNucleo=0;
 
 int main(int argc, char **argv) {
@@ -54,6 +55,7 @@ int main(int argc, char **argv) {
 	printf("despues de conectarme");
 	*/
 	int tamanioArchivo;
+	enum_processes fromProcess = CONSOLA;
 
 	while (1) {
 		tamanioArchivo =-1;
@@ -70,8 +72,12 @@ int main(int argc, char **argv) {
 
 			string_append(&codeScript,"\0");// "\0" para terminar el string
 			int programCodeLen = tamanioArchivo + 1; //+1 por el '\0'
-			//Enviar 1ro el tamanio y luego el programa
+
+			//1)Envia el tamanio y el fromProcess
 			sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
+			sendMessage(&socketNucleo, &fromProcess, sizeof(int));
+
+			//2)Envia el codigo del programa
 			exitCode = sendMessage(&socketNucleo, codeScript,programCodeLen);
 
 			fgets(inputTeclado, sizeof(inputTeclado), stdin);
@@ -80,7 +86,12 @@ int main(int argc, char **argv) {
 		}
 		case 2: {
 			printf("Comando Reconocido.\n");
-			sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
+			string_append(&codeScript,"\0");// "\0" para terminar el string
+			int programCodeLen = tamanioArchivo + 1; //+1 por el '\0'
+
+			//Envia el tamanio y el fromProcess solamente porque el programa no es necesario para finalizar
+			sendMessage(&socketNucleo, &programCodeLen, sizeof(int));
+			sendMessage(&socketNucleo, &fromProcess, sizeof(int));
 			break;
 		}
 		case 3: {
