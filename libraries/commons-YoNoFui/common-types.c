@@ -31,9 +31,3 @@ void setPageSize (int pageSize){
 int getLogicalAddress (int page){
 	return (page * tamanioDePagina);
 }
-
-void destroyRegistroStack(t_registroStack* self){
-	free(self->args); //TODO NO SE LIBERA ASI, es una LISTA! HACER list destroy con destroy element correspondiente
-	free(self->vars);//TODO NO SE LIBERA ASI, es una LISTA! HACER list destroy con destroy element correspondiente
-	free(self->retVar);
-}

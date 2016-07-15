@@ -722,11 +722,26 @@ void atenderCorteQuantum(int socket,int PID){
 	pcnuevo = infoProceso->ProgramCounter + configNucleo.quantum;
 	infoProceso->ProgramCounter =  pcnuevo;
 
+	//1) receive tamanioBuffer
+	int tamanioBuffer;
+	receiveMessage(&socket, &tamanioBuffer, sizeof(tamanioBuffer));
+	//2) receive buffer segun tamanioBuffer
+	char* buffer = malloc(tamanioBuffer);
+	receiveMessage(&socket, buffer, tamanioBuffer);
+	//3) malloc de listaARecibir segun el tamanio recibido.
+	t_list* listaARecibir = list_create();
+	//4) deserializarListaStack(listaARecibir, buffer);
+	deserializarListaStack(listaARecibir, buffer);
+	//5) borrar lista en infoProceso->indiceDeStack
+	list_clean_and_destroy_elements(infoProceso->indiceDeStack, (void*) cleanIndiceDeStack);
+	//6) infoProceso->indiceDeStack = listaARecibir;
+	list_add_all(infoProceso->indiceDeStack, (void*) listaARecibir);
+
 	//TODO RECIBIR PCB MODIFICADO DEL CPU! (lo que hace falta en realidad es el stack fundamentalmente y ver si es necesario algo mas que haya modificado el CPU)
 	/*
 	 * 1) receive tamanioBuffer
 	 * 2) receive buffer segun tamanioBuffer
-	 * 3) malloc de listaARecibir segundo el tamanio recibido.
+	 * 3) malloc de listaARecibir segun el tamanio recibido.
 	 * 4) deserializarListaStack(listaARecibir, buffer);
 	 * 5) borrar lista en infoProceso->indiceDeStack OJO se tiene que crear el elementDestroyer para cada registro del indiceDeStack (LA MISMA QUE SE DEBERIA USAR PARA ELIMINAR UN PCB)
 	 * 6) infoProceso->indiceDeStack = listaARecibir;
@@ -795,7 +810,8 @@ void finalizaProceso(int socket, int PID, int estado) {
 
 	log_info(logNucleo, "Enviar texto: '%s', a PID #%d\n", texto, PID);
 	sendMessage(&socketConsola, texto, textoLen);
-	//TODO Destruir PCB
+
+	destruirPCB(datosProceso);
 
 	//Mando a revisar si hay alguno en la lista para ejecutar.
 	planificarProceso();
@@ -1530,3 +1546,4 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 
 	return exitcode;
 }
+
