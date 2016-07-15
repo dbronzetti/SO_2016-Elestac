@@ -145,6 +145,7 @@ void *initialize(int tamanio);
 //Encabezamiento de Funciones de Stack
 
 void armarIndiceDeCodigo(t_PCB *unBloqueControl,t_metadata_program* miMetaData);
+void armarIndiceDeEtiquetas(t_PCB *unBloqueControl,t_metadata_program* miMetaData);
 int definirVar(char* nombreVariable,t_registroStack miPrograma,int posicion);
 
 //Privilegiadas
