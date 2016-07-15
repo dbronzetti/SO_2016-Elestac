@@ -128,10 +128,6 @@ int main(int argc, char *argv[]){
 						free(bufferRespuesta);
 
 					}
-					//TODO tener en cuenta tambien que el CPU debe finalizar cuando el NUCLEO le manda operacion=1
-					//ya que hay una peticion originalmente por parte de la consola y hay que atenderlo
-					//entonces responde con un respuestaFinOK (op=2) o respuestaFinFalla (op=3)
-
 					if(j == PCBRecibido->indiceDeCodigo->elements_count){
 						//TODO esto esta mal, esta enviando 2 mensajes seguidos con dos operaciones distintas al NUCLEO - REORGANIZAR!!!!!!!
 						if(PCBRecibido->ProgramCounter == PCBRecibido->indiceDeCodigo->elements_count){

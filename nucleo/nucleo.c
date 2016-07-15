@@ -273,19 +273,11 @@ void processMessageReceived (void *parameter){
 		log_info(logNucleo,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
 
 		switch (fromProcess){
-			case CONSOLA:{	//TODO en ningun momento la consola me esta enviando todoo lo anterior
+			case CONSOLA:{
 				log_info(logNucleo, "Processing CONSOLA message received\n");
 				pthread_mutex_lock(&activeProcessMutex);
 
-				/*//Receive message using the size read before
-				messageRcv = realloc(messageRcv, messageSize);
-				receiveMessage(&serverData->socketClient, messageRcv, messageSize);
-
-				char *message = malloc(sizeof(messageSize));*/
-
-				int* tamanio = malloc(sizeof(int));
-				receiveMessage(&serverData->socketClient, tamanio, sizeof(int));
-				int opFinalizar = *tamanio;
+				int opFinalizar = messageSize;
 
 				int PID = buscarPIDConsola(serverData->socketClient);
 				if (PID==-1){
@@ -299,12 +291,13 @@ void processMessageReceived (void *parameter){
 					return;
 				}
 
-				//Recibo el codigo del programa
-				char* codeScript = malloc(*tamanio);
-				receiveMessage(&serverData->socketClient, codeScript, *tamanio);
+				//Receive message using the size read before
+				messageRcv = realloc(messageRcv, messageSize);
+				receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
-				iniciarPrograma(PID, codeScript);
-				runScript(codeScript,socketConsola);
+				//Recibo el codigo del programa
+				iniciarPrograma(PID, messageRcv);
+				runScript(messageRcv,socketConsola);
 
 				pthread_mutex_unlock(&activeProcessMutex);
 			break;
@@ -410,30 +403,27 @@ void planificarProceso() {
 	t_MessageNucleo_CPU* contextoProceso = malloc(sizeof(t_MessageNucleo_CPU));
 	t_proceso* datosProceso;
 
-	contextoProceso->operacion = 0; //No finaliza el proceso
-	contextoProceso->quantum = 0;
-	contextoProceso->quantum_sleep=0;
+	pthread_mutex_lock(&cListos);
+	datosProceso = (t_proceso*) queue_peek(colaListos);
+	pthread_mutex_unlock(&cListos);
 
-	if (queue_is_empty(colaFinalizar)) {
+	int posicion = buscarPCB(datosProceso->PID);
+	if (posicion != -1) {
+		pthread_mutex_lock(&listadoProcesos);
+		datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
+		pthread_mutex_unlock(&listadoProcesos);
 
-		pthread_mutex_lock(&cListos);
-		datosProceso = (t_proceso*) queue_peek(colaListos);
-		pthread_mutex_unlock(&cListos);
+		contextoProceso->quantum = configNucleo.quantum;
+		contextoProceso->quantum_sleep=configNucleo.quantum_sleep;
 
-		int posicion = buscarPCB(datosProceso->PID);
-		if (posicion != -1) {
-			pthread_mutex_lock(&listadoProcesos);
-			datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
-			pthread_mutex_unlock(&listadoProcesos);
+		enviarMsjCPU(datosPCB, contextoProceso, serverData);
+	} else {
+		printf("Proceso no encontrado en la lista.\n");
+	}
 
-			contextoProceso->quantum = configNucleo.quantum;
-			contextoProceso->quantum_sleep=configNucleo.quantum_sleep;
+	/*if (queue_is_empty(colaFinalizar)) {
 
-			enviarMsjCPU(datosPCB, contextoProceso, serverData);
 
-		} else {
-			printf("Proceso no encontrado en la lista.\n");
-		}
 	} else {
 		pthread_mutex_lock(&cFinalizar);
 		datosProceso = (t_proceso*) queue_peek(colaFinalizar);
@@ -444,7 +434,7 @@ void planificarProceso() {
 			datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
 			pthread_mutex_unlock(&listadoProcesos);
 
-// TODO Ver esto en la CPU: Le aviso al CPU que finalice el proceso (op = 1) y luego voy a esperar la Respuesta(processCPUMessages)
+//  Ver esto en la CPU: Le aviso al CPU que finalice el proceso (op = 1) y luego voy a esperar la Respuesta(processCPUMessages)
 			contextoProceso->operacion = 1;
 			enviarMsjCPU(datosPCB, contextoProceso, serverData);
 
@@ -452,7 +442,7 @@ void planificarProceso() {
 			printf("Proceso no encontrado en la lista.\n");
 		}
 	}
-	//free(contextoProceso);
+	//free(contextoProceso);*/
 }
 
 void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_serverData* serverData){

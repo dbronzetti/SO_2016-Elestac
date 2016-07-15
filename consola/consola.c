@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
 	printf("despues de conectarme");
 	*/
 	int tamanioArchivo;
-
+	enum_processes fromProcess = CONSOLA;
 	while (1) {
 		tamanioArchivo =-1;
 		printf(PROMPT);
@@ -72,6 +72,7 @@ int main(int argc, char **argv) {
 			int programCodeLen = tamanioArchivo + 1; //+1 por el '\0'
 			//Enviar 1ro el tamanio y luego el programa
 			sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
+			sendMessage(&socketNucleo, &fromProcess, sizeof(int));
 			exitCode = sendMessage(&socketNucleo, codeScript,programCodeLen);
 
 			fgets(inputTeclado, sizeof(inputTeclado), stdin);
@@ -81,6 +82,7 @@ int main(int argc, char **argv) {
 		case 2: {
 			printf("Comando Reconocido.\n");
 			sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
+			sendMessage(&socketNucleo, &fromProcess, sizeof(int));
 			break;
 		}
 		case 3: {
