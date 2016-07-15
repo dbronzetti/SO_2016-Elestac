@@ -72,9 +72,12 @@ int main(int argc, char **argv) {
 
 			string_append(&codeScript,"\0");// "\0" para terminar el string
 			int programCodeLen = tamanioArchivo + 1; //+1 por el '\0'
-			//Enviar 1ro el tamanio y luego el programa
+
+			//1)Envia el tamanio y el fromProcess
 			sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
 			sendMessage(&socketNucleo, &fromProcess, sizeof(int));
+
+			//2)Envia el codigo del programa
 			exitCode = sendMessage(&socketNucleo, codeScript,programCodeLen);
 
 			fgets(inputTeclado, sizeof(inputTeclado), stdin);
@@ -85,12 +88,10 @@ int main(int argc, char **argv) {
 			printf("Comando Reconocido.\n");
 			string_append(&codeScript,"\0");// "\0" para terminar el string
 			int programCodeLen = tamanioArchivo + 1; //+1 por el '\0'
-			sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
-			sendMessage(&socketNucleo, &fromProcess, sizeof(int));
-			sendMessage(&socketNucleo, codeScript,programCodeLen);
-			//en este case el programa se envia solamente porque el nucleo recibe de una manera generica
-			//pero en realidad para finalizar no lo necesita (solo usa el tamanio)
 
+			//Envia el tamanio y el fromProcess solamente porque el programa no es necesario para finalizar
+			sendMessage(&socketNucleo, &programCodeLen, sizeof(int));
+			sendMessage(&socketNucleo, &fromProcess, sizeof(int));
 			break;
 		}
 		case 3: {

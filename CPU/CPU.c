@@ -100,12 +100,11 @@ int main(int argc, char *argv[]){
 			deserializarListaIndiceDeEtiquetas(PCBRecibido->indiceDeEtiquetas, messageWithBasicPCB->indiceDeEtiquetasTamanio);
 
 			printf("El PCB fue recibido correctamente\n");
-			//contadorDeProgramas=+1;
 
 			int j;
 			for(j=0;j < QUANTUM;j++){
 
-				exitCode = ejecutarPrograma(PCBRecibido);
+				exitCode = ejecutarPrograma();
 
 				if (exitCode == EXIT_SUCCESS){
 
@@ -139,64 +138,94 @@ int main(int argc, char *argv[]){
 						respuestaFinOK->operacion = 2;
 						respuestaFinOK->processID = PCBRecibido->PID;
 
-						int payloadSize = sizeof(respuestaFinOK->operacion) + sizeof(respuestaFinOK->processID);
-						int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
+							int payloadSize = sizeof(respuestaFinOK->operacion) + sizeof(respuestaFinOK->processID);
+							int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
-						char* bufferRespuesta = malloc(bufferSize);
-						serializeCPU_Nucleo(respuestaFinOK, bufferRespuesta, payloadSize);
-						sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+							char* bufferRespuesta = malloc(bufferSize);
+							serializeCPU_Nucleo(respuestaFinOK, bufferRespuesta, payloadSize);
+							sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
-						free(bufferRespuesta);
+							free(bufferRespuesta);
 
-						j = QUANTUM;
+							j = QUANTUM;
+						}
+
 					}
 
 				}
 
 			}
 
+			free(messageRcv);
+			//TODO Destruir PCBRecibido
+			//TODO Destruir listaIndiceEtiquetas
+
 		}
 
-		free(messageRcv);
-		//TODO Destruir PCBRecibido
-		//TODO Destruir listaIndiceEtiquetas
+	}//llave agregada, faltaba para cerrar el main
 
-	}
-	}//TODO llave agregada, faltaba para cerrar el main
 	return EXIT_SUCCESS;
 }
 
-int ejecutarPrograma(t_PCB* PCB){
+int ejecutarPrograma(){
 	int exitCode = EXIT_SUCCESS;
-	t_registroIndiceCodigo* instruccionActual;
-	t_memoryLocation* posicionEnMemoria = malloc(sizeof(t_memoryLocation));
-	char* direccionAEnviar = malloc(sizeof(t_memoryLocation));
+	t_registroIndiceCodigo* instruccionActual = malloc(sizeof(t_registroIndiceCodigo));
 
-	instruccionActual = (t_registroIndiceCodigo*) list_get(PCB->indiceDeCodigo,PCB->ProgramCounter);
+	instruccionActual = (t_registroIndiceCodigo*) list_get(PCBRecibido->indiceDeCodigo,PCBRecibido->ProgramCounter);
+
+	int i;
+	int offsetInstruccionesSize = 0;
+	t_registroIndiceCodigo* instruccion = malloc(sizeof(t_registroIndiceCodigo));
+
+	//For getting the correct page in which the current instruction has to be located we need the offset from all the previous lines executed
+	//NOTE: we follow the code line because doesn't matter if there was a function call (this is because after a function call all the variables in there are deleted from memory)
+	for(i = 0; i < instruccionActual->inicioDeInstruccion; i++){
+		instruccion = (t_registroIndiceCodigo*) list_get(PCBRecibido->indiceDeCodigo, i);
+		offsetInstruccionesSize += instruccion->longitudInstruccionEnBytes;
+	}
+
+	free(instruccion);
+
 	char* codigoRecibido = malloc(instruccionActual->longitudInstruccionEnBytes);
 
-	log_info(logCPU,"Contexto de ejecucion recibido - Process ID : %d - PC : %d", PCB->PID, PCB->ProgramCounter);
+	log_info(logCPU,"Contexto de ejecucion recibido - Process ID : %d - PC : %d", PCBRecibido->PID, PCBRecibido->ProgramCounter);
 
-	posicionEnMemoria->pag=instruccionActual->inicioDeInstruccion/frameSize;
-	posicionEnMemoria->offset=instruccionActual->inicioDeInstruccion%frameSize;
-	posicionEnMemoria->size=instruccionActual->longitudInstruccionEnBytes;
+	//serializar mensaje para UMC y solicitar codigo porcion de codigo
+	int bufferSize = 0;
+	int payloadSize = 0;
 
-	//TODO serializar mensaje para UMC y enviar
-	//serializeCPU_UMC()
+	//overwrite page content in swap (swap out)
+	t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
+	message->virtualAddress = (t_memoryLocation*) malloc(sizeof(t_memoryLocation));
+	message->PID = PCBRecibido->PID;
+	message->operation = lectura_pagina;
+	message->virtualAddress->pag = offsetInstruccionesSize/frameSize;
+	message->virtualAddress->offset = offsetInstruccionesSize%frameSize; //TODO double check this line
+	message->virtualAddress->size = instruccionActual->longitudInstruccionEnBytes;
 
-	sendMessage(&socketUMC,direccionAEnviar,sizeof(t_memoryLocation));
+	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(t_memoryLocation);
+	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
+
+	char *buffer = malloc(bufferSize);
+
+	serializeCPU_UMC(message, buffer, payloadSize);
+
+	//Send information to UMC - message serialized with virtualAddress information
+	sendMessage(&socketUMC, buffer, bufferSize);
 
 	int returnCode = EXIT_SUCCESS;//DEFAULT
 
-	exitCode = receiveMessage(&socketUMC,(void*)returnCode,sizeof(exitCode));
+	//First answer from UMC is the exit code from the operation
+	exitCode = receiveMessage(&socketUMC,&returnCode, sizeof(exitCode));
 
 	if( returnCode == EXIT_FAILURE){
 
-		log_error(logCPU, "No se pudo obtener la solicitud a ejecutar - Proceso %d - Error al finalizar", PCB->PID);
 		//Envia aviso que finaliza incorrectamente el proceso a NUCLEO
+		log_error(logCPU, "No se pudo obtener la solicitud a ejecutar - Proceso %d - Error al finalizar", PCBRecibido->PID);
+
 		t_MessageCPU_Nucleo* respuestaFinFalla = malloc( sizeof(t_MessageCPU_Nucleo));
 		respuestaFinFalla->operacion = 4;
-		respuestaFinFalla->processID = PCB->PID;
+		respuestaFinFalla->processID = PCBRecibido->PID;
 
 		int payloadSize = sizeof(respuestaFinFalla->operacion) + sizeof(respuestaFinFalla->processID);
 		int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
@@ -207,10 +236,18 @@ int ejecutarPrograma(t_PCB* PCB){
 
 		free(bufferRespuesta);
 
+		exitCode = returnCode;
+
 	}else{
-		analizadorLinea(codigoRecibido,funciones,funciones_kernel);
+		//Receiving information from UMC when the operation was successfully accomplished
+		exitCode = receiveMessage(&socketUMC, &codigoRecibido, instruccionActual->longitudInstruccionEnBytes);
+
+		analizadorLinea(codigoRecibido, funciones, funciones_kernel);
 		ultimoPosicionPC++;
 	}
+
+	free(buffer);
+	free(codigoRecibido);
 
 	return exitCode;
 }
@@ -933,3 +970,5 @@ t_memoryLocation* buscarUltimaPosicionOcupada(t_PCB* pcbEjecutando){
 
 
 // TODO Tener en cuenta en donde se hacen los free
+
+

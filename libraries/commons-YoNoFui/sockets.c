@@ -826,4 +826,36 @@ int socketClient;
 
  */
 
+void cleanIndiceDeStack(t_registroStack* registroS){
+	list_clean_and_destroy_elements(registroS->args,(void*)destruirArgs);
+	list_clean_and_destroy_elements(registroS->vars,(void*)destruirVars);
+	free(registroS->retVar);
+	free(registroS);
+}
 
+void destruirPCB(t_PCB* PCB){
+	list_destroy_and_destroy_elements(PCB->indiceDeCodigo,(void*)destruirRegistroIndiceDeCodigo);
+	list_destroy_and_destroy_elements(PCB->indiceDeStack,(void*)destruirRegistroIndiceDeStack);
+	free(PCB->indiceDeEtiquetas);
+	free(PCB);
+}
+
+void destruirRegistroIndiceDeCodigo(t_registroIndiceCodigo *registroIC){
+	free(registroIC);
+}
+
+void destruirRegistroIndiceDeStack(t_registroStack* registroS){
+	list_destroy_and_destroy_elements(registroS->args,(void*)destruirArgs);
+	list_destroy_and_destroy_elements(registroS->vars,(void*)destruirVars);
+	free(registroS->retVar);
+	free(registroS);
+}
+
+void destruirArgs(t_memoryLocation* args){
+	free(args);
+}
+
+void destruirVars(t_vars* vars){
+	free(vars->direccionValorDeVariable);
+	free(vars);
+}

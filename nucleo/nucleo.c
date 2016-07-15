@@ -276,13 +276,9 @@ void processMessageReceived (void *parameter){
 			case CONSOLA:{
 				log_info(logNucleo, "Processing CONSOLA message received\n");
 				pthread_mutex_lock(&activeProcessMutex);
-
-				//Receive message using the size read before
-				messageRcv = realloc(messageRcv, messageSize);
-				receiveMessage(&serverData->socketClient,(void*)messageRcv, messageSize);
-
 				/*int* tamanio = malloc(sizeof(int));
 				receiveMessage(&serverData->socketClient, tamanio, sizeof(int));*/
+
 				int opFinalizar = messageSize;
 
 				int PID = buscarPIDConsola(serverData->socketClient);
@@ -296,12 +292,13 @@ void processMessageReceived (void *parameter){
 
 					return;
 				}
-
-				//Recibo el codigo del programa (messageRcv)
-
 				/*char* codeScript = malloc(messageSize);
 				receiveMessage(&serverData->socketClient, codeScript, messageSize);*/
 
+				//Recibo el codigo del programa (messageRcv) usando el tamanio leido antes
+				messageRcv = realloc(messageRcv, messageSize);
+				receiveMessage(&serverData->socketClient, messageRcv, messageSize);
+			
 				iniciarPrograma(PID, messageRcv);
 				runScript(messageRcv,socketConsola);
 
@@ -506,8 +503,7 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		int estado = 2;
 		cambiarEstadoProceso(datosPCB->PID, estado);
 
-		//1) rcv();
-
+		//1) Recibo mensajes del CPU
 		processMessageReceived(&serverData);
 
 		//2) processCPUMessages se hace dentro de processMessageReceived (case CPU)
@@ -730,11 +726,26 @@ void atenderCorteQuantum(int socket,int PID){
 	pcnuevo = infoProceso->ProgramCounter + configNucleo.quantum;
 	infoProceso->ProgramCounter =  pcnuevo;
 
+	//1) receive tamanioBuffer
+	int tamanioBuffer;
+	receiveMessage(&socket, &tamanioBuffer, sizeof(tamanioBuffer));
+	//2) receive buffer segun tamanioBuffer
+	char* buffer = malloc(tamanioBuffer);
+	receiveMessage(&socket, buffer, tamanioBuffer);
+	//3) malloc de listaARecibir segun el tamanio recibido.
+	t_list* listaARecibir = list_create();
+	//4) deserializarListaStack(listaARecibir, buffer);
+	deserializarListaStack(listaARecibir, buffer);
+	//5) borrar lista en infoProceso->indiceDeStack
+	list_clean_and_destroy_elements(infoProceso->indiceDeStack, (void*) cleanIndiceDeStack);
+	//6) infoProceso->indiceDeStack = listaARecibir;
+	list_add_all(infoProceso->indiceDeStack, (void*) listaARecibir);
+
 	//TODO RECIBIR PCB MODIFICADO DEL CPU! (lo que hace falta en realidad es el stack fundamentalmente y ver si es necesario algo mas que haya modificado el CPU)
 	/*
 	 * 1) receive tamanioBuffer
 	 * 2) receive buffer segun tamanioBuffer
-	 * 3) malloc de listaARecibir segundo el tamanio recibido.
+	 * 3) malloc de listaARecibir segun el tamanio recibido.
 	 * 4) deserializarListaStack(listaARecibir, buffer);
 	 * 5) borrar lista en infoProceso->indiceDeStack OJO se tiene que crear el elementDestroyer para cada registro del indiceDeStack (LA MISMA QUE SE DEBERIA USAR PARA ELIMINAR UN PCB)
 	 * 6) infoProceso->indiceDeStack = listaARecibir;
@@ -803,7 +814,8 @@ void finalizaProceso(int socket, int PID, int estado) {
 
 	log_info(logNucleo, "Enviar texto: '%s', a PID #%d\n", texto, PID);
 	sendMessage(&socketConsola, texto, textoLen);
-	//TODO Destruir PCB
+
+	destruirPCB(datosProceso);
 
 	//Mando a revisar si hay alguno en la lista para ejecutar.
 	planificarProceso();
