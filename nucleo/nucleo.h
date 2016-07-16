@@ -22,6 +22,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <math.h>
+
 // Estructuras
 typedef struct {
 	int puerto_prog;
@@ -141,7 +142,6 @@ void *initialize(int tamanio);
 
 void armarIndiceDeCodigo(t_PCB *unBloqueControl,t_metadata_program* miMetaData);
 void armarIndiceDeEtiquetas(t_PCB *unBloqueControl,t_metadata_program* miMetaData);
-int definirVar(char* nombreVariable,t_registroStack miPrograma,int posicion);
 
 //Privilegiadas
 
@@ -150,7 +150,6 @@ void grabarValor(t_nombre_compartida variable, t_valor_variable* valor);
 void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
 void deserializarES(t_es* datos, char* bufferRecived);
 static int makeTimer (timer_t *timerID, int expireMS);
-void administrarBloqueosIO(t_bloqueado *proceso, char *ioString, int unidadesBloqueado);
 void analizarIO(int sig, siginfo_t *si, void *uc);
 
 int *pideSemaforo(t_nombre_semaforo semaforo);

@@ -7,13 +7,11 @@
 
 int main(int argc, char *argv[]) {
 	int exitCode = EXIT_FAILURE; //DEFAULT failure
-	char *configurationFile = NULL; //TODO descomentar lo que sigue para las pruebas
+	char *configurationFile = NULL;
 	char *logFile = NULL;
 	pthread_t serverThread;
 	pthread_t serverConsolaThread;
 	pthread_t hiloBloqueados;
-
-/*
 
 	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS
 
@@ -29,7 +27,7 @@ int main(int argc, char *argv[]) {
 			logFile = argv[i+1];
 			printf("Log File: '%s'\n",logFile);
 		}
-		}
+
 	}
 
 	//ERROR if not configuration parameter was passed
@@ -38,11 +36,11 @@ int main(int argc, char *argv[]) {
 	//ERROR if not Log parameter was passed
 		assert(("ERROR - NOT log file was passed as argument", logNucleo != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
 
-	//Creo archivo de configuracion
-		crearArchivoDeConfiguracion(configurationFile);
-		*/
 	//Creo el archivo de Log
 		logNucleo = log_create(logFile, "NUCLEO", 0, LOG_LEVEL_TRACE);
+	//Creo archivo de configuracion
+		configurationFile = "/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo";
+	//	crearArchivoDeConfiguracion(configurationFile);
 	//Creo la lista de CPUs
 		listaCPU = list_create();
 	//Creo la lista de Consolas
@@ -345,12 +343,14 @@ void runScript(char* codeScript, int socketConsola){
 	//Creo el PCB del proceso.
 	t_PCB* PCB = malloc(sizeof(t_PCB));
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
+
 	//Armo Indice de codigo y etiquetas
 	t_metadata_program *miMetaData = metadata_desde_literal(codeScript);
 
 	PCB->PID = idProcesos;
 	PCB->ProgramCounter = miMetaData->instruccion_inicio;
-	PCB->cantidadDePaginas = ceil((double) (strlen(codeScript) + 1)/ (double) frameSize);
+	int contentLen = strlen(codeScript) + 1;	//+1 debido al '\0'
+	PCB->cantidadDePaginas = ceil((double) contentLen/ (double) frameSize);
 	PCB->StackPointer = 0;
 	PCB->estado = 1;
 	PCB->finalizar = 0;
@@ -380,11 +380,9 @@ void runScript(char* codeScript, int socketConsola){
 	pthread_mutex_lock(&listadoConsola);
 	list_add(listaConsola, (void*) datosConsola);
 	pthread_mutex_unlock(&listadoConsola);
-
-	planificarProceso();
-
 	metadata_destruir(miMetaData);
 
+	planificarProceso();
 }
 
 void planificarProceso() {
@@ -623,9 +621,9 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 			if(*valorSemaforo<=0){
 
 				valorAEnviar = 1;
-				log_info(logNucleo, "Recibi proceso %d mando a bloquear por semaforo \n", (message->processID)%6+1);
+				log_info(logNucleo, "Recibi proceso %d mando a bloquear por semaforo: %d \n", (message->processID)%6+1, semaforo);
 				sendMessage(&socketLibre, &valorAEnviar,sizeof(int));// 1 si se bloquea. 0 si no se bloquea
-				bloqueoSemaforo(message->processID,semaforo);
+				(message->processID,semaforo);
 				//Libero la CPU que ocupaba el proceso
 				liberarCPU(socketLibre);//
 			}else{
@@ -974,6 +972,7 @@ void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 	}
 }
 
+//TODO ver como funciona esto con el makeTimer y tener en cuenta que la funcion atenderBloqueados()
 void analizarIO(int sig, siginfo_t *si, void *uc) {
 	int i=0, io;
 	while (configNucleo.io_sleep[i] != NULL) {
@@ -1013,7 +1012,6 @@ static int makeTimer (timer_t *timerID, int expireMS){
 	evp.sigev_signo = sigNo;
 	evp.sigev_value.sival_ptr = timerID;
 
-	//TODO Descomentar las siguientes lineas y ver por que tira error si esta incluida time.h
 	timer_create(CLOCK_REALTIME, &evp, timerID);
 	its.it_value.tv_sec =  floor((double) (expireMS / 1000));
 	its.it_value.tv_nsec = expireMS % 1000 * 1000000;
