@@ -127,6 +127,17 @@ int main(int argc, char *argv[]){
 							serializeCPU_Nucleo(corteQuantum, bufferRespuesta, payloadSize);
 							sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
+							//Enviar PCB (indiceStack actualizado) solamente
+							char* bufferIndiceStack =  malloc(sizeof(PCBRecibido->indiceDeStack->elements_count));
+							serializarListaStack(PCBRecibido->indiceDeStack, bufferIndiceStack);
+
+							//send tamaño de lista indice stack
+							sendMessage(&socketNucleo, (void*) strlen(bufferIndiceStack), sizeof(int));
+							//send lista indice stack
+							sendMessage(&socketNucleo, bufferIndiceStack, strlen(bufferIndiceStack));
+
+							free(corteQuantum);
+							free(bufferIndiceStack);
 							free(bufferRespuesta);
 						}
 
@@ -469,6 +480,7 @@ void finalizar(void){
 
 	free(bufferRespuesta);
 
+	//This is for breaking the loop from QUANTUM
 	PCBRecibido->finalizar = 1;
 
 }
@@ -933,7 +945,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
 	free(respuestaNucleo);
 
 	if(respuestaRecibida==1){
-		//TODO devolver PCB al nucleo
+		//TODO devolver PCB al nucleo --> Esto esta bien??? en el nuccleo despues del send NO se espera un receive del pcb
 	}
 
 }

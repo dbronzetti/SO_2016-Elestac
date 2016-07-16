@@ -745,6 +745,7 @@ void atenderCorteQuantum(int socketCPU,int PID){
 	//6) infoProceso->indiceDeStack = listaARecibir;
 	list_add_all(infoProceso->indiceDeStack, (void*) listaARecibir);
 
+	free(buffer);
 	//RECIBIR PCB MODIFICADO DEL CPU! (lo que hace falta en realidad es el stack fundamentalmente y ver si es necesario algo mas que haya modificado el CPU)
 	/*
 	 * 1) receive tamanioBuffer
