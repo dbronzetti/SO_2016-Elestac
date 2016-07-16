@@ -577,10 +577,10 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		}
 
 		sendMessage(&socketLibre, valorVariable, sizeof(t_valor_variable));
-		//TODO verificar que esten bien estos free
 		free(variableLen);
 		free(valorVariable);
-		break;}
+		break;
+	}
 	case 7:{	//Grabar valor
 
 		// 1) Recibir valor
@@ -598,11 +598,12 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		grabarValor(variable, valor);
 		log_info(logNucleo, "Se graba el valor: %d en la variable: %s id, con el tamanio: %d  \n",valor, variable, *variableLen);
 
-		//TODO verificar que esten bien estos free, valor no se hace el free porque se asigna adentro de grabarValor
 		free(variableLen);
 		free(variable);
+		free(valor);
 
-		break;}
+		break;
+	}
 	case 8:{	// WAIT - Grabar semaforo y enviar al CPU
 		//Recibo el tamanio del wait
 		int* tamanio = malloc(sizeof(int));
@@ -630,10 +631,10 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 				sendMessage(&socketLibre, &valorAEnviar, sizeof(int));
 			}
 		}
-		//TODO verificar que esten bien estos free
 		free(tamanio);
 		free(semaforo);
-		break;}
+		break;
+	}
 	case 9:{	// SIGNAL	- 	Libera semaforo
 
 		//Recibo el tamanio del signal
@@ -645,10 +646,11 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		receiveMessage(&socketLibre, semaforo, *tamanio);
 		log_info(logNucleo, "Proceso %d libera semaforo:%s \n", message->processID, semaforo);
 		liberaSemaforo(semaforo);
-		//TODO verificar que esten bien estos free
+
 		free(tamanio);
 		free(semaforo);
-		break;}
+		break;
+	}
 	case 10:{	//Imprimir VALOR por Consola
 		int socketConsola = buscarSocketConsola(message->processID);
 
@@ -702,7 +704,8 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 		free(tamanio);
 		free(texto);
-		break;}
+		break;
+	}
 	default:
 		log_error(logNucleo, "Mensaje recibido invalido. \n");
 		//printf("CPU desconectado.\n");

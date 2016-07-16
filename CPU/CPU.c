@@ -41,7 +41,7 @@ int main(int argc, char *argv[]){
 
 	exitCode = connectTo(NUCLEO,&socketNucleo);
 
-	while (exitCode == EXIT_SUCCESS){
+	while ((exitCode == EXIT_SUCCESS) && !(SignalActivated)){//No wait for more messages if signal was activated during processing
 
 		if(exitCode == EXIT_SUCCESS){
 			printf("CPU connected to NUCLEO successfully\n");
@@ -103,6 +103,8 @@ int main(int argc, char *argv[]){
 			int j = 0;
 			while (j < QUANTUM){
 
+				signal(SIGUSR1, sighandler);
+
 				exitCode = ejecutarPrograma();
 				j++;// increasing QUANTUM control
 
@@ -113,11 +115,20 @@ int main(int argc, char *argv[]){
 					// 1) check if the isn't the last code line from the program
 					if(PCBRecibido->finalizar == 0){
 
-						if(j == QUANTUM){
-							log_info(logCPU, "Corte por quantum cumplido - Proceso %d ", PCBRecibido->PID);
+						if((j == QUANTUM) || (SignalActivated)){//check if signal is activated or QUANTUM is over
 
+							int quantumUsed = 0;
 							t_MessageCPU_Nucleo* corteQuantum = malloc( sizeof(t_MessageCPU_Nucleo));
-							corteQuantum->operacion = 5;//operacion 5 es por quantum
+
+							if(SignalActivated){//Si fue captada la señal SIGUSR1 mientras se estaba ejecutando una instruccion se debe finalizar la misma y acto seguido desconectarse del Nucleo
+								corteQuantum->operacion = 72;//operacion 72 es por Desconexion del CPU
+								quantumUsed = j;
+							}else{// When j == QUANTUM
+								log_info(logCPU, "Corte por quantum cumplido - Proceso %d ", PCBRecibido->PID);
+								corteQuantum->operacion = 5;//operacion 5 es por quantum
+								quantumUsed = QUANTUM;
+							}
+
 							corteQuantum->processID = PCBRecibido->PID;
 
 							int payloadSize = sizeof(corteQuantum->operacion) + sizeof(corteQuantum->processID);
@@ -126,6 +137,9 @@ int main(int argc, char *argv[]){
 							char* bufferRespuesta = malloc(bufferSize);
 							serializeCPU_Nucleo(corteQuantum, bufferRespuesta, payloadSize);
 							sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+
+							//send quantum used by this process
+							sendMessage(&socketNucleo, &quantumUsed, sizeof(quantumUsed));
 
 							//Enviar PCB (indiceStack actualizado) solamente
 							char* bufferIndiceStack =  malloc(sizeof(PCBRecibido->indiceDeStack->elements_count));
@@ -139,20 +153,18 @@ int main(int argc, char *argv[]){
 							free(corteQuantum);
 							free(bufferIndiceStack);
 							free(bufferRespuesta);
-						}
 
-						//TODO CPU 2.5.2 - Si fue captada la señal SIGUSR1 mientras se estaba ejecutando una instruccion se debe finalizar la misma y acto seguido desconectarse del Nucleo
+							if(SignalActivated){//Si fue captada la señal SIGUSR1 mientras se estaba ejecutando una instruccion se debe finalizar la misma y acto seguido desconectarse del Nucleo
+								log_info(logCPU,"Information from PID '%d' sent to Nucleo... Now I'm going down, but....I'LL BE BACK!!!\n", PCBRecibido->PID);
+								break;
+							}
+						}
 
 					}else{
 						//Program finished by primitive
 						break;
 					}
-
 				}
-
-				//TODO tener en cuenta tambien que el CPU debe finalizar cuando el NUCLEO le manda operacion=1
-				//ya que hay una peticion originalmente por parte de la consola y hay que atenderlo
-				//entonces responde con un respuestaFinOK (op=2) o respuestaFinFalla (op=3)
 
 			}
 
@@ -173,7 +185,7 @@ int ejecutarPrograma(){
 	int exitCode = EXIT_SUCCESS;
 	t_registroIndiceCodigo* instruccionActual = malloc(sizeof(t_registroIndiceCodigo));
 
-	instruccionActual = (t_registroIndiceCodigo*) list_get(PCBRecibido->indiceDeCodigo,PCBRecibido->ProgramCounter);
+	instruccionActual = (t_registroIndiceCodigo*) list_get(PCBRecibido->indiceDeCodigo, ultimoPosicionPC);
 
 	int i;
 	int offsetInstruccionesSize = 0;
@@ -188,67 +200,88 @@ int ejecutarPrograma(){
 
 	free(instruccion);
 
-	char* codigoRecibido = malloc(instruccionActual->longitudInstruccionEnBytes);
+	char* codigoRecibido = string_new(); //malloc(instruccionActual->longitudInstruccionEnBytes);
 
-	log_info(logCPU,"Contexto de ejecucion recibido - Process ID : %d - PC : %d", PCBRecibido->PID, PCBRecibido->ProgramCounter);
+	log_info(logCPU,"Contexto de ejecucion recibido - Process ID : %d - PC : %d", PCBRecibido->PID, ultimoPosicionPC);
 
-	//serializar mensaje para UMC y solicitar codigo porcion de codigo
-	int bufferSize = 0;
-	int payloadSize = 0;
-
-	//overwrite page content in swap (swap out)
-	t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
-	message->virtualAddress = (t_memoryLocation*) malloc(sizeof(t_memoryLocation));
-	message->PID = PCBRecibido->PID;
-	message->operation = lectura_pagina;
-	message->virtualAddress->pag = (int) ceil((double) (offsetInstruccionesSize/frameSize));
-	message->virtualAddress->offset = 0; //TODO double check this line - I'm not sure if we need to request always the start of a page
-	message->virtualAddress->size = instruccionActual->longitudInstruccionEnBytes;
-
-	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(t_memoryLocation);
-	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
-
-	char *buffer = malloc(bufferSize);
-
-	serializeCPU_UMC(message, buffer, payloadSize);
-
-	//Send information to UMC - message serialized with virtualAddress information
-	sendMessage(&socketUMC, buffer, bufferSize);
-
+	//ver de pedir varias veces hasta que cumpla la longitud de instrucciones en bytes e ir concatenando el contenido
 	int returnCode = EXIT_SUCCESS;//DEFAULT
+	int remainingInstruccion = instruccionActual->longitudInstruccionEnBytes;
 
-	//First answer from UMC is the exit code from the operation
-	exitCode = receiveMessage(&socketUMC,&returnCode, sizeof(exitCode));
+	while((returnCode == EXIT_SUCCESS) && (remainingInstruccion > 0)){
+		//serializar mensaje para UMC y solicitar codigo porcion de codigo
+		int bufferSize = 0;
+		int payloadSize = 0;
 
-	if( returnCode == EXIT_FAILURE){
+		//overwrite page content in swap (swap out)
+		t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
+		message->virtualAddress = (t_memoryLocation*) malloc(sizeof(t_memoryLocation));
+		message->PID = PCBRecibido->PID;
+		message->operation = lectura_pagina;
+		message->virtualAddress->pag = (int) ceil(((double) offsetInstruccionesSize/ (double) frameSize));
+		message->virtualAddress->offset = 0; //Request ALWAYS the start of a page
+		message->virtualAddress->size = frameSize; //ALWAYS REQUEST TO UMC the size of a page and when it is received a memcpy with "instruccionActual->longitudInstruccionEnBytes" has to be done
 
-		//Envia aviso que finaliza incorrectamente el proceso a NUCLEO
-		log_error(logCPU, "No se pudo obtener la solicitud a ejecutar - Proceso %d - Error al finalizar", PCBRecibido->PID);
+		payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(t_memoryLocation);
+		bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
-		t_MessageCPU_Nucleo* respuestaFinFalla = malloc( sizeof(t_MessageCPU_Nucleo));
-		respuestaFinFalla->operacion = 4;
-		respuestaFinFalla->processID = PCBRecibido->PID;
+		char *buffer = malloc(bufferSize);
 
-		int payloadSize = sizeof(respuestaFinFalla->operacion) + sizeof(respuestaFinFalla->processID);
-		int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
+		serializeCPU_UMC(message, buffer, payloadSize);
 
-		char* bufferRespuesta = malloc(bufferSize);
-		serializeCPU_Nucleo(respuestaFinFalla, bufferRespuesta, payloadSize);
-		sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+		//Send information to UMC - message serialized with virtualAddress information
+		sendMessage(&socketUMC, buffer, bufferSize);
 
-		free(bufferRespuesta);
+		//First answer from UMC is the exit code from the operation
+		exitCode = receiveMessage(&socketUMC,&returnCode, sizeof(exitCode));
 
-		exitCode = returnCode;
+		if(returnCode == EXIT_FAILURE){
 
-	}else{
-		//Receiving information from UMC when the operation was successfully accomplished
-		exitCode = receiveMessage(&socketUMC, &codigoRecibido, instruccionActual->longitudInstruccionEnBytes);
+			//Envia aviso que finaliza incorrectamente el proceso a NUCLEO
+			log_error(logCPU, "No se pudo obtener la solicitud a ejecutar - Proceso %d - Error al finalizar", PCBRecibido->PID);
 
-		analizadorLinea(codigoRecibido, funciones, funciones_kernel);
+			t_MessageCPU_Nucleo* respuestaFinFalla = malloc( sizeof(t_MessageCPU_Nucleo));
+			respuestaFinFalla->operacion = 4;
+			respuestaFinFalla->processID = PCBRecibido->PID;
+
+			int payloadSize = sizeof(respuestaFinFalla->operacion) + sizeof(respuestaFinFalla->processID);
+			int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
+
+			char* bufferRespuesta = malloc(bufferSize);
+			serializeCPU_Nucleo(respuestaFinFalla, bufferRespuesta, payloadSize);
+			sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+
+			free(bufferRespuesta);
+
+			exitCode = returnCode;
+		}else{
+
+			char *bufferCode = malloc(frameSize);
+			//Receiving information from UMC when the operation was successfully accomplished
+			exitCode = receiveMessage(&socketUMC, &bufferCode, frameSize);
+
+			if(remainingInstruccion >= frameSize){
+				//if the remaining size is greater than frame size then we can append the full buffer received from UMC
+				string_append(&codigoRecibido, bufferCode);
+			}else{
+				//if the remaining size is lower than frame size then we have to append the remaining size from the buffer received from UMC
+				memcpy(codigoRecibido, bufferCode, remainingInstruccion );
+			}
+
+			offsetInstruccionesSize += frameSize; //moving offset for next request
+			remainingInstruccion -= frameSize; //reducing the remaining size to be read on next request
+
+			free(bufferCode);
+		}
+
+		free(buffer);
+	}
+
+	if(returnCode == EXIT_SUCCESS){
+		analizadorLinea(codigoRecibido, &funciones, &funciones_kernel);
 		ultimoPosicionPC++;
 	}
 
-	free(buffer);
 	free(codigoRecibido);
 
 	return exitCode;
@@ -434,6 +467,13 @@ void crearArchivoDeConfiguracion(char *configFile){
 	configuration.ip_UMC = config_get_string_value(configurationFile,"IP_UMC");
 	configuration.port_UMC = config_get_int_value(configurationFile,"PUERTO_UMC");
 }
+
+void sighandler(int signum){
+	log_info(logCPU,"Caught signal %d, coming out after sending information to Nucleo...\n", signum);
+	//Activating flag for shutting down CPU
+	SignalActivated = true;
+}
+
 
 void serializarES(t_es *value, t_nombre_dispositivo buffer, int valueSize){
 	int offset = 0;
@@ -711,7 +751,6 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 	}
 	return valorVariableDeserializado;
 
-
 }
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
@@ -791,8 +830,8 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 
 	list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
-	//Cambiar de program counter segun etiqueta
-	irAlLabel(etiqueta);
+	//Cambiar de program counter segun etiqueta --> Se llama directamente a llamarSinRetorno ya que realiza el cambio de etiqueta
+	llamarSinRetorno(etiqueta);
 
 }
 
@@ -909,7 +948,7 @@ void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo) {
 
 }
 
-void wait(t_nombre_semaforo identificador_semaforo){
+void waitPrimitive(t_nombre_semaforo identificador_semaforo){
 
 	//Envia info al proceso a NUCLEO
 	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
@@ -950,7 +989,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
 
 }
 
-void signal(t_nombre_semaforo identificador_semaforo){
+void signalPrimitive(t_nombre_semaforo identificador_semaforo){
 
 	//Envia info al proceso a NUCLEO
 	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
@@ -1004,10 +1043,6 @@ t_memoryLocation* buscarUltimaPosicionOcupada(t_PCB* pcbEjecutando){
 }
 
 void llamarSinRetorno(t_nombre_etiqueta etiqueta){
- //TODO igual a llamar con retorno
+ 	//Cambiar de program counter segun etiqueta
+	irAlLabel(etiqueta);
 }
-
-
-// TODO Tener en cuenta en donde se hacen los free
-
-
