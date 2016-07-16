@@ -723,7 +723,9 @@ void atenderCorteQuantum(int socketCPU,int PID){
 	infoProceso = (t_PCB*)list_get(listaProcesos,buscar);
 	pthread_mutex_unlock(&listadoProcesos);
 	int pcnuevo;
-	pcnuevo = infoProceso->ProgramCounter + configNucleo.quantum;
+	receiveMessage(&socketCPU, &pcnuevo, sizeof(int));
+
+	pcnuevo = infoProceso->ProgramCounter;
 	infoProceso->ProgramCounter =  pcnuevo;
 
 	log_info(logNucleo, "Recibiendo PCB para el PID: %d modificado por el CPU de socket: %d \n",infoProceso->PID, socketCPU);
