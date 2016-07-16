@@ -284,10 +284,10 @@ void processMessageReceived (void *parameter){
 				int PID = buscarPIDConsola(serverData->socketClient);
 				if (PID==-1){
 
-					printf("No se encontro Consola para el socket: %d \n",serverData->socketClient);
+					log_error(logNucleo,"No se encontro Consola para el socket: %d \n",serverData->socketClient);
 
 				}else if (opFinalizar == -1) { 	//Finaliza Proceso
-
+					log_info(logNucleo,"Solicitando finalizar el programa para el socket: %d \n", serverData->socketClient);
 					finalizarPid(PID);
 
 					return;
@@ -298,6 +298,8 @@ void processMessageReceived (void *parameter){
 				//Recibo el codigo del programa (messageRcv) usando el tamanio leido antes
 				messageRcv = realloc(messageRcv, messageSize);
 				receiveMessage(&serverData->socketClient, messageRcv, messageSize);
+
+				log_info(logNucleo,"El Nucleo recibe el codigo del programa: %s del socket: %d \n",messageRcv, serverData->socketClient);
 			
 				iniciarPrograma(PID, messageRcv);
 				runScript(messageRcv,socketConsola);
@@ -347,9 +349,7 @@ void runScript(char* codeScript, int socketConsola){
 
 	PCB->PID = idProcesos;
 	PCB->ProgramCounter = miMetaData->instruccion_inicio;
-	//En el caso de usar la siguiente linea: VER por que tira error si esta incluida math.h (en nucleo.h)
-	//PCB->cantidadDePaginas = ceil((double) (strlen(codeScript) + 1)/ (double) frameSize);
-	PCB->cantidadDePaginas = (strlen(codeScript) + 1) / frameSize;
+	PCB->cantidadDePaginas = ceil((double) (strlen(codeScript) + 1)/ (double) frameSize);
 	PCB->StackPointer = 0;
 	PCB->estado = 1;
 	PCB->finalizar = 0;
@@ -395,7 +395,7 @@ void planificarProceso() {
 	int libreCPU = buscarCPULibre();
 
 	if (libreCPU == -1) {
-		printf("No hay CPU libre.\n");
+		log_error(logNucleo,"No hay CPU libre \n");
 		return;
 	}
 	t_serverData *serverData;
@@ -421,7 +421,7 @@ void planificarProceso() {
 
 		enviarMsjCPU(datosPCB, contextoProceso, serverData);
 	} else {
-		printf("Proceso no encontrado en la lista.\n");
+		log_info(logNucleo,"Proceso no encontrado\n");
 	}
 
 	/*if (queue_is_empty(colaFinalizar)) {
@@ -554,10 +554,10 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		finalizaProceso(socketLibre, message->processID,message->operacion);
 		break;}
 	case 4:{
-		printf("No se pudo obtener la solicitud a ejecutar - Error al finalizar");
+		log_error(logNucleo, "No se pudo obtener la solicitud a ejecutar - Error al finalizar");
 		break;}
 	case 5:{ 	//Corte por Quantum
-		printf("Corto por Quantum.\n");
+		log_info(logNucleo, "Se procesa la atencion del corte por Quantum");
 		atenderCorteQuantum(socketLibre, message->processID);
 		break;}
 	//TODO CHEQUEAR QUE DE ACA HASTA EL FINAL DEL SWITCH (EN CADA CASE) SEA CORRECTO EL MANEJO DE LOS MENSAJES
@@ -574,7 +574,8 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		t_valor_variable* valorVariable = obtenerValor(variable);
 
 		if (valorVariable == NULL){
-			printf("No encontre variable %s %d id \n",variable, *variableLen);
+			log_error(logNucleo, "No se encontro la variable: %s id, con el tamanio: %d  \n",variable, *variableLen);
+			return;
 		}
 
 		sendMessage(&socketLibre, valorVariable, sizeof(t_valor_variable));
@@ -741,7 +742,7 @@ void atenderCorteQuantum(int socket,int PID){
 	//6) infoProceso->indiceDeStack = listaARecibir;
 	list_add_all(infoProceso->indiceDeStack, (void*) listaARecibir);
 
-	//TODO RECIBIR PCB MODIFICADO DEL CPU! (lo que hace falta en realidad es el stack fundamentalmente y ver si es necesario algo mas que haya modificado el CPU)
+	//RECIBIR PCB MODIFICADO DEL CPU! (lo que hace falta en realidad es el stack fundamentalmente y ver si es necesario algo mas que haya modificado el CPU)
 	/*
 	 * 1) receive tamanioBuffer
 	 * 2) receive buffer segun tamanioBuffer
@@ -812,7 +813,7 @@ void finalizaProceso(int socket, int PID, int estado) {
 	int textoLen = strlen(texto)+1;
 	sendMessage(&socketConsola, &textoLen, sizeof(textoLen));
 
-	log_info(logNucleo, "Enviar texto: '%s', a PID #%d\n", texto, PID);
+	log_info(logNucleo, "Enviar texto: '%s', con tamanio: '%d' a PID #%d\n", texto, textoLen, PID);
 	sendMessage(&socketConsola, texto, textoLen);
 
 	destruirPCB(datosProceso);
@@ -1008,10 +1009,10 @@ static int makeTimer (timer_t *timerID, int expireMS){
 	evp.sigev_value.sival_ptr = timerID;
 
 	//TODO Descomentar las siguientes lineas y ver por que tira error si esta incluida time.h
-//	timer_create(CLOCK_REALTIME, &evp, timerID);
-//	its.it_value.tv_sec =  floor(expireMS / 1000);
+	timer_create(CLOCK_REALTIME, &evp, timerID);
+	its.it_value.tv_sec =  floor((double) (expireMS / 1000));
 	its.it_value.tv_nsec = expireMS % 1000 * 1000000;
-//	timer_settime(*timerID, 0, &its, NULL);
+	timer_settime(*timerID, 0, &its, NULL);
 
 	return 1;
 }
@@ -1138,6 +1139,8 @@ void grabarValor(t_nombre_compartida variable, t_valor_variable* valor){
 int *pideSemaforo(t_nombre_semaforo semaforo) {
 	int i = 0;
 	int *valorVariable = NULL;
+
+	printf("El Nucleo obtiene semaforo:  %s\n", semaforo);
 
 	while (configNucleo.sem_ids[i] != NULL) {
 		//TODO: mutex confignucleo??
@@ -1292,13 +1295,11 @@ void finalizarPid(int pid){
 }
 
 void iniciarPrograma(int PID, char *codeScript) {
-
+	log_info(logNucleo,"Aviso al proceso UMC el inicio del programa %s cuyo processID asignado es: %d \n", codeScript, PID);
 	int bufferSize = 0;
 	int payloadSize = 0;
 	int contentLen = strlen(codeScript) + 1;	//+1 because of '\0'
-	//En el caso de usar la siguiente linea: VER por que tira error si esta incluida math.h (en nucleo.h)
-	//int cantPages = ceil((double) contentLen /(double) frameSize);
-	int cantPages = (strlen(codeScript) + 1) / frameSize;
+	int cantPages = ceil((double) contentLen /(double) frameSize);
 
 	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
 
@@ -1328,7 +1329,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 }
 
 void finalizarPrograma(int PID){
-
+	log_info(logNucleo,"Aviso al proceso UMC que se finalice el programa cuyo processID asignado es: %d \n", PID);
 	int bufferSize = 0;
 	int payloadSize = 0;
 
@@ -1372,7 +1373,7 @@ void deserializarES(t_es* datos, char* bufferReceived) {
 	datos->dispositivo = malloc(dispositivoLen);
 	memcpy(datos->dispositivo, bufferReceived + offset, dispositivoLen);
 
-	//Verificar que se este enviando el tamanio del dispositivo que es un char* y que se este considerando el \0 en el offset
+	//Se esta enviando el tamanio del dispositivo que es un char* y se esta considerando el \0 en el offset
 }
 
 void crearArchivoDeConfiguracion(char *configFile){
