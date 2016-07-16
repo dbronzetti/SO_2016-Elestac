@@ -681,17 +681,18 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 	sendMessage(&socketNucleo, variable, variableLen);
 
 	t_valor_variable valorVariableDeserializado;
-	char* valorVariableSerializado = NULL;
 
 	int valorDeError;
 
-	valorDeError=sendMessage(&socketNucleo, variable, variableLen);
+	valorDeError = sendMessage(&socketNucleo, variable, variableLen);
+
 	if(valorDeError!=-1){
 		printf("Los datos se enviaron correctamente");
-		if(receiveMessage(&socketNucleo,valorVariableSerializado,sizeof(t_valor_variable))!=-1){
-			//TODO verificar que no es necesario deserializar
+		char* valorVariableSerializado = malloc(sizeof(t_valor_variable));
+		if( receiveMessage(&socketNucleo,valorVariableSerializado,sizeof(t_valor_variable)) != -1){
 			memcpy(&valorVariableDeserializado, valorVariableSerializado, sizeof(t_valor_variable));
 		}
+		free(valorVariableSerializado);
 	}else{
 		printf("Los datos no pudieron ser enviados");
 
@@ -911,6 +912,8 @@ void wait(t_nombre_semaforo identificador_semaforo){
 
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
+	free(bufferRespuesta);
+
 	//send to Nucleo to execute WAIT function for "identificador_semaforo"
 	int semaforoLen = strlen(identificador_semaforo) + 1;
 	char* respuestaNucleo = malloc(sizeof(int));
@@ -925,8 +928,10 @@ void wait(t_nombre_semaforo identificador_semaforo){
 
 	// recibir respuesta del Nucleo
 	receiveMessage(&socketNucleo,respuestaNucleo,sizeof(int));
-	//TODO verificar que no hace falta deserializar
 	memcpy(&respuestaRecibida,respuestaNucleo,sizeof(int));
+
+	free(respuestaNucleo);
+
 	if(respuestaRecibida==1){
 		//TODO devolver PCB al nucleo
 	}
