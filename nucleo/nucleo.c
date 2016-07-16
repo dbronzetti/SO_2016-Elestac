@@ -27,20 +27,19 @@ int main(int argc, char *argv[]) {
 			logFile = argv[i+1];
 			printf("Log File: '%s'\n",logFile);
 		}
-
 	}
 
 	//ERROR if not configuration parameter was passed
 		assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS
 
 	//ERROR if not Log parameter was passed
-		assert(("ERROR - NOT log file was passed as argument", logNucleo != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
+		assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
 
 	//Creo el archivo de Log
 		logNucleo = log_create(logFile, "NUCLEO", 0, LOG_LEVEL_TRACE);
 	//Creo archivo de configuracion
 		configurationFile = "/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo";
-	//	crearArchivoDeConfiguracion(configurationFile);
+		crearArchivoDeConfiguracion(configurationFile);
 	//Creo la lista de CPUs
 		listaCPU = list_create();
 	//Creo la lista de Consolas
@@ -623,7 +622,6 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 				valorAEnviar = 1;
 				log_info(logNucleo, "Recibi proceso %d mando a bloquear por semaforo: %d \n", (message->processID)%6+1, semaforo);
 				sendMessage(&socketLibre, &valorAEnviar,sizeof(int));// 1 si se bloquea. 0 si no se bloquea
-				(message->processID,semaforo);
 				//Libero la CPU que ocupaba el proceso
 				liberarCPU(socketLibre);//
 			}else{
@@ -745,6 +743,7 @@ void atenderCorteQuantum(int socketCPU,int PID){
 	//6) infoProceso->indiceDeStack = listaARecibir;
 	list_add_all(infoProceso->indiceDeStack, (void*) listaARecibir);
 
+	free(buffer);
 	//RECIBIR PCB MODIFICADO DEL CPU! (lo que hace falta en realidad es el stack fundamentalmente y ver si es necesario algo mas que haya modificado el CPU)
 	/*
 	 * 1) receive tamanioBuffer
@@ -1388,19 +1387,19 @@ void crearArchivoDeConfiguracion(char *configFile){
 	t_config* configuration;
 
 	configuration = config_create(configFile);
-	configNucleo.puerto_prog = config_get_int_value(configuration,"puerto_prog");
-	configNucleo.puerto_cpu = config_get_int_value(configuration,"puerto_cpu");
-	configNucleo.ip_umc = config_get_string_value(configuration,"ip_umc");
-	configNucleo.puerto_umc = config_get_int_value(configuration,"puerto_umc");
-	configNucleo.quantum = config_get_int_value(configuration,"quantum");
-	configNucleo.quantum_sleep = config_get_int_value(configuration,"quantum_sleep");
-	configNucleo.sem_ids = config_get_array_value(configuration,"sem_ids");
-	configNucleo.sem_init = config_get_array_value(configuration,"sem_init");
-	configNucleo.io_ids = config_get_array_value(configuration,"io_ids");
-	configNucleo.io_sleep = config_get_array_value(configuration,"io_sleep");
-	configNucleo.shared_vars = config_get_array_value(configuration,"shared_vars");
-	configNucleo.stack_size = config_get_int_value(configuration,"stack_size");
-	configNucleo.pageSize = config_get_int_value(configuration,"pageSize");
+	configNucleo.puerto_prog = config_get_int_value(configuration,"PUERTO_PROG");
+	configNucleo.puerto_cpu = config_get_int_value(configuration,"PUERTO_CPU");
+	configNucleo.ip_umc = config_get_string_value(configuration,"IP_UMC");
+	configNucleo.puerto_umc = config_get_int_value(configuration,"PUERTO_UMC");
+	configNucleo.quantum = config_get_int_value(configuration,"QUANTUM");
+	configNucleo.quantum_sleep = config_get_int_value(configuration,"QUANTUM_SLEEP");
+	configNucleo.sem_ids = config_get_array_value(configuration,"SEM_IDS");
+	configNucleo.sem_init = config_get_array_value(configuration,"SEM_INIT");
+	configNucleo.io_ids = config_get_array_value(configuration,"IO_IDS");
+	configNucleo.io_sleep = config_get_array_value(configuration,"IO_SLEEP");
+	configNucleo.shared_vars = config_get_array_value(configuration,"SHARED_VARS");
+	configNucleo.stack_size = config_get_int_value(configuration,"STACK_SIZE");
+	configNucleo.pageSize = config_get_int_value(configuration,"PAGESIZE");
 	int i = 0;
 
 	if(timers!=0){

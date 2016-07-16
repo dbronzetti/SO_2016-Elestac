@@ -8,7 +8,7 @@
 int socketNucleo=0;
 
 int main(int argc, char **argv) {
-	/*char *configurationFile = NULL;
+	char *configurationFile = NULL;
 	 char *logFile = NULL;
 
 	crearArchivoDeConfiguracion(configurationFile);
@@ -32,19 +32,19 @@ int main(int argc, char **argv) {
 	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS
 
 	//ERROR if not Log parameter was passed
-	assert(("ERROR - NOT log file was passed as argument", logNucleo != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
+	assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
 
 	//Creo archivo de configuracion
 		crearArchivoDeConfiguracion(configurationFile);
 
 	//Creo el archivo de Log
 		logConsola= log_create(logFile, "NUCLEO", 0, LOG_LEVEL_TRACE);
-	*/
+
 	char* codeScript = string_new();
 	int exitCode = EXIT_FAILURE;//por default EXIT_FAILURE
 	char inputTeclado[250];
 	printf("antes de conectarme\n");
-	/*exitCode = connectTo(NUCLEO, &socketNucleo);
+	exitCode = connectTo(NUCLEO, &socketNucleo);
 	if (exitCode == EXIT_SUCCESS) {
 		printf("CONSOLA connected to NUCLEO successfully\n");
 	}else{
@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
 	}
 
 	printf("despues de conectarme");
-	*/
+
 	int tamanioArchivo;
 	enum_processes fromProcess = CONSOLA;
 
