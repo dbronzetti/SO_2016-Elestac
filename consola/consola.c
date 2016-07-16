@@ -9,9 +9,8 @@ int socketNucleo=0;
 
 int main(int argc, char **argv) {
 	char *configurationFile = NULL;
-	 char *logFile = NULL;
+	char *logFile = NULL;
 
-	crearArchivoDeConfiguracion(configurationFile);
 	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS
 
 	//get parameter
@@ -35,24 +34,25 @@ int main(int argc, char **argv) {
 	assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
 
 	//Creo archivo de configuracion
-		crearArchivoDeConfiguracion(configurationFile);
+	//configurationFile = "/home/utnso/git/tp-2016-1c-YoNoFui/consola/configuracion.consola";
+	crearArchivoDeConfiguracion(configurationFile);
 
 	//Creo el archivo de Log
-		logConsola= log_create(logFile, "NUCLEO", 0, LOG_LEVEL_TRACE);
+	logConsola = log_create(logFile, "NUCLEO", 0, LOG_LEVEL_TRACE);
 
 	char* codeScript = string_new();
 	int exitCode = EXIT_FAILURE;//por default EXIT_FAILURE
 	char inputTeclado[250];
-	printf("antes de conectarme\n");
+	log_info(logConsola,"antes de conectarme\n");
 	exitCode = connectTo(NUCLEO, &socketNucleo);
 	if (exitCode == EXIT_SUCCESS) {
-		printf("CONSOLA connected to NUCLEO successfully\n");
+		log_info(logConsola,"CONSOLA connected to NUCLEO successfully\n");
 	}else{
-		printf("No server available - shutting down proces!!\n");
+		log_error(logConsola,"No server available - shutting down proces!!\n");
 		return EXIT_FAILURE;
 	}
 
-	printf("despues de conectarme");
+	log_info(logConsola,"despues de conectarme\n");
 
 	int tamanioArchivo;
 	enum_processes fromProcess = CONSOLA;
@@ -64,11 +64,11 @@ int main(int argc, char **argv) {
 		char ** comando = string_split(inputTeclado, " ");
 		switch (reconocerComando(comando[0])) {
 		case 1: {
-			printf("Comando Reconocido.\n");
+			log_info(logConsola,"Comando Reconocido.\n");
 
 			codeScript = leerArchivoYGuardarEnCadena(&tamanioArchivo);
-			printf("codigo del programa:%s \n", codeScript);
-			printf("Tamanio del archivo: %d\n", tamanioArchivo);
+			log_info(logConsola,"Codigo del programa: % .\n", codeScript);
+			log_info(logConsola,"Tamanio del archivo: %d .\n", tamanioArchivo);
 
 			string_append(&codeScript,"\0");// "\0" para terminar el string
 			int programCodeLen = tamanioArchivo + 1; //+1 por el '\0'
@@ -85,25 +85,23 @@ int main(int argc, char **argv) {
 			break;
 		}
 		case 2: {
-			printf("Comando Reconocido.\n");
-			string_append(&codeScript,"\0");// "\0" para terminar el string
-			int programCodeLen = tamanioArchivo + 1; //+1 por el '\0'
-
+			log_info(logConsola,"Comando Reconocido.\n");
 			//Envia el tamanio y el fromProcess solamente porque el programa no es necesario para finalizar
-			sendMessage(&socketNucleo, &programCodeLen, sizeof(int));
+			sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
 			sendMessage(&socketNucleo, &fromProcess, sizeof(int));
 			break;
 		}
 		case 3: {
-			printf("Comando Reconocido.\n");
+			log_info(logConsola,"Comando Reconocido.\n");
 			exit(-1);
 			break;
 		}
 		default:
-			printf("Comando invalido, inténtelo nuevamente.\n");
+			log_warning(logConsola,"Comando invalido, inténtelo nuevamente.\n");
+			break;
 		}
+		exitCode = reconocerOperacion();
 	}
-	//exitCode = reconocerOperacion(); //TODO Ver si recibo dentro o fuera del while
 	return exitCode;
 }
 
@@ -122,7 +120,7 @@ void* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
 	FILE* archivo=NULL;
 
 	int descriptorArchivo;
-	printf("Ingrese archivo a ejecutar.\n");
+	log_info(logConsola,"Ingrese archivo a ejecutar.\n");
 	char nombreDelArchivo[60];
 	scanf("%s", nombreDelArchivo);
 	archivo = fopen(nombreDelArchivo, "r");
@@ -132,11 +130,11 @@ void* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
 	char* textoDeArchivo=malloc(*tamanioDeArchivo);
 	lseek(descriptorArchivo,0,SEEK_SET);
 	if (archivo == NULL) {
-		printf("Error al abrir el archivo.\n");
+		log_error(logConsola,"Error al abrir el archivo.\n");
 	} else {
 		size_t count = 1;
 		fread(textoDeArchivo,*tamanioDeArchivo,count,archivo);
-	//	printf("Tamanio adentro de la funcion: %i\n",*tamanioDeArchivo);
+		//log_info(logConsola,"Tamanio adentro de la funcion: %i\n",*tamanioDeArchivo);
 	}
 	fclose(archivo);
 	return textoDeArchivo;
@@ -240,7 +238,7 @@ int reconocerOperacion() {
 		memcpy(&tamanio, &tamanioSerializado, sizeof(int));
 		char* textoImprimir=malloc(tamanio);
 		exitCode = receiveMessage(&socketNucleo, (void*) textoImprimir,sizeof(tamanio));
-		printf("Texto: %s", textoImprimir);
+		log_info(logConsola,"Texto: %s", textoImprimir);
 		free(textoImprimir);
 		break;
 	}
@@ -249,12 +247,22 @@ int reconocerOperacion() {
 		t_valor_variable valorAMostrar;
 		exitCode = receiveMessage(&socketNucleo, valorAMostrarSerializado,sizeof(t_valor_variable));
 		memcpy(&valorAMostrar, &valorAMostrarSerializado, sizeof(t_valor_variable));
-		printf("Valor Recibido:%i", valorAMostrar);
+		log_info(logConsola,"Valor Recibido:%i", valorAMostrar);
 		free(valorAMostrarSerializado);
 		break;
 	}
-	case 3: {//TODO ver por que recibiria operacion = 3 del nucleo?
-		exit(-1);
+	case 3: {	//Recibo del Nucleo el tamanio y el texto a imprimir, y luego finalizo proceso.
+		exitCode = receiveMessage(&socketNucleo, tamanioSerializado,sizeof(int));
+		memcpy(&tamanio, &tamanioSerializado, sizeof(int));
+		char* textoImprimir=malloc(tamanio);
+		exitCode = receiveMessage(&socketNucleo, (void*) textoImprimir,sizeof(tamanio));
+		log_info(logConsola,"Texto: %s", textoImprimir);
+		free(textoImprimir);
+		exit(0);//EXIT_SUCCESS
+		break;
+	}
+	default:{
+		log_error(logConsola, "No se pudo recibir ninguna operacion valida");
 		break;
 	}
 	}

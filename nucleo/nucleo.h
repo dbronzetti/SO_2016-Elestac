@@ -113,6 +113,7 @@ int activePID = 0;
 int socketUMC = 0;
 int socketConsola = 0;
 int frameSize = 0;
+int alertFlag = 0;
 
 //Encabezamientos de Funciones Principales
 

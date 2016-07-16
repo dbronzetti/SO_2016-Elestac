@@ -1,12 +1,10 @@
 #include "swap.h"
 
 char *fileSwap = NULL;
-//char* fileSwap="/home/utnso/git/tp-2016-1c-YoNoFui/Swap/archivoSwap.txt";
 
 int main(int argc, char *argv[]){
 	char *logFile = NULL;
 	char *configurationFile = NULL;
-	//char* configurationFile="/home/utnso/git/tp-2016-1c-YoNoFui/Swap/configuracion.swap";
 
 	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS
 
@@ -41,11 +39,13 @@ int main(int argc, char *argv[]){
 		assert(("ERROR - NOT swap file was passed as argument", fileSwap != NULL));//Verifies if was passed the swap file as parameter, if DONT FAILS
 
 	logSwap = log_create(logFile, "SWAP", 0, LOG_LEVEL_TRACE);
+	//configurationFile="/home/utnso/git/tp-2016-1c-YoNoFui/Swap/configuracion.swap";
 	crearArchivoDeConfiguracion(configurationFile);
+	//fileSwap = "/home/utnso/git/tp-2016-1c-YoNoFui/Swap/archivoSwap.txt";
 	crearArchivoDeSwap();
 	FILE* archivoSwap;
 	archivoSwap=fopen(nombre_swap,"r+");
-	fseek(archivoSwap,0,SEEK_SET);
+	fseek(archivoSwap,0,SEEK_SET);//TODO probar esta parte, se crea un archivo con otro nombre ("archivoSwap.txtswap.data")
 	fwrite("1",tamanioDePagina,cantidadDePaginas,archivoSwap);
 	char* paginaAEnviar;
 	int socket;
@@ -390,10 +390,11 @@ void crearArchivoDeConfiguracion(char* configFile){
 	configuracionDeSwap=config_create(configFile);
 	puertoEscucha=config_get_int_value(configuracionDeSwap,"PUERTO_ESCUCHA");
 	nombre_swap=config_get_string_value(configuracionDeSwap,"NOMBRE_SWAP");
-	retardoCompactacion=config_get_int_value(configuracionDeSwap,"RETARDO_COMPACTACION");
-	retardoAcceso=config_get_int_value(configuracionDeSwap,"RETARDO_ACCESO");
-	tamanioDePagina=config_get_int_value(configuracionDeSwap,"TAMANIO_PAGINA");
 	cantidadDePaginas=config_get_int_value(configuracionDeSwap,"CANTIDAD_PAGINAS");
+	tamanioDePagina=config_get_int_value(configuracionDeSwap,"TAMANIO_PAGINA");
+	retardoAcceso=config_get_int_value(configuracionDeSwap,"RETARDO_ACCESO");
+	retardoCompactacion=config_get_int_value(configuracionDeSwap,"RETARDO_COMPACTACION");
+
 }
 
 void startServer(){
