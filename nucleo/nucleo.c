@@ -289,7 +289,8 @@ void processMessageReceived (void *parameter){
 				}else if (opFinalizar == -1) { 	//Finaliza Proceso
 					log_info(logNucleo,"Solicitando finalizar el programa para el socket: %d \n", serverData->socketClient);
 					finalizarPid(PID);
-
+					//OJO con los DEADLOCKS - Si se retorna si desbloquear puede bloquear el proceso.
+					pthread_mutex_unlock(&activeProcessMutex);
 					return;
 				}
 				/*char* codeScript = malloc(messageSize);

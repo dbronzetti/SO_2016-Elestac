@@ -34,8 +34,6 @@ int main(int argc, char *argv[]){
 	//Creo Archivo de Log
 	logCPU = log_create(logFile,"CPU",0,LOG_LEVEL_TRACE);
 
-	//TODO CPU 2.5.2 - Si fue captada la señal SIGUSR1 mientras se estaba ejecutando una instruccion se debe finalizar la misma y acto seguido desconectarse del Nucleo
-
 	exitCode = connectTo(UMC,&socketUMC);
 	if(exitCode == EXIT_SUCCESS){
 		printf("CPU connected to UMC successfully\n");
@@ -101,58 +99,48 @@ int main(int argc, char *argv[]){
 
 			printf("El PCB fue recibido correctamente\n");
 
-			int j;
-			for(j=0;j < QUANTUM;j++){
+			int j = 0;
+			while (j < QUANTUM){
 
 				exitCode = ejecutarPrograma();
+				j++;// increasing QUANTUM control
 
 				if (exitCode == EXIT_SUCCESS){
 
 					sleep(QUANTUM_SLEEP);
 
-					if(j == QUANTUM){
+					// 1) check if the isn't the last code line from the program
+					if(PCBRecibido->finalizar == 0){
 
-						log_error(logCPU, "Corte por quantum cumplido - Proceso %d ", PCBRecibido->PID);
+						if(j == QUANTUM){
+							log_info(logCPU, "Corte por quantum cumplido - Proceso %d ", PCBRecibido->PID);
 
-						t_MessageCPU_Nucleo* corteQuantum = malloc( sizeof(t_MessageCPU_Nucleo));
-						corteQuantum->operacion = 5;//operacion 5 es por quantum
-						corteQuantum->processID = PCBRecibido->PID;
+							t_MessageCPU_Nucleo* corteQuantum = malloc( sizeof(t_MessageCPU_Nucleo));
+							corteQuantum->operacion = 5;//operacion 5 es por quantum
+							corteQuantum->processID = PCBRecibido->PID;
 
-						int payloadSize = sizeof(corteQuantum->operacion) + sizeof(corteQuantum->processID);
-						int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
-
-						char* bufferRespuesta = malloc(bufferSize);
-						serializeCPU_Nucleo(corteQuantum, bufferRespuesta, payloadSize);
-						sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
-
-						free(bufferRespuesta);
-
-					}
-					if(j == PCBRecibido->indiceDeCodigo->elements_count){
-					//TODO esto esta mal, esta enviando 2 mensajes seguidos con dos operaciones distintas al NUCLEO - REORGANIZAR!!!!!!!
-					if(PCBRecibido->ProgramCounter == PCBRecibido->indiceDeCodigo->elements_count){
-						//Se responde al Nucleo con un respuestaFinOK (op=2) o respuestaFinFalla (op=3)
-						log_info(logCPU, "Proceso %d - Finalizado correctamente", PCBRecibido->PID);
-						//Envia aviso que finaliza correctamente el proceso a NUCLEO
-						t_MessageCPU_Nucleo* respuestaFinOK = malloc(sizeof(t_MessageCPU_Nucleo));
-						respuestaFinOK->operacion = 2;
-						respuestaFinOK->processID = PCBRecibido->PID;
-
-							int payloadSize = sizeof(respuestaFinOK->operacion) + sizeof(respuestaFinOK->processID);
+							int payloadSize = sizeof(corteQuantum->operacion) + sizeof(corteQuantum->processID);
 							int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
 							char* bufferRespuesta = malloc(bufferSize);
-							serializeCPU_Nucleo(respuestaFinOK, bufferRespuesta, payloadSize);
+							serializeCPU_Nucleo(corteQuantum, bufferRespuesta, payloadSize);
 							sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
 							free(bufferRespuesta);
-
-							j = QUANTUM;
 						}
 
+						//TODO CPU 2.5.2 - Si fue captada la señal SIGUSR1 mientras se estaba ejecutando una instruccion se debe finalizar la misma y acto seguido desconectarse del Nucleo
+
+					}else{
+						//Program finished by primitive
+						break;
 					}
 
 				}
+
+				//TODO tener en cuenta tambien que el CPU debe finalizar cuando el NUCLEO le manda operacion=1
+				//ya que hay una peticion originalmente por parte de la consola y hay que atenderlo
+				//entonces responde con un respuestaFinOK (op=2) o respuestaFinFalla (op=3)
 
 			}
 
@@ -199,8 +187,8 @@ int ejecutarPrograma(){
 	message->virtualAddress = (t_memoryLocation*) malloc(sizeof(t_memoryLocation));
 	message->PID = PCBRecibido->PID;
 	message->operation = lectura_pagina;
-	message->virtualAddress->pag = offsetInstruccionesSize/frameSize;
-	message->virtualAddress->offset = offsetInstruccionesSize%frameSize; //TODO double check this line
+	message->virtualAddress->pag = (int) ceil((double) (offsetInstruccionesSize/frameSize));
+	message->virtualAddress->offset = 0; //TODO double check this line - I'm not sure if we need to request always the start of a page
 	message->virtualAddress->size = instruccionActual->longitudInstruccionEnBytes;
 
 	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(t_memoryLocation);
@@ -453,6 +441,23 @@ void finalizar(void){
 
 	//TODO 1) ANALIZA SI ES EL FINAL DEL PROGRAMA
 	//TODO 2) RETORNAR A PUNTO PREVIO DE PROGRAM COUNTER Y ELIMINAR REGISTRO DE STACK CORRESPONDIENTE A LA FUNCION (BUSCAR EL QUE TENGA RETPOS)
+
+	log_info(logCPU, "Proceso %d - Finalizado correctamente", PCBRecibido->PID);
+	//Envia aviso que finaliza correctamente el proceso a NUCLEO
+	t_MessageCPU_Nucleo* respuestaFinOK = malloc(sizeof(t_MessageCPU_Nucleo));
+	respuestaFinOK->operacion = 2;
+	respuestaFinOK->processID = PCBRecibido->PID;
+
+	int payloadSize = sizeof(respuestaFinOK->operacion) + sizeof(respuestaFinOK->processID);
+	int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
+
+	char* bufferRespuesta = malloc(bufferSize);
+	serializeCPU_Nucleo(respuestaFinOK, bufferRespuesta, payloadSize);
+	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+
+	free(bufferRespuesta);
+
+	PCBRecibido->finalizar = 1;
 
 }
 
