@@ -21,12 +21,7 @@
 #include <sys/types.h>
 #include <pthread.h>
 #include <semaphore.h>
-
-
 #include <math.h>
-#include <time.h>
-#include <sys/time.h>
-
 // Estructuras
 typedef struct {
 	int puerto_prog;

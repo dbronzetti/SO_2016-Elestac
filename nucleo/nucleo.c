@@ -66,9 +66,9 @@ int main(int argc, char *argv[]) {
 
 	exitCode = connectTo(UMC,&socketUMC);
 	if (exitCode == EXIT_SUCCESS) {
-		 log_info(logNucleo, "NUCLEO connected to UMC successfully\n");
+		log_info(logNucleo, "NUCLEO connected to UMC successfully\n");
 	}else{
-		printf("No server available - shutting down proces!!\n");
+		log_error(logNucleo, "No server available - shutting down proces!!\n");
 		return EXIT_FAILURE;
 	}
 
@@ -284,10 +284,10 @@ void processMessageReceived (void *parameter){
 				int PID = buscarPIDConsola(serverData->socketClient);
 				if (PID==-1){
 
-					printf("No se encontro Consola para el socket: %d \n",serverData->socketClient);
+					log_error(logNucleo,"No se encontro Consola para el socket: %d \n",serverData->socketClient);
 
 				}else if (opFinalizar == -1) { 	//Finaliza Proceso
-
+					log_info(logNucleo,"Solicitando finalizar el programa para el socket: %d \n", serverData->socketClient);
 					finalizarPid(PID);
 					//OJO con los DEADLOCKS - Si se retorna si desbloquear puede bloquear el proceso.
 					pthread_mutex_unlock(&activeProcessMutex);
@@ -299,6 +299,8 @@ void processMessageReceived (void *parameter){
 				//Recibo el codigo del programa (messageRcv) usando el tamanio leido antes
 				messageRcv = realloc(messageRcv, messageSize);
 				receiveMessage(&serverData->socketClient, messageRcv, messageSize);
+
+				log_info(logNucleo,"El Nucleo recibe el codigo del programa: %s del socket: %d \n",messageRcv, serverData->socketClient);
 			
 				iniciarPrograma(PID, messageRcv);
 				runScript(messageRcv,socketConsola);
@@ -348,9 +350,7 @@ void runScript(char* codeScript, int socketConsola){
 
 	PCB->PID = idProcesos;
 	PCB->ProgramCounter = miMetaData->instruccion_inicio;
-	//En el caso de usar la siguiente linea: VER por que tira error si esta incluida math.h (en nucleo.h)
-	//PCB->cantidadDePaginas = ceil((double) (strlen(codeScript) + 1)/ (double) frameSize);
-	PCB->cantidadDePaginas = (strlen(codeScript) + 1) / frameSize;
+	PCB->cantidadDePaginas = ceil((double) (strlen(codeScript) + 1)/ (double) frameSize);
 	PCB->StackPointer = 0;
 	PCB->estado = 1;
 	PCB->finalizar = 0;
@@ -396,7 +396,7 @@ void planificarProceso() {
 	int libreCPU = buscarCPULibre();
 
 	if (libreCPU == -1) {
-		printf("No hay CPU libre.\n");
+		log_error(logNucleo,"No hay CPU libre \n");
 		return;
 	}
 	t_serverData *serverData;
@@ -422,7 +422,7 @@ void planificarProceso() {
 
 		enviarMsjCPU(datosPCB, contextoProceso, serverData);
 	} else {
-		printf("Proceso no encontrado en la lista.\n");
+		log_info(logNucleo,"Proceso no encontrado\n");
 	}
 
 	/*if (queue_is_empty(colaFinalizar)) {
@@ -514,7 +514,7 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 }
 
 void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
-	printf("Processing CPU message \n");
+	log_info(logNucleo, "Processing CPU message \n");
 
 	t_MessageCPU_Nucleo *message=malloc(sizeof(t_MessageCPU_Nucleo));
 
@@ -555,10 +555,10 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		finalizaProceso(socketLibre, message->processID,message->operacion);
 		break;}
 	case 4:{
-		printf("No se pudo obtener la solicitud a ejecutar - Error al finalizar");
+		log_error(logNucleo, "No se pudo obtener la solicitud a ejecutar - Error al finalizar");
 		break;}
 	case 5:{ 	//Corte por Quantum
-		printf("Corto por Quantum.\n");
+		log_info(logNucleo, "Se procesa la atencion del corte por Quantum");
 		atenderCorteQuantum(socketLibre, message->processID);
 		break;}
 	//TODO CHEQUEAR QUE DE ACA HASTA EL FINAL DEL SWITCH (EN CADA CASE) SEA CORRECTO EL MANEJO DE LOS MENSAJES
@@ -575,7 +575,8 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		t_valor_variable* valorVariable = obtenerValor(variable);
 
 		if (valorVariable == NULL){
-			printf("No encontre variable %s %d id \n",variable, *variableLen);
+			log_error(logNucleo, "No se encontro la variable: %s id, con el tamanio: %d  \n",variable, *variableLen);
+			return;
 		}
 
 		sendMessage(&socketLibre, valorVariable, sizeof(t_valor_variable));
@@ -598,6 +599,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		receiveMessage(&socketLibre, variable, *variableLen);
 
 		grabarValor(variable, valor);
+		log_info(logNucleo, "Se graba el valor: %d en la variable: %s id, con el tamanio: %d  \n",valor, variable, *variableLen);
 
 		//TODO verificar que esten bien estos free, valor no se hace el free porque se asigna adentro de grabarValor
 		free(variableLen);
@@ -605,7 +607,6 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 		break;}
 	case 8:{	// WAIT - Grabar semaforo y enviar al CPU
-
 		//Recibo el tamanio del wait
 		int* tamanio = malloc(sizeof(int));
 		receiveMessage(&socketLibre, tamanio, sizeof(int));
@@ -614,17 +615,19 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		t_nombre_semaforo semaforo = malloc(*tamanio);
 		receiveMessage(&socketLibre, semaforo, *tamanio);
 
+		log_info(logNucleo, "Se recibe el semaforo WAIT: %s, con el tamanio: %d  \n",semaforo, *tamanio);
+
 		if (estaEjecutando(message->processID)==1){ // 1: Programa ejecutandose (no esta en ninguna cola)
 			int * valorSemaforo = pideSemaforo(semaforo);
 			int valorAEnviar;
 			if(*valorSemaforo<=0){
 
 				valorAEnviar = 1;
-				printf("Recibi proceso %d mando a bloquear por semaforo \n", (message->processID)%6+1);
+				log_info(logNucleo, "Recibi proceso %d mando a bloquear por semaforo \n", (message->processID)%6+1);
 				sendMessage(&socketLibre, &valorAEnviar,sizeof(int));// 1 si se bloquea. 0 si no se bloquea
 				bloqueoSemaforo(message->processID,semaforo);
 				//Libero la CPU que ocupaba el proceso
-				liberarCPU(socketLibre);
+				liberarCPU(socketLibre);//
 			}else{
 				grabarSemaforo(semaforo,*pideSemaforo(semaforo)-1);
 				valorAEnviar=0;
@@ -644,7 +647,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		//Recibo el semaforo wait
 		t_nombre_semaforo semaforo = malloc(*tamanio);
 		receiveMessage(&socketLibre, semaforo, *tamanio);
-
+		log_info(logNucleo, "Proceso %d libera semaforo:%s \n", message->processID, semaforo);
 		liberaSemaforo(semaforo);
 		//TODO verificar que esten bien estos free
 		free(tamanio);
@@ -654,7 +657,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		int socketConsola = buscarSocketConsola(message->processID);
 
 		if (socketConsola==-1){
-			printf("No se encontro Consola para el PID: %d \n",message->processID);
+			log_error(logNucleo, "No se encontro Consola para el PID: %d \n",message->processID);
 			return;
 		}
 
@@ -675,7 +678,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 	case 11:{	//Imprimir TEXTO por Consola
 		int socketConsola = buscarSocketConsola(message->processID);
 		if (socketConsola==-1){
-			printf("No se encontro Consola para el PID: %d \n",message->processID);
+			log_error(logNucleo,"No se encontro Consola para el PID: %d \n",message->processID);
 			return;
 		}
 
@@ -705,7 +708,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		free(texto);
 		break;}
 	default:
-		printf("Mensaje recibido invalido. \n");
+		log_error(logNucleo, "Mensaje recibido invalido. \n");
 		//printf("CPU desconectado.\n");
 		//abort();
 	}
@@ -713,9 +716,9 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 	free(message);
 }
 
-void atenderCorteQuantum(int socket,int PID){
+void atenderCorteQuantum(int socketCPU,int PID){
 	//Libero la CPU
-	liberarCPU(socket);
+	liberarCPU(socketCPU);
 
 	//Cambio el PC del Proceso, le sumo el quantum al PC actual.
 	t_PCB* infoProceso;
@@ -727,12 +730,14 @@ void atenderCorteQuantum(int socket,int PID){
 	pcnuevo = infoProceso->ProgramCounter + configNucleo.quantum;
 	infoProceso->ProgramCounter =  pcnuevo;
 
+	log_info(logNucleo, "Recibiendo PCB para el PID: %d modificado por el CPU de socket: %d \n",infoProceso->PID, socketCPU);
+
 	//1) receive tamanioBuffer
 	int tamanioBuffer;
-	receiveMessage(&socket, &tamanioBuffer, sizeof(tamanioBuffer));
+	receiveMessage(&socketCPU, &tamanioBuffer, sizeof(tamanioBuffer));
 	//2) receive buffer segun tamanioBuffer
 	char* buffer = malloc(tamanioBuffer);
-	receiveMessage(&socket, buffer, tamanioBuffer);
+	receiveMessage(&socketCPU, buffer, tamanioBuffer);
 	//3) malloc de listaARecibir segun el tamanio recibido.
 	t_list* listaARecibir = list_create();
 	//4) deserializarListaStack(listaARecibir, buffer);
@@ -742,7 +747,7 @@ void atenderCorteQuantum(int socket,int PID){
 	//6) infoProceso->indiceDeStack = listaARecibir;
 	list_add_all(infoProceso->indiceDeStack, (void*) listaARecibir);
 
-	//TODO RECIBIR PCB MODIFICADO DEL CPU! (lo que hace falta en realidad es el stack fundamentalmente y ver si es necesario algo mas que haya modificado el CPU)
+	//RECIBIR PCB MODIFICADO DEL CPU! (lo que hace falta en realidad es el stack fundamentalmente y ver si es necesario algo mas que haya modificado el CPU)
 	/*
 	 * 1) receive tamanioBuffer
 	 * 2) receive buffer segun tamanioBuffer
@@ -813,7 +818,7 @@ void finalizaProceso(int socket, int PID, int estado) {
 	int textoLen = strlen(texto)+1;
 	sendMessage(&socketConsola, &textoLen, sizeof(textoLen));
 
-	log_info(logNucleo, "Enviar texto: '%s', a PID #%d\n", texto, PID);
+	log_info(logNucleo, "Enviar texto: '%s', con tamanio: '%d' a PID #%d\n", texto, textoLen, PID);
 	sendMessage(&socketConsola, texto, textoLen);
 
 	destruirPCB(datosProceso);
@@ -1009,10 +1014,10 @@ static int makeTimer (timer_t *timerID, int expireMS){
 	evp.sigev_value.sival_ptr = timerID;
 
 	//TODO Descomentar las siguientes lineas y ver por que tira error si esta incluida time.h
-//	timer_create(CLOCK_REALTIME, &evp, timerID);
-//	its.it_value.tv_sec =  floor(expireMS / 1000);
+	timer_create(CLOCK_REALTIME, &evp, timerID);
+	its.it_value.tv_sec =  floor((double) (expireMS / 1000));
 	its.it_value.tv_nsec = expireMS % 1000 * 1000000;
-//	timer_settime(*timerID, 0, &its, NULL);
+	timer_settime(*timerID, 0, &its, NULL);
 
 	return 1;
 }
@@ -1027,7 +1032,7 @@ void liberarCPU(int socket) {
 		datosCPU->estadoCPU = 0;
 		planificarProceso();
 	} else {
-		printf("Error al liberar CPU \n CPU no encontrada en la lista.\n");
+		log_error(logNucleo, "Error al liberar CPU \n CPU de socket: %d no encontrado en la lista.\n", socket);
 	}
 }
 
@@ -1040,7 +1045,7 @@ void cambiarEstadoProceso(int PID, int estado) {
 		pthread_mutex_lock(&listadoProcesos);
 		datosProceso->estado = estado;
 	} else {
-		printf("Error al cambiar estado de proceso, proceso no encontrado en la lista.\n");
+		log_error(logNucleo,"Error al cambiar estado de proceso, proceso no encontrado en la lista.\n");
 	}
 }
 
@@ -1048,7 +1053,7 @@ void atenderBloqueados() {
 	while (1) {
 		sem_wait(&semBloqueados);
 		t_bloqueado* datosProceso;
-		printf("Entre a ejecutar E/S de Bloqueados.\n");
+		log_info(logNucleo,"Entre a ejecutar E/S de Bloqueados.\n");
 		pthread_mutex_lock(&cBloqueados);
 		datosProceso = (t_bloqueado*) queue_peek(colaBloqueados);
 		pthread_mutex_unlock(&cBloqueados);
@@ -1084,7 +1089,7 @@ void atenderBloqueados() {
 			}
 			planificarProceso();
 		} else {
-			printf("Proceso no encontrado en la lista.\n");
+			log_error(logNucleo,"Proceso no encontrado en la lista.\n");
 		}
 	}
 
@@ -1099,12 +1104,12 @@ void actualizarPC(int PID, int ProgramCounter) {
 		pthread_mutex_unlock(&listadoProcesos);
 		datosProceso->ProgramCounter = ProgramCounter;
 	} else {
-		printf("Error al cambiar el PC del proceso, proceso no encontrado en la lista.\n");
+		log_error(logNucleo,"Error al cambiar el PC del proceso, proceso no encontrado en la lista.\n");
 	}
 }
 
 t_valor_variable *obtenerValor(t_nombre_compartida variable) {
-	printf("NUCLEO: obtener variable %s\n", variable);
+	log_info(logNucleo, "Nucleo, obteniendo valor para la variable: %s\n", variable);
 	t_valor_variable *valorVariable = NULL;
 	int i = 0;
 
@@ -1121,11 +1126,10 @@ t_valor_variable *obtenerValor(t_nombre_compartida variable) {
 	return valorVariable;
 }
 
-void grabarValor(t_nombre_compartida variable, t_valor_variable* valor){
-
+void grabarValor(t_nombre_compartida variable, t_valor_variable* valor) {
+	log_info(logNucleo, "Nucleo, grabando valor: %d para la variable: %s\n", *valor, variable);
 	int i = 0;
-
-	while (configNucleo.shared_vars[i] != NULL){
+	while (configNucleo.shared_vars[i] != NULL) {
 
 		if (strcmp(configNucleo.shared_vars[i], variable) == 0) {
 			//return (int*)configNucleo.shared_vars[i];
@@ -1134,11 +1138,14 @@ void grabarValor(t_nombre_compartida variable, t_valor_variable* valor){
 		}
 		i++;
 	}
+	log_error(logNucleo,"No se pudo grabar el valor: %d, en la variable: %s \n",valor, variable);
 }
 
 int *pideSemaforo(t_nombre_semaforo semaforo) {
 	int i = 0;
 	int *valorVariable = NULL;
+
+	log_info(logNucleo,"Nucleo, obteniendo semaforo:  %s\n", semaforo);
 
 	while (configNucleo.sem_ids[i] != NULL) {
 		//TODO: mutex confignucleo??
@@ -1150,7 +1157,7 @@ int *pideSemaforo(t_nombre_semaforo semaforo) {
 		}
 		i++;
 	}
-	printf("No se encontro el id del semaforo. \n");
+	log_error(logNucleo, "No se encontro el semaforo: %s \n", semaforo);
 	return valorVariable;
 }
 
@@ -1167,7 +1174,7 @@ void grabarSemaforo(t_nombre_semaforo semaforo, int valor){
 		}
 		i++;
 	}
-	printf("No se encontro el id del semaforo. \n");
+	log_error(logNucleo,"No se encontro el semaforo: %s \n", semaforo);
 }
 
 
@@ -1202,12 +1209,13 @@ void liberaSemaforo(t_nombre_semaforo semaforo) {
 			*/
 		}
 	}
-	printf("No se encontro el id del semaforo. \n");
+	log_error(logNucleo,"No se encontro el semaforo: %s \n", semaforo);
 }
 
 void bloqueoSemaforo(int processID, t_nombre_semaforo semaforo){
-	int i=0;
 
+	log_info(logNucleo,"Procesando el bloqueo por el semaforo: %s, para el PID: %d \n", semaforo, processID);
+	int i=0;
 	while (configNucleo.sem_ids[i] != NULL) {
 		if (strcmp(configNucleo.sem_ids[i], semaforo) == 0) {
 			//look for PCB for getting program counter
@@ -1229,7 +1237,7 @@ void bloqueoSemaforo(int processID, t_nombre_semaforo semaforo){
 		}
 		i++;
 	}
-	printf("No se encontro el id del semaforo. \n");
+	log_error(logNucleo,"No se encontro el semaforo: %s \n", semaforo);
 }
 
 void armarIndiceDeCodigo(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
@@ -1255,51 +1263,52 @@ void armarIndiceDeEtiquetas(t_PCB *unBloqueControl,t_metadata_program* miMetaDat
 
 void finalizarPid(int pid){
 	if((pid<0) || (pid >idProcesos)){
-		printf ("Error, PID inexistente.\n");
+		log_error(logNucleo, "Error, PID: %d inexistente.\n", pid);
 		return;
 	}
 	int ret = buscarPCB(pid);
 	if (ret == -1){
-		printf("Error al buscar el proceso.\n");
+		log_error(logNucleo,"Error al buscar el proceso de PID: %d.\n", pid);
 		return;
 	}
 	t_PCB* datosProceso;
 	pthread_mutex_lock(&listadoProcesos);
 	datosProceso = (t_PCB*)list_get(listaProcesos,ret);
 	pthread_mutex_unlock(&listadoProcesos);
-	switch(datosProceso->estado){
+	switch (datosProceso->estado) {
 	case 1:
-		  	//EL proceso esta en la cola de Ready
-			datosProceso->finalizar = 1;
-			break;
+		//EL proceso esta en la cola de Ready
+		datosProceso->finalizar = 1;
+		break;
 	case 2:
-			//El Proceso esta ejecutando seteo una bandera para avisar que vuelva a cola privilegiada.
-			datosProceso->finalizar = 1;
-			break;
+		//El Proceso esta ejecutando seteo una bandera para avisar que vuelva a cola privilegiada.
+		datosProceso->finalizar = 1;
+		break;
 	case 3:
-			//EL Proceso esta bloqueado
-			datosProceso->finalizar = 1;
-			break;
+		//EL Proceso esta bloqueado
+		datosProceso->finalizar = 1;
+		break;
 
-	case 4: printf ("Error, el proceso ya finalizo correctamente.\n");
-			break;
+	case 4:
+		log_error(logNucleo, "Error, el proceso ya finalizo correctamente.\n");
+		break;
 
-	case 5: printf ("Error, el proceso ya finalizo de forma incorrecta.\n");
-			break;
+	case 5:
+		log_error(logNucleo,"Error, el proceso ya finalizo de forma incorrecta.\n");
+		break;
 	default:
-			break;
+		log_error(logNucleo,"Error, estado invalido.\n");
+		break;
 
 	}
 }
 
 void iniciarPrograma(int PID, char *codeScript) {
-
+	log_info(logNucleo,"Aviso al proceso UMC el inicio del programa %s cuyo processID asignado es: %d \n", codeScript, PID);
 	int bufferSize = 0;
 	int payloadSize = 0;
 	int contentLen = strlen(codeScript) + 1;	//+1 because of '\0'
-	//En el caso de usar la siguiente linea: VER por que tira error si esta incluida math.h (en nucleo.h)
-	//int cantPages = ceil((double) contentLen /(double) frameSize);
-	int cantPages = (strlen(codeScript) + 1) / frameSize;
+	int cantPages = ceil((double) contentLen /(double) frameSize);
 
 	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
 
@@ -1329,7 +1338,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 }
 
 void finalizarPrograma(int PID){
-
+	log_info(logNucleo,"Aviso al proceso UMC que se finalice el programa cuyo processID asignado es: %d \n", PID);
 	int bufferSize = 0;
 	int payloadSize = 0;
 
@@ -1373,10 +1382,11 @@ void deserializarES(t_es* datos, char* bufferReceived) {
 	datos->dispositivo = malloc(dispositivoLen);
 	memcpy(datos->dispositivo, bufferReceived + offset, dispositivoLen);
 
-	//Verificar que se este enviando el tamanio del dispositivo que es un char* y que se este considerando el \0 en el offset
+	//Se esta enviando el tamanio del dispositivo que es un char* y se esta considerando el \0 en el offset
 }
 
 void crearArchivoDeConfiguracion(char *configFile){
+	log_info (logNucleo, "Creando el archivo de configuracion: %s \n", configFile);
 	t_config* configuration;
 
 	configuration = config_create(configFile);
@@ -1452,6 +1462,7 @@ void crearArchivoDeConfiguracion(char *configFile){
 		colas_semaforos[i] = queue_create();
 		i++;
 	}
+	log_info(logNucleo, "El archivo de configuracion: %s se creo correctamente \n", configFile);
 }
 
 void *initialize(int tamanio){
