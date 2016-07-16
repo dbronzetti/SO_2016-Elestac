@@ -1,7 +1,9 @@
 #include "swap.h"
 
+char* rutaArchivoDeSwap="/home/utnso/git/tp-2016-1c-YoNoFui/Swap/";
+char* configFile="/home/utnso/Escritorio/swapc.txt";
 int main(){
-	crearArchivoDeConfiguracion();
+	crearArchivoDeConfiguracion(configFile);
 	crearArchivoDeSwap();
 	FILE* archivoSwap;
 	archivoSwap=fopen(nombre_swap,"r+");
@@ -137,7 +139,7 @@ void destructorBloqueSwap(bloqueSwap* self){
 int agregarProceso(bloqueSwap* unBloque,t_list* unaLista,char* codeScript){
 	/*<----------------------------------------------abroElArchivo----------------------------------------------------->*/
 	char* cadena=string_new();
-	string_append(&cadena,"dd if=/dev/zero of=/home/utnso/workspace/Prueba/");
+	string_append(&cadena,rutaArchivoDeSwap);
 	string_append(&cadena,nombre_swap);
 	FILE* archivoSwap;
 	archivoSwap=fopen(cadena,"r+");
@@ -235,7 +237,8 @@ void crearArchivoDeSwap(){
 	cantidadDePaginas=10;
 
 	char* cadena=string_new();
-	string_append(&cadena,"dd if=/dev/zero of=/home/utnso/git/tp-2016-1c-YoNoFui/Swap/");
+	string_append(&cadena,"dd if=/dev/zero of=");
+	string_append(&cadena, rutaArchivoDeSwap);
 	string_append(&cadena,nombre_swap);
 	char* segundaParteCadena=string_new();
 	string_append(&segundaParteCadena," bs=");
@@ -270,7 +273,7 @@ bloqueSwap* buscarProcesoAEliminar(int PID,t_list* unaLista){
 char* leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap){
 	bloqueSwap* bloqueEncontrado;
 	char* cadena=string_new();
-	string_append(&cadena,"/home/utnso/workspace/Prueba/");
+	string_append(&cadena,rutaArchivoDeSwap);
 	string_append(&cadena,nombre_swap);
 	FILE* archivoSwap;
 	archivoSwap=fopen(cadena,"r+");
@@ -288,7 +291,7 @@ char* leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap){
 void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque,t_list* listaSwap){
 	bloqueSwap* bloqueEncontrado;
 	char* cadena=string_new();
-	string_append(&cadena,"/home/utnso/workspace/Prueba/");
+	string_append(&cadena,rutaArchivoDeSwap);
 	string_append(&cadena,nombre_swap);
 	FILE* archivoSwap;
 	archivoSwap=fopen(cadena,"r+");
@@ -344,9 +347,9 @@ int existeElBloqueNecesitado(t_list* listaSwap){
 	return list_any_satisfy(listaSwap,(void*)condicionDeCompactacion);
 }
 
-void crearArchivoDeConfiguracion(){
+void crearArchivoDeConfiguracion(char* configFile){
 	t_config* configuracionDeSwap;
-	configuracionDeSwap=config_create("/home/utnso/Escritorio/swapc.txt");
+	configuracionDeSwap=config_create(configFile);
 	puertoEscucha=config_get_int_value(configuracionDeSwap,"PUERTO_ESCUCHA");
 	nombre_swap=config_get_string_value(configuracionDeSwap,"NOMBRE_SWAP");
 	retardoCompactacion=config_get_int_value(configuracionDeSwap,"RETARDO_COMPACTACION");
@@ -481,7 +484,7 @@ int modificarArchivo(int marcoInicial,int cantDeMarcos,int nuevoMarcoInicial){
 	FILE* archivoSwap;
 	char* textoRelleno=malloc(tamanioDePagina*cantDeMarcos);
 	char* cadena=string_new();
-	string_append(&cadena,"/home/utnso/workspace/Prueba/");
+	string_append(&cadena, rutaArchivoDeSwap);
 	string_append(&cadena,nombre_swap);
 	archivoSwap=fopen(cadena,"r+");
 	if(archivoSwap==NULL){

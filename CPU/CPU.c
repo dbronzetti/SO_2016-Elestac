@@ -1003,6 +1003,10 @@ t_memoryLocation* buscarUltimaPosicionOcupada(t_PCB* pcbEjecutando){
 	return NULL;
 }
 
+void llamarSinRetorno(t_nombre_etiqueta etiqueta){
+ //TODO igual a llamar con retorno
+}
+
 
 // TODO Tener en cuenta en donde se hacen los free
 
