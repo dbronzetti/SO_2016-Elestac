@@ -13,11 +13,12 @@ int main(int argc, char *argv[]) {
 	pthread_t serverConsolaThread;
 	pthread_t hiloBloqueados;
 
-	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS
+		assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS
 
 	//get parameter
 	int i;
 	for( i = 0; i < argc; i++){
+		//check config file parameter
 		if (strcmp(argv[i], "-c") == 0){
 			configurationFile = argv[i+1];
 			printf("Configuration File: '%s'\n",configurationFile);
@@ -38,7 +39,6 @@ int main(int argc, char *argv[]) {
 	//Creo el archivo de Log
 		logNucleo = log_create(logFile, "NUCLEO", 0, LOG_LEVEL_TRACE);
 	//Creo archivo de configuracion
-		configurationFile = "/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo";
 		crearArchivoDeConfiguracion(configurationFile);
 	//Creo la lista de CPUs
 		listaCPU = list_create();
