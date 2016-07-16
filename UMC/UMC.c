@@ -490,69 +490,17 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 
 void getConfiguration(char *configFile){
 
-	FILE *file = fopen(configFile, "r");
-
-	assert(("ERROR - Could not open the configuration file", file != 0));// ERROR - Could not open file
-
-	char parameter[12]; //[12] is the max paramenter's name size
-	char parameterValue[20];
-
-	while ((fscanf(file, "%s", parameter)) != EOF){
-
-		switch(getEnum(parameter)){
-			case(PUERTO):{ //1
-				fscanf(file, "%s",parameterValue);
-				configuration.port = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
-				break;
-			}
-			case(IP_SWAP):{ //2
-				fscanf(file, "%s",parameterValue);
-				(strcmp(parameter, EOL_DELIMITER) != 0) ? memcpy(&configuration.ip_swap, parameterValue, sizeof(configuration.ip_swap)) : "" ;
-				break;
-			}
-			case(PUERTO_SWAP):{ //3
-				fscanf(file, "%s",parameterValue);
-				configuration.port_swap = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
-				break;
-			}
-			case(MARCOS):{ //4
-				fscanf(file, "%s",parameterValue);
-				configuration.frames_max = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
-				break;
-			}
-			case(MARCO_SIZE):{ //5
-				fscanf(file, "%s",parameterValue);
-				configuration.frames_size = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue): 0 /*DEFAULT VALUE*/ ;
-				break;
-			}
-			case(MARCO_X_PROC):{ //6
-				fscanf(file, "%s",parameterValue);
-				configuration.frames_max_proc = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
-				break;
-			}
-			case(ALGORITMO):{ //7
-				fscanf(file, "%s",parameterValue);
-				(strcmp(parameter, EOL_DELIMITER) != 0) ? memcpy(&configuration.algorithm_replace, parameterValue, sizeof(configuration.algorithm_replace)) : "" ;
-				break;
-			}
-			case(ENTRADAS_TLB):{ //8
-				fscanf(file, "%s",parameterValue);
-				configuration.TLB_entries = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : -1 /*DEFAULT VALUE -1 != 0 (TLB disable)*/;
-				break;
-			}
-			case(RETARDO):{ //9
-				fscanf(file, "%s",parameterValue);
-				configuration.delay = (strcmp(parameter, EOL_DELIMITER) != 0) ? atoi(parameterValue) : 0 /*DEFAULT VALUE*/;
-				break;
-			}
-			default:{
-				if (strcmp(parameter, EOL_DELIMITER) != 0){
-					log_error(UMCLog, "Error Parameter read not recognized '%s'\n",parameter);
-				}
-				break;
-			}
-		}// END switch(parameter)
-	}
+	t_config* configurationFile;
+	configurationFile = config_create(configFile);
+	configuration.port = config_get_int_value(configurationFile,"PUERTO");
+	configuration.ip_swap = config_get_string_value(configurationFile,"IP_SWAP");
+	configuration.port_swap = config_get_int_value(configurationFile,"PUERTO_SWAP");
+	configuration.frames_max = config_get_int_value(configurationFile,"MARCOS");
+	configuration.frames_size = config_get_int_value(configurationFile,"MARCO_SIZE");
+	configuration.frames_max_proc = config_get_int_value(configurationFile,"MARCO_X_PROC");
+	configuration.algorithm_replace = config_get_string_value(configurationFile,"ALGORITMO");
+	configuration.TLB_entries = config_get_int_value(configurationFile,"ENTRADAS_TLB");
+	configuration.delay = config_get_int_value(configurationFile,"RETARDO");
 
 }
 
@@ -1405,7 +1353,7 @@ void executeMainMemoryAlgorithm(t_pageTablesxProc *pageTablexProc, t_memoryAdmin
 
 	pthread_mutex_lock(&memoryAccessMutex);
 
-	if (string_equals_ignore_case(configuration.algorithm_replace,"clock")){
+	if (string_equals_ignore_case(configuration.algorithm_replace,"CLOCK")){
 		//*** Algorithm CLOCK ***//
 
 		//First seek

@@ -7,11 +7,11 @@
 #include <stdbool.h>
 #include <semaphore.h>
 #include "sockets.h"
-#include "commons/collections/list.h"
-#include "commons/string.h"
-#include "commons/log.h"
+#include <commons/config.h>
+#include <commons/collections/list.h>
+#include <commons/string.h>
+#include <commons/log.h>
 
-#define EOL_DELIMITER ";"
 #define PAGE_PRESENT 1
 #define PAGE_NOTPRESENT 0
 #define PAGE_MODIFIED 1
@@ -19,14 +19,14 @@
 
 typedef struct {
 	int port;
-	char ip_swap[15]; /* 15 = because the format xxx.xxx.xxx.xxx*/
+	char *ip_swap;
 	int port_swap;
 	int frames_max;
 	int frames_size;
 	int frames_max_proc;
 	int TLB_entries; /* 0 = Disable */
 	int delay;
-	char algorithm_replace[20]; /* rounding up max length "Clock Modificado" */
+	char *algorithm_replace;
 } t_configFile;
 
 typedef struct {
