@@ -65,7 +65,8 @@ int main(int argc, char *argv[]){
 			PCBRecibido->ProgramCounter = messageWithBasicPCB->programCounter;
 			PCBRecibido->StackPointer = messageWithBasicPCB->stackPointer;
 			PCBRecibido->cantidadDePaginas = messageWithBasicPCB->cantidadDePaginas;
-			PCBRecibido->indiceDeEtiquetas = messageWithBasicPCB->indiceDeEtiquetas;
+			PCBRecibido->indiceDeEtiquetas = malloc(strlen(messageWithBasicPCB->indiceDeEtiquetas) + 1 );
+			strcpy(PCBRecibido->indiceDeEtiquetas, messageWithBasicPCB->indiceDeEtiquetas);
 			PCBRecibido->indiceDeCodigo = list_create();
 			PCBRecibido->indiceDeStack = list_create();
 			QUANTUM = messageWithBasicPCB->quantum;
@@ -145,9 +146,11 @@ int main(int argc, char *argv[]){
 			}
 
 			free(messageRcv);
-			//TODO Destruir PCBRecibido
-			//TODO Destruir listaIndiceEtiquetas
+			//Destruir PCBRecibido
+			destruirPCB(PCBRecibido);
 
+			//Destruir listaIndiceEtiquetas
+			destroyIndiceEtiquetas();
 		}
 
 	}//llave agregada, faltaba para cerrar el main
@@ -403,6 +406,15 @@ void deserializarListaIndiceDeEtiquetas(char* charEtiquetas, int listaSize){
 
 }
 
+void destruirRegistroIndiceEtiquetas(t_registroIndiceEtiqueta* registroEtiqueta){
+	free(registroEtiqueta->funcion);
+	free(registroEtiqueta);
+}
+
+void destroyIndiceEtiquetas(){
+	list_destroy_and_destroy_elements(listaIndiceEtiquetas,(void*)destruirRegistroIndiceEtiquetas);
+}
+
 void crearArchivoDeConfiguracion(char *configFile){
 	t_config* configurationFile;
 	configurationFile = config_create(configFile);
@@ -527,8 +539,9 @@ void cargarValoresNuevaPosicion(t_memoryLocation* ultimaPosicionOcupada, t_memor
 
 	if (ultimaPosicionOcupada == NULL){
 		ultimaPosicionOcupada = malloc(sizeof(ultimaPosicionOcupada));
-		//TODO 1) TENER EN CUENTA la pagina donde arranca el stack
-		ultimaPosicionOcupada->pag = 0; //DEFAULT value for first row
+		//1) TENER EN CUENTA la pagina donde arranca el stack
+		int firstStackPage = PCBRecibido->cantidadDePaginas + 1;
+		ultimaPosicionOcupada->pag = firstStackPage; //DEFAULT value for first row
 		ultimaPosicionOcupada->offset = 0; //DEFAULT value for first row
 		ultimaPosicionOcupada->size = sizeof(int); //DEFAULT value for first row
 

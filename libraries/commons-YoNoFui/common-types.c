@@ -22,7 +22,6 @@
  */
 
 int tamanioDePagina = -1; //TODO ver como se lo paso desde la UMC
-t_PCB* PCB;
 
 void setPageSize (int pageSize){
 	tamanioDePagina = pageSize;

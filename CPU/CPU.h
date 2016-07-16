@@ -37,7 +37,8 @@ int connectTo(enum_processes processToConnect, int *socketClient);
 void crearArchivoDeConfiguracion(char *configFile);
 void waitRequestFromNucleo(int *socketClient, char * messageRcv);
 void deserializarListaIndiceDeEtiquetas(char* charEtiquetas, int listaSize);
-
+void destruirRegistroIndiceEtiquetas(t_registroIndiceEtiqueta* registroEtiqueta);
+void destroyIndiceEtiquetas();
 void manejarES(int PID, int pcActualizado, int* banderaFinQuantum, int tiempoBloqueo);
 void serializarES(t_es *value, t_nombre_dispositivo buffer, int valueSize);
 
