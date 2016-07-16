@@ -40,7 +40,6 @@ typedef struct {
 	char** shared_vars;
 	int* shared_vars_values;
 	int stack_size;
-	int pageSize;
 } t_configFile;
 
 typedef struct {

@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
 	pthread_t serverConsolaThread;
 	pthread_t hiloBloqueados;
 
-		assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS
+		//assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS
 
 	//get parameter
 	int i;
@@ -31,14 +31,15 @@ int main(int argc, char *argv[]) {
 	}
 
 	//ERROR if not configuration parameter was passed
-		assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS
+	//assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS
 
 	//ERROR if not Log parameter was passed
-		assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
+	//assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
 
 	//Creo el archivo de Log
 		logNucleo = log_create(logFile, "NUCLEO", 0, LOG_LEVEL_TRACE);
 	//Creo archivo de configuracion
+		configurationFile = "/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo";
 		crearArchivoDeConfiguracion(configurationFile);
 	//Creo la lista de CPUs
 		listaCPU = list_create();
@@ -1401,7 +1402,6 @@ void crearArchivoDeConfiguracion(char *configFile){
 	configNucleo.io_sleep = config_get_array_value(configuration,"IO_SLEEP");
 	configNucleo.shared_vars = config_get_array_value(configuration,"SHARED_VARS");
 	configNucleo.stack_size = config_get_int_value(configuration,"STACK_SIZE");
-	configNucleo.pageSize = config_get_int_value(configuration,"PAGESIZE");
 	int i = 0;
 
 	if(timers!=0){
