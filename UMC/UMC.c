@@ -985,13 +985,13 @@ void checkPageModification(t_memoryAdmin *memoryElement){
 		serializeUMC_Swap(message, buffer, payloadSize);
 
 		//Send message serialized with virtualAddress information
-		send(socketSwap, (void*) buffer, bufferSize,0);
+		sendMessage(&socketSwap, buffer, bufferSize);
 
 		//Send memory content to overwrite with the virtualAddress->size - On the other side is going to be waiting it with that size sent previously
 		memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + memoryElement->virtualAddress->offset;
 		content = realloc(content, memoryElement->virtualAddress->size);
 		memcpy(content, memoryBlockOffset, memoryElement->virtualAddress->size);
-		send(socketSwap, (void*) content, memoryElement->virtualAddress->size,0);
+		sendMessage(&socketSwap, content, memoryElement->virtualAddress->size);
 
 		log_info(UMCLog, "From PID '%d' - Content in page '#%d' swapped OUT\n",memoryElement->PID, memoryElement->virtualAddress->pag);
 
@@ -1024,7 +1024,7 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID){
 	serializeUMC_Swap(message, buffer, payloadSize);
 
 	//Send message serialized with virtualAddress information
-	send(socketSwap, (void*) buffer, bufferSize,0);
+	sendMessage(&socketSwap, buffer, bufferSize);
 
 	//Receive memory content from SWAP with the virtualAddress->size - On the other side is going to be sending it with that size requested previously
 	int receivedBytes = receiveMessage(&socketSwap, messageRcv, virtualAddress->size);
