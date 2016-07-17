@@ -631,6 +631,10 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 				valorAEnviar = 1;
 				log_info(logNucleo, "Recibi proceso %d mando a bloquear por semaforo: %d \n", (message->processID)%6+1, semaforo);
 				sendMessage(&socketLibre, &valorAEnviar,sizeof(int));// 1 si se bloquea. 0 si no se bloquea
+
+				//TODO recibir PCB del CPU para volver a planificarlo
+				//TODO agregarlo a donde corresponda para volver a enviarlo cuando se desbloquee el semaforo
+
 				//Libero la CPU que ocupaba el proceso
 				liberarCPU(socketLibre);//
 			}else{

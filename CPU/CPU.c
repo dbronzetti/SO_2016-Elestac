@@ -23,7 +23,7 @@ int main(int argc, char *argv[]){
 	}
 
 	//ERROR if not configuration parameter was passed
-	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS TODO => Agregar logs con librerias
+	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS
 
 	//ERROR if not log parameter was passed
 	assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the log file as parameter, if DONT FAILS
@@ -158,6 +158,17 @@ int main(int argc, char *argv[]){
 								log_info(logCPU,"Information from PID '%d' sent to Nucleo... Now I'm going down, but....I'LL BE BACK!!!\n", PCBRecibido->PID);
 								break;
 							}
+						}else if (waitSemActivated){
+
+							//Enviar PCB (indiceStack actualizado) solamente al nucleo si el proceso se bloqueo por wait
+							char* bufferIndiceStack =  malloc(sizeof(PCBRecibido->indiceDeStack->elements_count));
+							serializarListaStack(PCBRecibido->indiceDeStack, bufferIndiceStack);
+
+							//send tamaño de lista indice stack
+							sendMessage(&socketNucleo, (void*) strlen(bufferIndiceStack), sizeof(int));
+							//send lista indice stack
+							sendMessage(&socketNucleo, bufferIndiceStack, strlen(bufferIndiceStack));
+							free(bufferIndiceStack);
 						}
 
 					}else{
@@ -229,6 +240,9 @@ int ejecutarPrograma(){
 
 		serializeCPU_UMC(message, buffer, payloadSize);
 
+		free(message->virtualAddress);
+		free(message);
+
 		//Send information to UMC - message serialized with virtualAddress information
 		sendMessage(&socketUMC, buffer, bufferSize);
 
@@ -279,7 +293,10 @@ int ejecutarPrograma(){
 
 	if(returnCode == EXIT_SUCCESS){
 		analizadorLinea(codigoRecibido, &funciones, &funciones_kernel);
-		ultimoPosicionPC++;
+
+		if(!waitSemActivated){//check if the process was blocked by a wait, in that case the program counter doesn't have to be increased
+			ultimoPosicionPC++;
+		}
 	}
 
 	free(codigoRecibido);
@@ -641,7 +658,6 @@ t_memoryLocation* buscarEnElStackPosicionPagina(t_PCB* pcb){
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
-	//TODO REVISAR Y CONFIRMAR SI ESTA BIEN
 
 	bool condicionVariable(t_vars* unaVariable){
 		return (unaVariable->identificador==identificador_variable);
@@ -660,19 +676,49 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
 }
 
 t_valor_variable dereferenciar(t_puntero direccion_variable){
+	t_valor_variable varValue;
+	int returnCode = EXIT_SUCCESS;//DEFAULT
+	int exitCode = EXIT_SUCCESS;
+	// inform new program to swap and check if it could write it.
+	int bufferSize = 0;
+	int payloadSize = 0;
 
-	//TODO MAL!!! SERIALIZAR A UMC COMO CORRESPONDE (ENVIAR \0 PARA TOTAL DEL CONTENIDO DE LA VARIABLE) ---> SE PUEDE TOMAR COMO EJEMPLO EL ASIGNAR
+	//overwrite page content in swap (swap out)
+	t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
+	message->virtualAddress = (t_memoryLocation*) malloc(sizeof(t_memoryLocation));
+	message->PID = PCBRecibido->PID;
+	message->operation = lectura_pagina;
+	message->virtualAddress = (t_memoryLocation*) direccion_variable;
+	message->virtualAddress->pag += PCBRecibido->cantidadDePaginas;// como voy a leer una variable del stack debo sumarle la cantidad de paginas de codigo.
 
-	t_valor_variable *varValue = malloc(sizeof(t_valor_variable));
-	t_memoryLocation *posicionSenialada = malloc(sizeof(t_memoryLocation));
-	/*memcpy(&posicionSenialada->offset,&direccion_variable,4);
-	memcpy(&posicionSenialada->pag,(&direccion_variable+4),4);
-	memcpy(&posicionSenialada->size,(&direccion_variable+8),4);*/
-	sendMessage(&socketUMC, &direccion_variable, sizeof(t_memoryLocation));
-	char* valorRecibido = NULL;
-	receiveMessage(&socketUMC,valorRecibido,sizeof(int));
-	memcpy(varValue,valorRecibido,4);
-	return *varValue;
+	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(t_memoryLocation);
+	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
+
+	char *buffer = malloc(bufferSize);
+
+	serializeCPU_UMC(message, buffer, payloadSize);
+
+	free(message->virtualAddress);
+	free(message);
+
+	//Send information to UMC - message serialized with virtualAddress information
+	sendMessage(&socketUMC, buffer, bufferSize);
+
+	free(buffer);
+
+	//First answer from UMC is the exit code from the operation
+	exitCode = receiveMessage(&socketUMC,&returnCode, sizeof(exitCode));
+
+	if(returnCode == EXIT_SUCCESS){
+		char* valorRecibido = malloc(sizeof(t_valor_variable));
+		//Receiving information from UMC when the operation was successfully accomplished
+		exitCode = receiveMessage(&socketUMC, valorRecibido, sizeof(t_valor_variable));
+
+		memcpy(&varValue,valorRecibido,sizeof(t_valor_variable));
+		free(valorRecibido);
+	}
+
+	return varValue;
 }
 
 void asignar(t_puntero direccion_variable, t_valor_variable valor){
@@ -688,6 +734,7 @@ void asignar(t_puntero direccion_variable, t_valor_variable valor){
 	message->PID = PCBRecibido->PID;
 	message->operation = escritura_pagina;
 	message->virtualAddress = (t_memoryLocation*) direccion_variable;
+	message->virtualAddress->pag += PCBRecibido->cantidadDePaginas; // agrego cantidad de paginas del codigo para que me guarde en la pagina de stack que quiero
 
 	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(t_memoryLocation);
 	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
@@ -984,7 +1031,7 @@ void waitPrimitive(t_nombre_semaforo identificador_semaforo){
 	free(respuestaNucleo);
 
 	if(respuestaRecibida==1){
-		//TODO devolver PCB al nucleo --> Esto esta bien??? en el nuccleo despues del send NO se espera un receive del pcb
+		waitSemActivated = true;
 	}
 
 }
@@ -1014,32 +1061,6 @@ void signalPrimitive(t_nombre_semaforo identificador_semaforo){
 	string_append(&identificador_semaforo, "\0");
 	sendMessage(&socketNucleo, identificador_semaforo, semaforoLen);
 
-}
-
-//TODO VERIFICAR SI ESTA FUNCION SE USA O SE PUEDE BORRAR
-t_memoryLocation* buscarUltimaPosicionOcupada(t_PCB* pcbEjecutando){
-	t_registroStack* ultimoRegistro = malloc(sizeof(t_registroStack));
-	t_vars* ultimaPosicionDeMemoriaOcupadaVars;
-	t_memoryLocation* ultimaPosicionDeMemoriaOcupadaArgs;
-
-	ultimoRegistro = list_get(pcbEjecutando->indiceDeStack,pcbEjecutando->indiceDeStack->elements_count);
-	ultimaPosicionDeMemoriaOcupadaArgs = list_get(ultimoRegistro->args,ultimoRegistro->args->elements_count);
-	ultimaPosicionDeMemoriaOcupadaVars = list_get(ultimoRegistro->vars,ultimoRegistro->vars->elements_count);
-
-	if(ultimaPosicionDeMemoriaOcupadaArgs->pag > ultimaPosicionDeMemoriaOcupadaVars->direccionValorDeVariable->pag){
-		return ultimaPosicionDeMemoriaOcupadaArgs;
-	}else{
-		return ultimaPosicionDeMemoriaOcupadaVars->direccionValorDeVariable;
-	}
-
-	if(ultimaPosicionDeMemoriaOcupadaArgs->pag==ultimaPosicionDeMemoriaOcupadaVars->direccionValorDeVariable->pag){
-		if(ultimaPosicionDeMemoriaOcupadaArgs->offset>ultimaPosicionDeMemoriaOcupadaVars->direccionValorDeVariable->offset){
-			return ultimaPosicionDeMemoriaOcupadaArgs;
-		}else{
-			return ultimaPosicionDeMemoriaOcupadaVars->direccionValorDeVariable;
-		}
-	}
-	return NULL;
 }
 
 void llamarSinRetorno(t_nombre_etiqueta etiqueta){

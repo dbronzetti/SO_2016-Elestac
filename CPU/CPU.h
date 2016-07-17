@@ -93,6 +93,7 @@ t_log* logCPU;
 t_PCB* PCBRecibido = NULL;
 t_list *listaIndiceEtiquetas = NULL;
 bool SignalActivated = false; //Signal use FALSE by DEFAULT
+bool waitSemActivated = false; //wait sem use FALSE by DEFAULT
 
 int ejecutarPrograma();
 int connectTo(enum_processes processToConnect, int *socketClient);
