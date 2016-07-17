@@ -11,6 +11,7 @@
 #include <commons/collections/list.h>
 #include <commons/string.h>
 #include <commons/log.h>
+#include <ctype.h>
 
 #define PAGE_PRESENT 1
 #define PAGE_NOTPRESENT 0

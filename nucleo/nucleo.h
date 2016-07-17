@@ -22,6 +22,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <math.h>
+#include <ctype.h>
 
 // Estructuras
 typedef struct {
@@ -167,6 +168,8 @@ void processMessageReceived(void *parameter);
 void processCPUMessages(char* messageRcv,int messageSize,int socketLibre);
 
 int connectTo(enum_processes processToConnect, int *socketClient);
+void startNucleoConsole();
+void consoleMessageNucleo();
 
 void iniciarPrograma(int PID, char* codeScript);
 void finalizarPrograma(int PID);

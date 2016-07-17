@@ -12,6 +12,7 @@ int main(int argc, char *argv[]) {
 	pthread_t serverThread;
 	pthread_t serverConsolaThread;
 	pthread_t hiloBloqueados;
+	pthread_t consolaThread;
 
 	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS
 
@@ -54,9 +55,13 @@ int main(int argc, char *argv[]) {
 	//Creo cola de Procesos a Finalizar (por Finalizar PID).
 		colaFinalizar = queue_create();
 
+	//TODO inicializar TODOS los mutex
 	pthread_mutex_init(&activeProcessMutex, NULL);
+	pthread_mutex_init(&mutex_config, NULL);
 
-	//Create thread for server start
+	pthread_create(&consolaThread, NULL, (void*) startNucleoConsole, NULL);
+
+	/*//Create thread for server start
 	pthread_create(&serverThread, NULL, (void*) startServerProg, NULL);
 	pthread_create(&serverConsolaThread, NULL, (void*) startServerCPU, NULL);
 	//Create thread for blocked processes
@@ -69,10 +74,11 @@ int main(int argc, char *argv[]) {
 		log_error(logNucleo, "No server available - shutting down proces!!\n");
 		return EXIT_FAILURE;
 	}
-
-	pthread_join(serverThread, NULL);
+*/
+	pthread_join(consolaThread, NULL);
+	/*pthread_join(serverThread, NULL);
 	pthread_join(serverConsolaThread, NULL);
-	pthread_join(hiloBloqueados, NULL);
+	pthread_join(hiloBloqueados, NULL);*/
 
 	return exitCode;
 }
@@ -1575,4 +1581,67 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 	}
 
 	return exitcode;
+}
+
+void startNucleoConsole(){
+	char command[50];
+	char option[50];
+
+	consoleMessageNucleo();
+
+	while (1){
+		scanf("%s %s", command, option);
+
+		//cleaning screen
+		system("clear");
+
+		int i;
+		//lower case options
+		for(i = 0; option[i] != '\0'; i++){
+			option[i] = tolower(option[i]);
+		}
+
+		if (strcmp(command,"quantum") == 0 ){
+			pthread_mutex_lock(&mutex_config);
+			configNucleo.quantum = atoi(option);
+			pthread_mutex_unlock(&mutex_config);
+			printf("The quantum Nucleo was successfully changed to: %d\n", configNucleo.quantum);
+			log_info(logNucleo, "The quantum Nucleo was successfully changed to: %d\n", configNucleo.quantum);
+
+			printf("\nAhora por favor ingrese un valor de quantum sleep\n");
+			printf("===> quantum_sleep = [OPTIONS]\n");
+			printf("== [OPTIONS]\n");
+			printf("<numericValue>\t::Cantidad de milisegundos por QUANTUM que el sistema debe esperar por cada ejecucion de QUANTUM\n\n");
+			printf("[OPTIONS] =  ");
+			scanf("%s", option);
+
+			pthread_mutex_lock(&mutex_config);
+			configNucleo.quantum_sleep = atoi(option);
+			pthread_mutex_unlock(&mutex_config);
+			printf("The quantum sleep in Nucleo was successfully changed to: %d\n", configNucleo.quantum_sleep);
+
+			log_info(logNucleo, "The quantum sleep in Nucleo was successfully changed to: %d\n", configNucleo.quantum_sleep);
+
+		}else{
+			printf("\nCommand entered NOT recognized: '%s %s'\n", command,option);
+			printf("Please take a look to the correct commands!\n");
+		}
+
+		consoleMessageNucleo();
+
+	}
+
+}
+
+void consoleMessageNucleo(){
+	printf("\n***********************************\n");
+	printf("* Nucleo Console ready for your use! *");
+	printf("\n***********************************\n\n");
+	printf("COMMANDS USAGE:\n\n");
+
+	printf("===> COMMAND:\tquantum [OPTIONS]\n");
+	printf("== [OPTIONS]\n");
+	printf("<numericValue>\t::Cantidad de QUANTUMS por solicitud de ejecucion\n\n");
+
+	printf("Nucleo console >> $ ");
 }
