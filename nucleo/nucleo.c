@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 
 	pthread_create(&consolaThread, NULL, (void*) startNucleoConsole, NULL);
 
-	/*//Create thread for server start
+	//Create thread for server start
 	pthread_create(&serverThread, NULL, (void*) startServerProg, NULL);
 	pthread_create(&serverConsolaThread, NULL, (void*) startServerCPU, NULL);
 	//Create thread for blocked processes
@@ -74,11 +74,11 @@ int main(int argc, char *argv[]) {
 		log_error(logNucleo, "No server available - shutting down proces!!\n");
 		return EXIT_FAILURE;
 	}
-*/
+
 	pthread_join(consolaThread, NULL);
-	/*pthread_join(serverThread, NULL);
+	pthread_join(serverThread, NULL);
 	pthread_join(serverConsolaThread, NULL);
-	pthread_join(hiloBloqueados, NULL);*/
+	pthread_join(hiloBloqueados, NULL);
 
 	return exitCode;
 }
