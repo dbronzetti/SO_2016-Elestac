@@ -1,6 +1,6 @@
 #include "swap.h"
 
-char *fileSwap = NULL;
+char *pathFileSwap = NULL;
 
 int main(int argc, char *argv[]){
 	char *logFile = NULL;
@@ -23,8 +23,8 @@ int main(int argc, char *argv[]){
 		}
 		//check Swap file parameter
 		if (strcmp(argv[i], "-a") == 0){
-			fileSwap = argv[i+1];
-			printf("Swap file: '%s'\n",fileSwap);
+			pathFileSwap = argv[i+1];
+			printf("Swap file: '%s'\n",pathFileSwap);
 		}
 
 	}
@@ -36,16 +36,15 @@ int main(int argc, char *argv[]){
 		assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
 
 	//ERROR if not Log parameter was passed
-		assert(("ERROR - NOT swap file was passed as argument", fileSwap != NULL));//Verifies if was passed the swap file as parameter, if DONT FAILS
+		assert(("ERROR - NOT swap file was passed as argument", pathFileSwap != NULL));//Verifies if was passed the swap file as parameter, if DONT FAILS
 
 	logSwap = log_create(logFile, "SWAP", 0, LOG_LEVEL_TRACE);
-	//configurationFile="/home/utnso/git/tp-2016-1c-YoNoFui/Swap/configuracion.swap";
 	crearArchivoDeConfiguracion(configurationFile);
-	//fileSwap = "/home/utnso/git/tp-2016-1c-YoNoFui/Swap/archivoSwap.txt";
 	crearArchivoDeSwap();
+
 	FILE* archivoSwap;
 	archivoSwap=fopen(nombre_swap,"r+");
-	fseek(archivoSwap,0,SEEK_SET);//TODO probar esta parte, se crea un archivo con otro nombre ("archivoSwap.txtswap.data")
+	fseek(archivoSwap,0,SEEK_SET);
 	fwrite("1",tamanioDePagina,cantidadDePaginas,archivoSwap);
 	char* paginaAEnviar;
 	int socket;
@@ -160,7 +159,7 @@ void destructorBloqueSwap(bloqueSwap* self){
 int agregarProceso(bloqueSwap* unBloque,t_list* unaLista,char* codeScript){
 	/*<----------------------------------------------abroElArchivo----------------------------------------------------->*/
 	char* cadena=string_new();
-	string_append(&cadena,fileSwap);
+	string_append(&cadena,pathFileSwap);
 	string_append(&cadena,nombre_swap);
 	FILE* archivoSwap;
 	archivoSwap=fopen(cadena,"r+");
@@ -259,7 +258,7 @@ void crearArchivoDeSwap(){
 
 	char* cadena=string_new();
 	string_append(&cadena,"dd if=/dev/zero of=");
-	string_append(&cadena, fileSwap);
+	string_append(&cadena, pathFileSwap);
 	string_append(&cadena,nombre_swap);
 	char* segundaParteCadena=string_new();
 	string_append(&segundaParteCadena," bs=");
@@ -294,7 +293,7 @@ bloqueSwap* buscarProcesoAEliminar(int PID,t_list* unaLista){
 char* leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap){
 	bloqueSwap* bloqueEncontrado;
 	char* cadena=string_new();
-	string_append(&cadena,fileSwap);
+	string_append(&cadena,pathFileSwap);
 	string_append(&cadena,nombre_swap);
 	FILE* archivoSwap;
 	archivoSwap=fopen(cadena,"r+");
@@ -312,7 +311,7 @@ char* leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap){
 void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque,t_list* listaSwap){
 	bloqueSwap* bloqueEncontrado;
 	char* cadena=string_new();
-	string_append(&cadena,fileSwap);
+	string_append(&cadena,pathFileSwap);
 	string_append(&cadena,nombre_swap);
 	FILE* archivoSwap;
 	archivoSwap=fopen(cadena,"r+");
@@ -509,7 +508,7 @@ int modificarArchivo(int marcoInicial,int cantDeMarcos,int nuevoMarcoInicial){
 	FILE* archivoSwap;
 	char* textoRelleno=malloc(tamanioDePagina*cantDeMarcos);
 	char* cadena=string_new();
-	string_append(&cadena, fileSwap);
+	string_append(&cadena, pathFileSwap);
 	string_append(&cadena,nombre_swap);
 	archivoSwap=fopen(cadena,"r+");
 	if(archivoSwap==NULL){
