@@ -212,8 +212,7 @@ void handShake (void *parameter){
 				break;
 			}
 			case CONSOLA:{
-			log_info(logNucleo, "Message from '%s': %s\n",
-					getProcessString(message->process), message->message);
+			log_info(logNucleo, "Message from '%s': %s\n", getProcessString(message->process), message->message);
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){
@@ -281,13 +280,13 @@ void processMessageReceived (void *parameter){
 
 				int PID = buscarPIDConsola(serverData->socketClient);
 				if (PID==-1){
-
 					log_error(logNucleo,"No se encontro Consola para el socket: %d \n",serverData->socketClient);
+					//TODO return;  pthread_mutex_unlock(&activeProcessMutex);
 
 				}else if (opFinalizar == -1) { 	//Finaliza Proceso
 					log_info(logNucleo,"Solicitando finalizar el programa para el socket: %d \n", serverData->socketClient);
 					finalizarPid(PID);
-					//OJO con los DEADLOCKS - Si se retorna si desbloquear puede bloquear el proceso.
+					//OJO con los DEADLOCKS - Si se retorna sin desbloquear puede bloquear el proceso.
 					pthread_mutex_unlock(&activeProcessMutex);
 					return;
 				}
@@ -560,6 +559,8 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		atenderCorteQuantum(socketLibre, message->processID);
 		break;}
 	//TODO CHEQUEAR QUE DE ACA HASTA EL FINAL DEL SWITCH (EN CADA CASE) SEA CORRECTO EL MANEJO DE LOS MENSAJES
+	//TODO Desde el CPU se esta enviando int y estoy recibiendo int*, cambiarlo en alguno de los dos lugares
+	//TODO Lo mismo para los mensajes que se envian a la Consola, se esta enviando un int* y la Consola recibe un int
 	case 6:{	//Obtener valor y enviarlo al CPU
 
 		// 1) Recibir tamanio de la variable
@@ -709,7 +710,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 	}
 	case 72:{
 		alertFlag = 1;
-		atenderCorteQuantum(&socketLibre, message->processID);
+		atenderCorteQuantum(socketLibre, message->processID);
 		break;
 	}
 	default:
@@ -988,7 +989,7 @@ void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 	}
 }
 
-//TODO ver como funciona esto con el makeTimer y tener en cuenta que la funcion atenderBloqueados()
+//TODO ver como funciona esto con el makeTimer y tener en cuenta la funcion atenderBloqueados()
 void analizarIO(int sig, siginfo_t *si, void *uc) {
 	int i=0, io;
 	while (configNucleo.io_sleep[i] != NULL) {
