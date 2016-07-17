@@ -64,32 +64,25 @@ int main(int argc, char *argv[]){
 
 void processingMessages(int socketClient){
 	char* mensajeRecibido;
-	char* operacionRecibida;
+	char* structUmcSwap=malloc(sizeof(t_MessageUMC_Swap));
 	char* paginaRecibida;
 	char* mensajeDeError = string_new();
 	string_append(&mensajeDeError,"Error: No se pudo enviar los datos");
-	enum_operationsUMC_SWAP operacionARealizar;
-	receiveMessage(&socketClient,operacionRecibida,sizeof(int));
-	memcpy(&operacionARealizar,&operacionRecibida,4);
-	switch(operacionARealizar){
+	t_MessageUMC_Swap* operacionARealizar;
+	receiveMessage(&socketClient,structUmcSwap,sizeof(int));
+	deserializeSwap_UMC(operacionARealizar,structUmcSwap);
+	switch(operacionARealizar->operation){
 	case agregar_proceso:{
 		bloqueSwap* pedidoRecibidoYDeserializado;
-		nuevo_programa programaRecibido;
+		pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
+		pedidoRecibidoYDeserializado->cantDePaginas=operacionARealizar->cantPages;
 		int valorDeError;
 		int tamanio;
-		char* tamanioSerializado;
 		char* codeScript;
-		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
-		if(valorDeError != -1){
-			//deserializarBloqueSwap(programaRecibido,mensajeRecibido);
-
-			pedidoRecibidoYDeserializado->PID=programaRecibido.PID;
-			pedidoRecibidoYDeserializado->cantDePaginas=programaRecibido.cantidadDePaginas;
-			if(verificarEspacioDisponible(listaSwap)>pedidoRecibidoYDeserializado->cantDePaginas){
+		if(verificarEspacioDisponible(listaSwap)>pedidoRecibidoYDeserializado->cantDePaginas){
 				if(existeElBloqueNecesitado(listaSwap)){
 					//"Recibo el tamaño de codigo del nuevo procesos"
-					receiveMessage(&socketClient,tamanioSerializado,sizeof(int));
-					memcpy(&tamanio,&tamanioSerializado,4);
+					receiveMessage(&socketClient,&tamanio,sizeof(int));
 					//"Recibo el codigo"
 					receiveMessage(&socketClient,codeScript,tamanio);
 					agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
@@ -100,23 +93,19 @@ void processingMessages(int socketClient){
 			}else{
 				log_error(logSwap,"No hay espacio disponible para agregar el bloque. \n");
 			}
-		}else{
 
-			log_error(logSwap,"No se recibio correctamente los datos. \n");
 
-		}
+
 		break;
 	}
 	case finalizar_proceso:{
-		fin_programa procesoAFinalizar;
 		bloqueSwap* pedidoRecibidoYDeserializado;
 		int valorDeError;
 		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
 
 		if(valorDeError != -1){
 
-			//deserializarBloqueSwap(procesoAFinalizar,mensajeRecibido);
-			pedidoRecibidoYDeserializado->PID=procesoAFinalizar.PID;
+			pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
 			eliminarProceso(listaSwap,pedidoRecibidoYDeserializado->PID);
 		}else{
 			log_error(logSwap,"No se recibio correctamente los datos. \n");
@@ -133,8 +122,8 @@ void processingMessages(int socketClient){
 
 		if(valorDeError != -1){
 			//deserializarBloqueSwap(lecturaNueva,mensajeRecibido);
-			pedidoRecibidoYDeserializado->PID=lecturaNueva.PID;
-			pedidoRecibidoYDeserializado->paginaInicial=lecturaNueva.nroPagina;
+			pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
+			pedidoRecibidoYDeserializado->paginaInicial=operacionARealizar->virtualAddress->pag;
 			paginaLeida=leerPagina(pedidoRecibidoYDeserializado,listaSwap);
 			int valorDeError = sendMessage(&socketClient,paginaLeida,tamanioDePagina);
 			if(valorDeError != -1){
@@ -150,18 +139,12 @@ void processingMessages(int socketClient){
 		break;
 	}
 	case escritura_pagina:{
-		escribir_pagina escrituraNueva;
-		bloqueSwap* pedidoRecibidoYDeserializado;
-		int valorDeError;
-		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
-		if(valorDeError != -1){
-			//deserializarBloqueSwap(escrituraNueva,mensajeRecibido);
-			pedidoRecibidoYDeserializado->PID=escrituraNueva.PID;
-			pedidoRecibidoYDeserializado->paginaInicial=escrituraNueva.nroPagina;
-			escribirPagina(escrituraNueva.contenido,pedidoRecibidoYDeserializado,listaSwap);
-		}else{
-			log_error(logSwap,"No se recibio correctamente los datos. \n");
-		}
+			bloqueSwap* pedidoRecibidoYDeserializado;
+			char* paginaAEscribir=malloc(tamanioDePagina);
+			pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
+			pedidoRecibidoYDeserializado->paginaInicial=operacionARealizar->virtualAddress->pag;
+			receiveMessage(&socketClient,paginaAEscribir,tamanioDePagina);
+			escribirPagina(paginaAEscribir,pedidoRecibidoYDeserializado,listaSwap);
 
 		break;
 	}
@@ -203,7 +186,7 @@ int agregarProceso(bloqueSwap* unBloque,t_list* unaLista,char* codeScript){
 	nuevoBloqueVacio->cantDePaginas=elementoEncontrado->cantDePaginas-unBloque->cantDePaginas;
 	nuevoBloqueVacio->tamanioDelBloque=elementoEncontrado->tamanioDelBloque-unBloque->tamanioDelBloque;
 	nuevoBloqueVacio->paginaInicial=elementoEncontrado->paginaInicial+unBloque->cantDePaginas;
-	fseek(archivoSwap,elementoEncontrado->paginaInicial,SEEK_SET);
+	fseek(archivoSwap,elementoEncontrado->paginaInicial*tamanioDePagina,SEEK_SET);
 	fwrite(codeScript,strlen(codeScript),1,archivoSwap);
 	list_remove_and_destroy_by_condition(unaLista,(void*)posibleBloqueAEliminar,(void*)destructorBloqueSwap);
 	list_add(unaLista,(void*)nuevoBloqueVacio);
