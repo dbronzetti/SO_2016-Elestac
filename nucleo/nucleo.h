@@ -40,7 +40,6 @@ typedef struct {
 	char** shared_vars;
 	int* shared_vars_values;
 	int stack_size;
-	int pageSize;
 } t_configFile;
 
 typedef struct {
@@ -114,6 +113,7 @@ int activePID = 0;
 int socketUMC = 0;
 int socketConsola = 0;
 int frameSize = 0;
+int alertFlag = 0;
 
 //Encabezamientos de Funciones Principales
 

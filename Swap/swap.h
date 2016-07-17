@@ -28,8 +28,8 @@
 #include <string.h>
 #include <sys/mman.h>
 #include "commons/config.h"
+#include "commons/log.h"
 #include "stdbool.h"
-
 
 struct bloqueDeMemoria{
 	int PID;
@@ -37,7 +37,6 @@ struct bloqueDeMemoria{
 	int ocupado;
 	int tamanioDelBloque;
 	int paginaInicial;
-
 }typedef bloqueSwap;
 
 struct nuevoPrograma{
@@ -74,6 +73,7 @@ int retardoAcceso;
 char* nombre_swap;
 t_list* listaSwap;
 t_serverData* socketsSwap;
+t_log* logSwap;
 void* mapearArchivoEnMemoria(int offset,int tamanio);
 void destructorBloqueSwap(bloqueSwap* self);
 int agregarProceso(bloqueSwap* unBloque,t_list* unaLista,char* codeScript);

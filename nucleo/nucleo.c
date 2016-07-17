@@ -18,6 +18,7 @@ int main(int argc, char *argv[]) {
 	//get parameter
 	int i;
 	for( i = 0; i < argc; i++){
+		//check config file parameter
 		if (strcmp(argv[i], "-c") == 0){
 			configurationFile = argv[i+1];
 			printf("Configuration File: '%s'\n",configurationFile);
@@ -30,15 +31,15 @@ int main(int argc, char *argv[]) {
 	}
 
 	//ERROR if not configuration parameter was passed
-		assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS
+	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS
 
 	//ERROR if not Log parameter was passed
-		assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
+	assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
 
 	//Creo el archivo de Log
 		logNucleo = log_create(logFile, "NUCLEO", 0, LOG_LEVEL_TRACE);
 	//Creo archivo de configuracion
-		configurationFile = "/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo";
+		//configurationFile = "/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo";
 		crearArchivoDeConfiguracion(configurationFile);
 	//Creo la lista de CPUs
 		listaCPU = list_create();
@@ -349,7 +350,7 @@ void runScript(char* codeScript, int socketConsola){
 	PCB->PID = idProcesos;
 	PCB->ProgramCounter = miMetaData->instruccion_inicio;
 	int contentLen = strlen(codeScript) + 1;	//+1 debido al '\0'
-	PCB->cantidadDePaginas = ceil((double) contentLen/ (double) frameSize);
+	PCB->cantidadDePaginas = (int) ceil((double) contentLen/ (double) frameSize);
 	PCB->StackPointer = 0;
 	PCB->estado = 1;
 	PCB->finalizar = 0;
@@ -706,6 +707,11 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		free(texto);
 		break;
 	}
+	case 72:{
+		alertFlag = 1;
+		atenderCorteQuantum(&socketLibre, message->processID);
+		break;
+	}
 	default:
 		log_error(logNucleo, "Mensaje recibido invalido. \n");
 		//printf("CPU desconectado.\n");
@@ -717,17 +723,25 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 void atenderCorteQuantum(int socketCPU,int PID){
 	//Libero la CPU
-	liberarCPU(socketCPU);
-
+	if (alertFlag == 0){
+		liberarCPU(socketCPU);
+	}else{
+		int pos = buscarCPU(socketCPU);
+		list_remove(listaCPU,pos);
+	}
 	//Cambio el PC del Proceso, le sumo el quantum al PC actual.
 	t_PCB* infoProceso;
 	int buscar = buscarPCB(PID);
 	pthread_mutex_lock(&listadoProcesos);
 	infoProceso = (t_PCB*)list_get(listaProcesos,buscar);
 	pthread_mutex_unlock(&listadoProcesos);
-	int pcnuevo;
-	pcnuevo = infoProceso->ProgramCounter + configNucleo.quantum;
-	infoProceso->ProgramCounter =  pcnuevo;
+
+	//Receiving quantum used by CPU
+	int quantumUsed = 0;
+	receiveMessage(&socketCPU, &quantumUsed, sizeof(int));
+
+	int pcnuevo = infoProceso->ProgramCounter + quantumUsed;
+	infoProceso->ProgramCounter = pcnuevo;
 
 	log_info(logNucleo, "Recibiendo PCB para el PID: %d modificado por el CPU de socket: %d \n",infoProceso->PID, socketCPU);
 
@@ -761,8 +775,8 @@ void atenderCorteQuantum(int socketCPU,int PID){
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
 	datosProceso->PID = PID;
 	datosProceso->ProgramCounter = pcnuevo;
-	if (infoProceso->finalizar == 0){
 
+	if (infoProceso->finalizar == 0){
 		//Cambio el estado del proceso
 		int estado = 1;
 		cambiarEstadoProceso(PID, estado);
@@ -809,8 +823,8 @@ void finalizaProceso(int socket, int PID, int estado) {
 
 	int socketConsola = buscarSocketConsola(PID);
 
-	//Enviar operacion=1 para que la Consola sepa que es un un texto
-	int operacion = 1;
+	//Enviar operacion=3 que imprime texto y exit(0);
+	int operacion = 3;
 	sendMessage(&socketConsola, &operacion, sizeof(int));
 
 	// Envia el tamanio del texto y luego el texto al proceso Consola
@@ -1148,7 +1162,6 @@ int *pideSemaforo(t_nombre_semaforo semaforo) {
 	log_info(logNucleo,"Nucleo, obteniendo semaforo:  %s\n", semaforo);
 
 	while (configNucleo.sem_ids[i] != NULL) {
-		//TODO: mutex confignucleo??
 		if (strcmp(configNucleo.sem_ids[i], semaforo) == 0) {
 
 			//if (configNucleo.sem_ids_values[i] == -1) {return &configNucleo.sem_ids_values[i];}
@@ -1308,7 +1321,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 	int bufferSize = 0;
 	int payloadSize = 0;
 	int contentLen = strlen(codeScript) + 1;	//+1 because of '\0'
-	int cantPages = ceil((double) contentLen /(double) frameSize);
+	int cantPages = (int) ceil((double) contentLen /(double) frameSize);
 
 	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
 
@@ -1402,7 +1415,6 @@ void crearArchivoDeConfiguracion(char *configFile){
 	configNucleo.io_sleep = config_get_array_value(configuration,"IO_SLEEP");
 	configNucleo.shared_vars = config_get_array_value(configuration,"SHARED_VARS");
 	configNucleo.stack_size = config_get_int_value(configuration,"STACK_SIZE");
-	configNucleo.pageSize = config_get_int_value(configuration,"PAGESIZE");
 	int i = 0;
 
 	if(timers!=0){

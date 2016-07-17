@@ -1,13 +1,51 @@
 #include "swap.h"
 
-char* rutaArchivoDeSwap="/home/utnso/git/tp-2016-1c-YoNoFui/Swap/";
-char* configFile="/home/utnso/Escritorio/swapc.txt";
-int main(){
-	crearArchivoDeConfiguracion(configFile);
+char *fileSwap = NULL;
+
+int main(int argc, char *argv[]){
+	char *logFile = NULL;
+	char *configurationFile = NULL;
+
+	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS
+
+	//get parameter
+	int i;
+	for( i = 0; i < argc; i++){
+		//check config file parameter
+		if (strcmp(argv[i], "-c") == 0){
+			configurationFile = argv[i+1];
+			printf("Configuration File: '%s'\n",configurationFile);
+		}
+		//check log file parameter
+		if (strcmp(argv[i], "-l") == 0){
+			logFile = argv[i+1];
+			printf("Log File: '%s'\n",logFile);
+		}
+		//check Swap file parameter
+		if (strcmp(argv[i], "-a") == 0){
+			fileSwap = argv[i+1];
+			printf("Swap file: '%s'\n",fileSwap);
+		}
+
+	}
+
+	//ERROR if not configuration parameter was passed
+		assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS
+
+	//ERROR if not Log parameter was passed
+		assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
+
+	//ERROR if not Log parameter was passed
+		assert(("ERROR - NOT swap file was passed as argument", fileSwap != NULL));//Verifies if was passed the swap file as parameter, if DONT FAILS
+
+	logSwap = log_create(logFile, "SWAP", 0, LOG_LEVEL_TRACE);
+	//configurationFile="/home/utnso/git/tp-2016-1c-YoNoFui/Swap/configuracion.swap";
+	crearArchivoDeConfiguracion(configurationFile);
+	//fileSwap = "/home/utnso/git/tp-2016-1c-YoNoFui/Swap/archivoSwap.txt";
 	crearArchivoDeSwap();
 	FILE* archivoSwap;
 	archivoSwap=fopen(nombre_swap,"r+");
-	fseek(archivoSwap,0,SEEK_SET);
+	fseek(archivoSwap,0,SEEK_SET);//TODO probar esta parte, se crea un archivo con otro nombre ("archivoSwap.txtswap.data")
 	fwrite("1",tamanioDePagina,cantidadDePaginas,archivoSwap);
 	char* paginaAEnviar;
 	int socket;
@@ -60,11 +98,11 @@ void processingMessages(int socketClient){
 					agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
 				}
 			}else{
-				printf("No hay espacio disponible para agregar el bloque");
+				log_error(logSwap,"No hay espacio disponible para agregar el bloque. \n");
 			}
 		}else{
 
-			printf("No se recibio correctamente los datos");
+			log_error(logSwap,"No se recibio correctamente los datos. \n");
 
 		}
 		break;
@@ -79,9 +117,9 @@ void processingMessages(int socketClient){
 
 			//deserializarBloqueSwap(procesoAFinalizar,mensajeRecibido);
 			pedidoRecibidoYDeserializado->PID=procesoAFinalizar.PID;
-			eliminarProceso(listaSwap,pedidoRecibidoYDeserializado);
+			eliminarProceso(listaSwap,pedidoRecibidoYDeserializado->PID);
 		}else{
-			printf("No se recibio correctamente los datos");
+			log_error(logSwap,"No se recibio correctamente los datos. \n");
 		}
 		break;
 	}
@@ -100,14 +138,14 @@ void processingMessages(int socketClient){
 			paginaLeida=leerPagina(pedidoRecibidoYDeserializado,listaSwap);
 			int valorDeError = sendMessage(&socketClient,paginaLeida,tamanioDePagina);
 			if(valorDeError != -1){
-				printf("Se enviaron correctamente los datos");
+				log_info(logSwap,"Se enviaron correctamente los datos. \n");
 			}else{
-				printf("No se enviaron correctamente los datos");
+				log_error(logSwap,"No se enviaron correctamente los datos. \n");
 				sendMessage(&socketClient,mensajeDeError,string_length(mensajeDeError));
 
 			}
 		}else{
-			printf("No se recibio correctamente los datos");
+			log_error(logSwap,"No se recibio correctamente los datos. \n");
 		}
 		break;
 	}
@@ -122,12 +160,12 @@ void processingMessages(int socketClient){
 			pedidoRecibidoYDeserializado->paginaInicial=escrituraNueva.nroPagina;
 			escribirPagina(escrituraNueva.contenido,pedidoRecibidoYDeserializado,listaSwap);
 		}else{
-			printf("No se recibio correctamente los datos");
+			log_error(logSwap,"No se recibio correctamente los datos. \n");
 		}
 
 		break;
 	}
-	default: printf("La operacion recibida es invalida");
+	default: log_warning(logSwap,"La operacion recibida es invalida. \n");
 	}
 }
 
@@ -139,12 +177,12 @@ void destructorBloqueSwap(bloqueSwap* self){
 int agregarProceso(bloqueSwap* unBloque,t_list* unaLista,char* codeScript){
 	/*<----------------------------------------------abroElArchivo----------------------------------------------------->*/
 	char* cadena=string_new();
-	string_append(&cadena,rutaArchivoDeSwap);
+	string_append(&cadena,fileSwap);
 	string_append(&cadena,nombre_swap);
 	FILE* archivoSwap;
 	archivoSwap=fopen(cadena,"r+");
 	if(archivoSwap==NULL){
-		printf("No se abrio correctamente el archivo");
+		log_error(logSwap,"No se abrio correctamente el archivo. \n");
 	}
 	bloqueSwap* elementoEncontrado;
 	bloqueSwap* nuevoBloqueVacio;
@@ -238,7 +276,7 @@ void crearArchivoDeSwap(){
 
 	char* cadena=string_new();
 	string_append(&cadena,"dd if=/dev/zero of=");
-	string_append(&cadena, rutaArchivoDeSwap);
+	string_append(&cadena, fileSwap);
 	string_append(&cadena,nombre_swap);
 	char* segundaParteCadena=string_new();
 	string_append(&segundaParteCadena," bs=");
@@ -263,7 +301,7 @@ bloqueSwap* buscarProcesoAEliminar(int PID,t_list* unaLista){
 			return bloqueObtenido;
 		}
 	}
-	printf("No se encontro un bloque para eliminar");
+	log_error(logSwap,"No se encontro un bloque para eliminar. \n");
 	bloqueSwap* bloqueNulo=NULL;
 	return bloqueNulo;
 
@@ -273,12 +311,12 @@ bloqueSwap* buscarProcesoAEliminar(int PID,t_list* unaLista){
 char* leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap){
 	bloqueSwap* bloqueEncontrado;
 	char* cadena=string_new();
-	string_append(&cadena,rutaArchivoDeSwap);
+	string_append(&cadena,fileSwap);
 	string_append(&cadena,nombre_swap);
 	FILE* archivoSwap;
 	archivoSwap=fopen(cadena,"r+");
 	if(archivoSwap==NULL){
-		printf("No se abrio correctamente el archivo");
+		log_error(logSwap,"No se abrio correctamente el archivo. \n");
 	}
 	char* paginaAEnviar=malloc(sizeof(tamanioDePagina));
 	bloqueEncontrado=buscarProcesoAEliminar(bloqueDeSwap->PID,listaSwap);
@@ -291,12 +329,12 @@ char* leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap){
 void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque,t_list* listaSwap){
 	bloqueSwap* bloqueEncontrado;
 	char* cadena=string_new();
-	string_append(&cadena,rutaArchivoDeSwap);
+	string_append(&cadena,fileSwap);
 	string_append(&cadena,nombre_swap);
 	FILE* archivoSwap;
 	archivoSwap=fopen(cadena,"r+");
 	if(archivoSwap==NULL){
-		printf("No se abrio correctamente el archivo");
+		log_error(logSwap,"No se abrio correctamente el archivo. \n");
 	}
 	bloqueEncontrado=buscarProcesoAEliminar(unBloque->PID,listaSwap);
 	fseek(archivoSwap,bloqueEncontrado->paginaInicial*tamanioDePagina+unBloque->paginaInicial*tamanioDePagina,SEEK_SET);
@@ -352,10 +390,11 @@ void crearArchivoDeConfiguracion(char* configFile){
 	configuracionDeSwap=config_create(configFile);
 	puertoEscucha=config_get_int_value(configuracionDeSwap,"PUERTO_ESCUCHA");
 	nombre_swap=config_get_string_value(configuracionDeSwap,"NOMBRE_SWAP");
-	retardoCompactacion=config_get_int_value(configuracionDeSwap,"RETARDO_COMPACTACION");
-	retardoAcceso=config_get_int_value(configuracionDeSwap,"RETARDO_ACCESO");
-	tamanioDePagina=config_get_int_value(configuracionDeSwap,"TAMANIO_PAGINA");
 	cantidadDePaginas=config_get_int_value(configuracionDeSwap,"CANTIDAD_PAGINAS");
+	tamanioDePagina=config_get_int_value(configuracionDeSwap,"TAMANIO_PAGINA");
+	retardoAcceso=config_get_int_value(configuracionDeSwap,"RETARDO_ACCESO");
+	retardoCompactacion=config_get_int_value(configuracionDeSwap,"RETARDO_COMPACTACION");
+
 }
 
 void startServer(){
@@ -363,13 +402,18 @@ void startServer(){
 	t_serverData serverData;
 
 	exitCode = openServerConnection(puertoEscucha, &serverData.socketServer);
-	printf("socketServer: %d\n",serverData.socketServer);
+	log_info(logSwap,"socketServer: %d\n",serverData.socketServer);
 
 	//If exitCode == 0 the server connection is opened and listening
 	if (exitCode == 0) {
-		puts ("The server is opened.");
+		log_info(logSwap, "The server is opened.\n");
 
 		exitCode = listen(serverData.socketServer, SOMAXCONN);
+
+		if (exitCode < 0 ){
+			log_error(logSwap,"Failed to listen server Port.\n");
+			return;
+		}
 
 		while (1){
 			newClients((void*) &serverData);
@@ -387,7 +431,8 @@ void newClients (void *parameter){
 	exitCode = acceptClientConnection(&serverData->socketServer, &serverData->socketClient);
 
 	if (exitCode == EXIT_FAILURE){
-		printf("There was detected an attempt of wrong connection\n");//TODO => Agregar logs con librerias
+		log_warning(logSwap,"There was detected an attempt of wrong connection\n");
+		close(serverData->socketClient);
 	}else{
 
 		handShake(parameter);
@@ -409,11 +454,9 @@ void handShake (void *parameter){
 
 	//Receive message using the size read before
 	memcpy(&messageSize, messageRcv, sizeof(int));
-	//printf("messageSize received: %d\n",messageSize);
+	//log_info(logSwap,"messageSize received: %d\n",messageSize);
 	messageRcv = realloc(messageRcv,messageSize);
 	receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
-
-	printf("bytes received in message: %d\n",receivedBytes);
 
 	//starting handshake with client connected
 	t_MessageGenericHandshake *message = malloc(sizeof(t_MessageGenericHandshake));
@@ -421,12 +464,12 @@ void handShake (void *parameter){
 
 	//Now it's checked that the client is not down
 	if ( receivedBytes == 0 ){
-		perror("The client went down while handshaking!"); //TODO => Agregar logs con librerias
-		printf("Please check the client: %d is down!\n", serverData->socketClient);
+		log_error(logSwap,"The client went down while handshaking! - Please check the client '%d' is down!\n", serverData->socketClient);
+		close(serverData->socketClient);
 	}else{
 		switch ((int) message->process){
 		case UMC:{
-			printf("%s\n",message->message);
+			log_info(logSwap,"Message from '%s': %s\n", getProcessString(message->process), message->message);
 
 			exitCode = sendClientAcceptation(&serverData->socketClient);
 
@@ -440,8 +483,7 @@ void handShake (void *parameter){
 			break;
 		}
 		default:{
-			perror("Process not allowed to connect");//TODO => Agregar logs con librerias
-			printf("Invalid process '%d' tried to connect to UMC\n",(int) message->process);
+			log_error(logSwap,"Process not allowed to connect - Invalid process '%s' tried to connect to UMC\n", getProcessString(message->process));
 			close(serverData->socketClient);
 			break;
 		}
@@ -462,7 +504,7 @@ bloqueSwap* buscarBloqueALlenar(bloqueSwap* unBloque,t_list* unaLista){
 			return bloqueObtenido;
 		}
 	}
-	printf("No se encontro un bloque para llenar");
+	log_error(logSwap,"No se encontro un bloque para llenar. \n");
 	return unBloque;
 
 }
@@ -484,11 +526,11 @@ int modificarArchivo(int marcoInicial,int cantDeMarcos,int nuevoMarcoInicial){
 	FILE* archivoSwap;
 	char* textoRelleno=malloc(tamanioDePagina*cantDeMarcos);
 	char* cadena=string_new();
-	string_append(&cadena, rutaArchivoDeSwap);
+	string_append(&cadena, fileSwap);
 	string_append(&cadena,nombre_swap);
 	archivoSwap=fopen(cadena,"r+");
 	if(archivoSwap==NULL){
-		printf("no se pudo abrir el archivo");
+		log_error(logSwap,"no se pudo abrir el archivo. \n");
 	}
 	int i;
 	for(i=0;i<cantDeMarcos*tamanioDePagina;i++){
