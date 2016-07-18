@@ -56,6 +56,7 @@ struct bloqueDeControl{
 	t_list *indiceDeCodigo;//cola o pila con registros del tipo t_registroIndiceCodigo
 	char *indiceDeEtiquetas;
 	t_list *indiceDeStack;//cola o pila con registros del tipo t_registroStack
+	int finDePrograma;//index from list indiceDeCodigo where is the "end" from main
 }typedef t_PCB;
 
 typedef struct datosEntradaSalida {
