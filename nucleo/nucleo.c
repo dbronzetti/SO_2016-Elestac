@@ -363,6 +363,29 @@ void runScript(char* codeScript, int socketConsola){
 	armarIndiceDeEtiquetas(PCB, miMetaData);
 	PCB->indiceDeStack = list_create();
 
+	//Get last program line from main
+	int index = miMetaData->instruccion_inicio ;
+	t_registroIndiceCodigo* instruccionActual = malloc(sizeof(t_registroIndiceCodigo));
+
+	while (index <miMetaData->instrucciones_size){
+
+		instruccionActual = (t_registroIndiceCodigo*) list_get(PCB->indiceDeCodigo, index);
+
+		char *line = malloc(instruccionActual->longitudInstruccionEnBytes);
+		memcpy(line, codeScript + instruccionActual->inicioDeInstruccion, instruccionActual->longitudInstruccionEnBytes);
+
+		if (string_starts_with(line,TEXT_END)){
+			break;
+		}
+
+		free(line);
+		index++;
+	}
+
+	free(instruccionActual);
+
+	PCB->finDePrograma = index;
+
 	idProcesos++;
 
 	pthread_mutex_lock(&listadoProcesos);
@@ -716,6 +739,19 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 		free(tamanio);
 		free(texto);
+		break;
+	}
+	case 13:{ //Get last main line from a PID
+		//get PCB from a given PID
+		t_PCB* infoProceso;
+		int buscar = buscarPCB(message->processID);
+		pthread_mutex_lock(&listadoProcesos);
+		infoProceso = (t_PCB*)list_get(listaProcesos,buscar);
+		pthread_mutex_unlock(&listadoProcesos);
+
+		//send back the last line information to the CPU requestor
+		sendMessage(&socketLibre, &infoProceso->finDePrograma, sizeof(infoProceso->finDePrograma));
+
 		break;
 	}
 	case 72:{
