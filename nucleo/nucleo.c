@@ -1267,11 +1267,9 @@ void bloqueoSemaforo(int processID, t_nombre_semaforo semaforo){
 void armarIndiceDeCodigo(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
 	int i;
 
-	t_registroIndiceCodigo* registroAAgregar = malloc(sizeof(t_registroIndiceCodigo));
-
 	//First instruction
 	for (i=0; i < miMetaData->instrucciones_size ; i++){
-
+		t_registroIndiceCodigo* registroAAgregar = malloc(sizeof(t_registroIndiceCodigo));
 		registroAAgregar->inicioDeInstruccion= miMetaData->instrucciones_serializado[i].start;
 		registroAAgregar->longitudInstruccionEnBytes = miMetaData->instrucciones_serializado[i].offset;
 		list_add(unBloqueControl->indiceDeCodigo,(void*)registroAAgregar);
