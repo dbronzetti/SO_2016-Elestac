@@ -225,48 +225,41 @@ void crearArchivoDeConfiguracion(char *configFile){
 
 //TODO Recibo del Nucleo por partes => no haria falta deserializarlo ?? Verificar si hace falta modificar esta funcion
 int reconocerOperacion() {
-	char* tamanioSerializado=malloc(sizeof(int));
-	int tamanio;
-	int operacion;
-	char* operacionSerializada=malloc(sizeof(int));
+	int* tamanio = malloc(sizeof(int));
+	int* operacion = malloc(sizeof(int));
 	int exitCode = EXIT_FAILURE;
-	exitCode = receiveMessage(&socketNucleo, operacionSerializada, sizeof(int));
-	memcpy(&operacion, &operacionSerializada, sizeof(int));
+	exitCode = receiveMessage(&socketNucleo, operacion, sizeof(int));
 	switch (operacion) {
 	case 1: {	//Recibo del Nucleo el tamanio y el texto a imprimir
-		exitCode = receiveMessage(&socketNucleo, tamanioSerializado,sizeof(int));
-		memcpy(&tamanio, &tamanioSerializado, sizeof(int));
-		char* textoImprimir=malloc(tamanio);
-		exitCode = receiveMessage(&socketNucleo, (void*) textoImprimir,sizeof(tamanio));
-		log_info(logConsola,"Texto: %s", textoImprimir);
+		exitCode = receiveMessage(&socketNucleo, tamanio, sizeof(int));
+		char* textoImprimir = malloc(*tamanio);
+		exitCode = receiveMessage(&socketNucleo, (void*) textoImprimir,sizeof(*tamanio));
+		log_info(logConsola, "Texto: %s", textoImprimir);
 		free(textoImprimir);
 		break;
 	}
 	case 2: {	//Recibo del Nucleo el valor a mostrar
-		char* valorAMostrarSerializado=malloc(sizeof(t_valor_variable));
-		t_valor_variable valorAMostrar;
-		exitCode = receiveMessage(&socketNucleo, valorAMostrarSerializado,sizeof(t_valor_variable));
-		memcpy(&valorAMostrar, &valorAMostrarSerializado, sizeof(t_valor_variable));
-		log_info(logConsola,"Valor Recibido:%i", valorAMostrar);
-		free(valorAMostrarSerializado);
+		t_valor_variable* valor = malloc(sizeof(t_valor_variable));
+		exitCode = receiveMessage(&socketNucleo, valor,sizeof(t_valor_variable));
+		log_info(logConsola, "Valor Recibido:%i", valor);
+		free(valor);
 		break;
 	}
-	case 3: {	//Recibo del Nucleo el tamanio y el texto a imprimir, y luego finalizo proceso.
-		exitCode = receiveMessage(&socketNucleo, tamanioSerializado,sizeof(int));
-		memcpy(&tamanio, &tamanioSerializado, sizeof(int));
-		char* textoImprimir=malloc(tamanio);
-		exitCode = receiveMessage(&socketNucleo, (void*) textoImprimir,sizeof(tamanio));
-		log_info(logConsola,"Texto: %s", textoImprimir);
+	case 3: {//Recibo del Nucleo el tamanio y el texto a imprimir, y luego finalizo proceso.
+		exitCode = receiveMessage(&socketNucleo, tamanio, sizeof(int));
+		char* textoImprimir = malloc(*tamanio);
+		exitCode = receiveMessage(&socketNucleo, (void*) textoImprimir,sizeof(*tamanio));
+		log_info(logConsola, "Texto: %s", textoImprimir);
 		free(textoImprimir);
-		exit(0);//EXIT_SUCCESS
+		exit(0);	//EXIT_SUCCESS
 		break;
 	}
-	default:{
+	default: {
 		log_error(logConsola, "No se pudo recibir ninguna operacion valida");
 		break;
 	}
 	}
-	free(tamanioSerializado);
-	free(operacionSerializada);
+	free(tamanio);
+	free(operacion);
 	return exitCode;
 }

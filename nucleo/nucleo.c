@@ -564,9 +564,6 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		log_info(logNucleo, "Se procesa la atencion del corte por Quantum");
 		atenderCorteQuantum(socketLibre, message->processID);
 		break;}
-	//TODO CHEQUEAR QUE DE ACA HASTA EL FINAL DEL SWITCH (EN CADA CASE) SEA CORRECTO EL MANEJO DE LOS MENSAJES
-	//TODO Desde el CPU se esta enviando int y estoy recibiendo int*, cambiarlo en alguno de los dos lugares
-	//TODO Lo mismo para los mensajes que se envian a la Consola, se esta enviando un int* y la Consola recibe un int
 	case 6:{	//Obtener valor y enviarlo al CPU
 
 		// 1) Recibir tamanio de la variable
@@ -634,6 +631,18 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 				//TODO recibir PCB del CPU para volver a planificarlo
 				//TODO agregarlo a donde corresponda para volver a enviarlo cuando se desbloquee el semaforo
+
+				int* tamanioStack = malloc(sizeof(int));
+				receiveMessage(&socketLibre, tamanioStack, sizeof(int));
+
+				char* listaStackSerializada = malloc(sizeof(*tamanioStack));
+				receiveMessage(&socketLibre, listaStackSerializada, sizeof(int));
+
+				t_list* listaIndiceDeStack = list_create();
+				deserializarListaStack(listaIndiceDeStack, listaStackSerializada);
+				//TODO list_add();
+
+				bloqueoSemaforo(message->processID, semaforo);
 
 				//Libero la CPU que ocupaba el proceso
 				liberarCPU(socketLibre);//
