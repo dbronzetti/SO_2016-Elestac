@@ -104,8 +104,8 @@ t_list* listaProcesos;
 
 //Variables de Colas
 t_queue* colaListos;
-t_queue* colaBloqueados;
 t_queue* colaFinalizar;
+t_queue** colas_IO;
 t_queue** colas_semaforos;
 
 //Variables Globales
@@ -123,7 +123,6 @@ void planificarProceso();
 void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso,t_serverData* serverData);
 void finalizaProceso(int socket, int PID, int estado);
 void atenderCorteQuantum(int socket, int PID);
-void atenderBloqueados();
 
 //Encabezamiento de Funciones Secundarias
 
@@ -132,12 +131,16 @@ int buscarPCB(int pid);
 void cambiarEstadoProceso(int PID, int estado);
 void liberarCPU(int socket);
 int buscarCPU(int socket);
+int buscarConsola(int socket);
 int buscarPIDConsola(int socket);
 int buscarSocketConsola(int PID);
 int estaEjecutando(int PID);
 void actualizarPC(int PID, int ProgramCounter);
 void crearArchivoDeConfiguracion(char* configFile);
 void *initialize(int tamanio);
+void imprimirArray(char** array);
+void imprimirValores(int* array, int i, int arrayLen);
+void imprimirTimer(timer_t** timer, int i, int arrayLen);
 
 //Encabezamiento de Funciones de Stack
 
@@ -151,7 +154,7 @@ void grabarValor(t_nombre_compartida variable, t_valor_variable* valor);
 void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
 void deserializarES(t_es* datos, char* bufferRecived);
 static int makeTimer (timer_t *timerID, int expireMS);
-void analizarIO(int sig, siginfo_t *si, void *uc);
+void atenderIO(int sig, siginfo_t *si, void *uc);
 
 int *pideSemaforo(t_nombre_semaforo semaforo);
 void grabarSemaforo(t_nombre_semaforo semaforo,int valor);

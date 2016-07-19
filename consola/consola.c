@@ -223,12 +223,11 @@ void crearArchivoDeConfiguracion(char *configFile){
 
 }
 
-//TODO Recibo del Nucleo por partes => no haria falta deserializarlo ?? Verificar si hace falta modificar esta funcion
 int reconocerOperacion() {
 	int* tamanio = malloc(sizeof(int));
-	int* operacion = malloc(sizeof(int));
+	int operacion = -1;
 	int exitCode = EXIT_FAILURE;
-	exitCode = receiveMessage(&socketNucleo, operacion, sizeof(int));
+	exitCode = receiveMessage(&socketNucleo, &operacion, sizeof(int));
 	switch (operacion) {
 	case 1: {	//Recibo del Nucleo el tamanio y el texto a imprimir
 		exitCode = receiveMessage(&socketNucleo, tamanio, sizeof(int));
