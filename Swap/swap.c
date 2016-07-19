@@ -55,9 +55,6 @@ int main(int argc, char *argv[]){
 	listaSwap=list_create();
 	list_add(listaSwap,(void*)bloqueInicial);
 	startServer();
-	newClients(socketsSwap);
-	handShake(socketsSwap);
-	processingMessages(socketsSwap->socketClient);
 	return 1;
 }
 
@@ -457,7 +454,8 @@ void handShake (void *parameter){
 
 			if (exitCode == EXIT_SUCCESS){
 
-				//TODO start receiving request
+				//TODO start receiving request -
+				//TODO LEO: ESTO TIENE QUE LOOPEAR INFINITAMENTE!!!
 				processingMessages(serverData->socketClient);
 
 			}
