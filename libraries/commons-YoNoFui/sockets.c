@@ -827,8 +827,8 @@ int socketClient;
  */
 
 void cleanIndiceDeStack(t_registroStack* registroS){
-	list_clean_and_destroy_elements(registroS->args,(void*)destruirArgs);
-	list_clean_and_destroy_elements(registroS->vars,(void*)destruirVars);
+	list_destroy_and_destroy_elements(registroS->args,(void*)destruirArgs);
+	list_destroy_and_destroy_elements(registroS->vars,(void*)destruirVars);
 	free(registroS->retVar);
 	free(registroS);
 }

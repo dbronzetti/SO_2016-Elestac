@@ -196,7 +196,7 @@ int ejecutarPrograma(){
 	int exitCode = EXIT_SUCCESS;
 	t_registroIndiceCodigo* instruccionActual = malloc(sizeof(t_registroIndiceCodigo));
 
-	instruccionActual = (t_registroIndiceCodigo*) list_get(PCBRecibido->indiceDeCodigo, ultimoPosicionPC);
+	instruccionActual = list_get(PCBRecibido->indiceDeCodigo, ultimoPosicionPC);
 
 	int i;
 	int offsetInstruccionesSize = 0;
@@ -205,7 +205,7 @@ int ejecutarPrograma(){
 	//For getting the correct page in which the current instruction has to be located we need the offset from all the previous lines executed
 	//NOTE: we follow the code line because doesn't matter if there was a function call (this is because after a function call all the variables in there are deleted from memory)
 	for(i = 0; i < instruccionActual->inicioDeInstruccion; i++){
-		instruccion = (t_registroIndiceCodigo*) list_get(PCBRecibido->indiceDeCodigo, i);
+		instruccion = list_get(PCBRecibido->indiceDeCodigo, i);
 		offsetInstruccionesSize += instruccion->longitudInstruccionEnBytes;
 	}
 
@@ -286,6 +286,8 @@ int ejecutarPrograma(){
 			remainingInstruccion -= frameSize; //reducing the remaining size to be read on next request
 
 			free(bufferCode);
+
+			exitCode = EXIT_SUCCESS;
 		}
 
 		free(buffer);
@@ -296,6 +298,10 @@ int ejecutarPrograma(){
 
 		if(!waitSemActivated){//check if the process was blocked by a wait, in that case the program counter doesn't have to be increased
 			ultimoPosicionPC++;
+		}
+
+		if(functionCall){//Reseting functionCall boolean if analizadorLinea executed a function call
+			functionCall = false;
 		}
 	}
 
@@ -519,26 +525,89 @@ void serializarES(t_es *value, t_nombre_dispositivo buffer, int valueSize){
 
 void finalizar(void){
 
-	//TODO 1) ANALIZA SI ES EL FINAL DEL PROGRAMA
-	//TODO 2) RETORNAR A PUNTO PREVIO DE PROGRAM COUNTER Y ELIMINAR REGISTRO DE STACK CORRESPONDIENTE A LA FUNCION (BUSCAR EL QUE TENGA RETPOS)
+	//Request to nucleo fin programa information by PID
+	t_MessageCPU_Nucleo* message = malloc(sizeof(t_MessageCPU_Nucleo));
+	message->operacion = 13;
+	message->processID = PCBRecibido->PID;
 
-	log_info(logCPU, "Proceso %d - Finalizado correctamente", PCBRecibido->PID);
-	//Envia aviso que finaliza correctamente el proceso a NUCLEO
-	t_MessageCPU_Nucleo* respuestaFinOK = malloc(sizeof(t_MessageCPU_Nucleo));
-	respuestaFinOK->operacion = 2;
-	respuestaFinOK->processID = PCBRecibido->PID;
-
-	int payloadSize = sizeof(respuestaFinOK->operacion) + sizeof(respuestaFinOK->processID);
+	int payloadSize = sizeof(message->operacion) + sizeof(message->processID);
 	int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
 	char* bufferRespuesta = malloc(bufferSize);
-	serializeCPU_Nucleo(respuestaFinOK, bufferRespuesta, payloadSize);
+	serializeCPU_Nucleo(message, bufferRespuesta, payloadSize);
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
 	free(bufferRespuesta);
 
-	//This is for breaking the loop from QUANTUM
-	PCBRecibido->finalizar = 1;
+	//Received fin programa information from Nucleo
+	int finDePrograma = -1;
+	receiveMessage(&socketNucleo, &finDePrograma, sizeof(finDePrograma));
+
+	//ANALIZA SI ES EL FINAL DEL PROGRAMA
+	if(finDePrograma == ultimoPosicionPC){
+		//Fin Programa main
+		log_info(logCPU, "Proceso %d - Finalizado correctamente", PCBRecibido->PID);
+
+		//Envia aviso que finaliza correctamente el proceso a NUCLEO
+		t_MessageCPU_Nucleo* respuestaFinOK = malloc(sizeof(t_MessageCPU_Nucleo));
+		respuestaFinOK->operacion = 2;
+		respuestaFinOK->processID = PCBRecibido->PID;
+
+		int payloadSize = sizeof(respuestaFinOK->operacion) + sizeof(respuestaFinOK->processID);
+		int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
+
+		char* bufferRespuesta = malloc(bufferSize);
+		serializeCPU_Nucleo(respuestaFinOK, bufferRespuesta, payloadSize);
+		sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+
+		free(bufferRespuesta);
+
+		//This is for breaking the loop from QUANTUM
+		PCBRecibido->finalizar = 1;
+
+	}else{
+		//RETORNAR A PUNTO PREVIO DE PROGRAM COUNTER Y ELIMINAR REGISTRO DE STACK CORRESPONDIENTE A LA FUNCION (BUSCAR EL REGISTRO MAS RECIENTE QUE TENGA RETPOS)
+
+		t_registroStack* registroARegresar;
+
+		bool getStackForReturning(t_registroStack* unRegistro){
+			//look for the registers to be
+			return (unRegistro->retVar != NULL);
+		}
+
+		bool orderLatestStackForReturning(t_registroStack *unRegistro, t_registroStack *siguienteRegistro) {
+			return unRegistro->pos > siguienteRegistro->pos;
+		}
+
+		//Creating a new list with all stack registers that have retVar values
+		t_list * returningList = list_create();
+		returningList = list_filter(PCBRecibido->indiceDeStack,(void*)getStackForReturning);
+
+		//Sort the list created from last to first
+		//This is for having the nearest stack element for returning to the current executing stack register, this prevents wrong returning if a function calls another function inside
+		list_sort(returningList,(void*)orderLatestStackForReturning);
+
+		//get the first element after sorting the list from last to first
+		registroARegresar = list_get(returningList, 0);
+
+		//Returning to program counter from function call
+		ultimoPosicionPC = registroARegresar->retPos;
+
+		//destroy the list created without erasing the elements from the stack
+		list_destroy(returningList);
+
+		int i;
+		int elementsToRemove = PCBRecibido->indiceDeStack->elements_count - registroARegresar->pos; //Calculating how many elements need to be deleted
+
+		// destroy elements from registroARegresar (inclusive) to last stack position
+		for (i = 0; i < elementsToRemove ; i++ ){
+			//Always remove last stack element
+			//TODO Ver si es necesario enviar a la UMC que pise estas paginas que se estan borrando
+			int lastListElementIndex = PCBRecibido->indiceDeStack->elements_count - 1;
+			list_remove_and_destroy_element(PCBRecibido->indiceDeStack, lastListElementIndex, (void*) destruirRegistroIndiceDeStack);
+		}
+
+	}
 
 }
 
@@ -552,34 +621,42 @@ t_puntero definirVariable(t_nombre_variable identificador){
 	if(!list_is_empty(PCBRecibido->indiceDeStack)){
 
 		ultimaPosicionOcupada = buscarEnElStackPosicionPagina(PCBRecibido);
+		cargarValoresNuevaPosicion(ultimaPosicionOcupada, variableAAgregar->direccionValorDeVariable);
 
-		if( (ultimoPosicionPC == PCBRecibido->ProgramCounter) && (ultimaPosicionOcupada != NULL)){ //check if is the first row in stack
-			t_registroStack* ultimoRegistro = malloc(sizeof(t_registroStack));
+		t_registroStack* ultimoRegistro;
+		ultimoRegistro = list_get(PCBRecibido->indiceDeStack, PCBRecibido->indiceDeStack->elements_count);
 
-			cargarValoresNuevaPosicion(ultimaPosicionOcupada, variableAAgregar->direccionValorDeVariable);
+		if(functionCall){
 
-			ultimoRegistro = list_get(PCBRecibido->indiceDeStack, PCBRecibido->indiceDeStack->elements_count);
-			list_add(ultimoRegistro->vars, (void*)variableAAgregar);
-
-			posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
-
-			free(ultimoRegistro);
-		}else{//executing different program counter
-			t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
-			registroAAgregar->retVar = NULL; //Memory position to return BY DEFAULT
-			registroAAgregar->retPos = -1; //DEFAULT VALUE
-			registroAAgregar->args = list_create();
-			registroAAgregar->vars = list_create();
-			registroAAgregar->pos = PCBRecibido->indiceDeStack->elements_count - 1;
-
-			cargarValoresNuevaPosicion(ultimaPosicionOcupada, variableAAgregar->direccionValorDeVariable);
-
-			//Every time a record to IndiceStack is created have to be loaded all its variables
-			list_add(registroAAgregar->vars,(void*)variableAAgregar);
-
-			list_add(PCBRecibido->indiceDeStack,registroAAgregar);
+			//adding arguments if is a function call
+			list_add(ultimoRegistro->args, (void*)variableAAgregar);
 
 			posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
+
+		}else{
+			if (ultimoPosicionPC == PCBRecibido->ProgramCounter){
+
+				//add vars to same list if executing the same line
+				list_add(ultimoRegistro->vars, (void*)variableAAgregar);
+
+				posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
+			}else{
+				//add a new register to Indice Stack if is a different line
+				t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
+				registroAAgregar->retVar = NULL; //Memory position to return BY DEFAULT
+				registroAAgregar->retPos = -1; //DEFAULT VALUE
+				registroAAgregar->args = list_create();
+				registroAAgregar->vars = list_create();
+				registroAAgregar->pos = PCBRecibido->indiceDeStack->elements_count - 1;
+
+				//Every time a record to IndiceStack is created have to be loaded all its variables
+				list_add(registroAAgregar->vars,(void*)variableAAgregar);
+
+				list_add(PCBRecibido->indiceDeStack,registroAAgregar);
+
+				posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
+
+			}
 		}
 
 	}else{
@@ -629,29 +706,36 @@ void cargarValoresNuevaPosicion(t_memoryLocation* ultimaPosicionOcupada, t_memor
 
 }
 
+// BEFORE calling this function must be ensure "!list_is_empty(PCBRecibido->indiceDeStack)"
 t_memoryLocation* buscarEnElStackPosicionPagina(t_PCB* pcb){
 
-	t_memoryLocation* ultimaPosicionLlena = malloc(sizeof(t_memoryLocation));
+	t_memoryLocation* ultimaPosicionLlena;
+	t_registroStack* ultimoRegistro;
 
-	if(!list_is_empty(pcb->indiceDeStack)){//first row in stack
-		t_registroStack* ultimoRegistro = malloc(sizeof(t_registroStack));
-		ultimoRegistro = list_get(pcb->indiceDeStack, pcb->indiceDeStack->elements_count -1 );
+	ultimoRegistro = list_get(pcb->indiceDeStack, pcb->indiceDeStack->elements_count -1 );
 
-		if(list_is_empty(ultimoRegistro->args)){//first row in stack
+	if(ultimoRegistro->pos == 0){//first row in stack
+		t_vars* ultimaRegistroVars = NULL;
+		ultimaRegistroVars = list_get(ultimoRegistro->vars, ultimoRegistro->vars->elements_count -1);
+		ultimaPosicionLlena = ultimaRegistroVars->direccionValorDeVariable;
+
+	}else if(functionCall){// check if definir variable was called after llamarConRetorno
+		if (list_is_empty(ultimoRegistro->args)){
 			t_vars* ultimaRegistroVars = NULL;
 			ultimaRegistroVars = list_get(ultimoRegistro->vars, ultimoRegistro->vars->elements_count -1);
-			memcpy(ultimaPosicionLlena, ultimaRegistroVars->direccionValorDeVariable, sizeof(t_memoryLocation));
+			ultimaPosicionLlena = ultimaRegistroVars->direccionValorDeVariable;
 		}else{
-			if (list_is_empty(ultimoRegistro->vars)){
-				ultimaPosicionLlena = list_get(ultimoRegistro->args, ultimoRegistro->args->elements_count -1);
-			}else{
-				t_vars* ultimaRegistroVars = NULL;
-				ultimaRegistroVars = list_get(ultimoRegistro->vars, ultimoRegistro->vars->elements_count -1);
-				memcpy(ultimaPosicionLlena, ultimaRegistroVars->direccionValorDeVariable, sizeof(t_memoryLocation));
-			}
+			ultimaPosicionLlena = list_get(ultimoRegistro->args, ultimoRegistro->args->elements_count -1);
 		}
 
-		free(ultimoRegistro);
+	}else{
+		if (list_is_empty(ultimoRegistro->vars)){
+			ultimaPosicionLlena = list_get(ultimoRegistro->args, ultimoRegistro->args->elements_count -1);
+		}else{
+			t_vars* ultimaRegistroVars = NULL;
+			ultimaRegistroVars = list_get(ultimoRegistro->vars, ultimoRegistro->vars->elements_count -1);
+			ultimaPosicionLlena = ultimaRegistroVars->direccionValorDeVariable;
+		}
 	}
 
 	return ultimaPosicionLlena;
@@ -848,6 +932,8 @@ void irAlLabel(t_nombre_etiqueta etiqueta){
 //AFTER THIS FUNCTION IS ALWAYS CALLED definirVariable
 void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 
+	functionCall = true; //activating functionCall for adding arguments to stack
+
 	//Saving context and adding new entry to indiceStack
 	t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
 	registroAAgregar->retVar = malloc(sizeof(t_memoryLocation));
@@ -865,16 +951,6 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 		registroAAgregar->pos = 0;
 	}
 
-	t_memoryLocation* ultimaPosicionOcupada = NULL;
-	ultimaPosicionOcupada = buscarEnElStackPosicionPagina(PCBRecibido);
-
-	//WE SUPPOSED THAT ALWAYS THE ARGS CREATION IS GOING TO BE THE FIRST ONE (before vargs records)
-	t_memoryLocation* nuevoRegistroArgs = malloc(sizeof(t_memoryLocation));
-
-	cargarValoresNuevaPosicion(ultimaPosicionOcupada, nuevoRegistroArgs);
-
-	list_add(registroAAgregar->args,(void*)nuevoRegistroArgs);
-
 	list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
 	//Cambiar de program counter segun etiqueta --> Se llama directamente a llamarSinRetorno ya que realiza el cambio de etiqueta
@@ -888,8 +964,19 @@ void retornar(t_valor_variable retorno){
 	t_registroStack* registroActual;
 
 	bool condicionRetorno(t_registroStack* unRegistro){
+		//TODO Leo: esto esta mal... RegistroARegresar no va a tener ningun valor nunca porque no se carga con ningun registro antes de hacer esta comparacion. Por favor volver a pensarlo
 		return (unRegistro->retPos == registroARegresar->pos);
 	}
+
+	//TODO Leo: lo que esta aca abajo tambien esta to-do mal porque esta funcion NO RETORNA el program counter, esta primitiva ejecuta las lineas del tipo "return f"... lo que esta hecho es un error conceptual de la primitiva
+	//Lo que deberia hacer es:
+	/*	1) buscar ultimo registro del IndiceDeStack
+	 * 	2) buscar la variable del return
+	 * 	3) pedir a UMC el contenido de esa variable (lectura con la serializacion adecuada)
+	 * 	4) Buscar registro del stack en donde me diga donde tengo que regresar (para esto podes guiarte con lo que hize en finalizar() )
+	 * 	5) copiar el contenido de la variable pedida a la UMC dentro de retVar del registro que se obtuvo en 4)
+	 * 	6) enviar a la UMC que pise el contenido de la posicion de memoria retVar (escritura con la serializacion adecuada)
+	 */
 
 	registroARegresar = (t_registroStack*)list_find(PCBRecibido->indiceDeStack,(void*)condicionRetorno);
 	ultimoPosicionPC = registroARegresar->retPos;
