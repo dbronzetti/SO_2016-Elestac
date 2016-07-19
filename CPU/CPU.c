@@ -299,6 +299,10 @@ int ejecutarPrograma(){
 		if(!waitSemActivated){//check if the process was blocked by a wait, in that case the program counter doesn't have to be increased
 			ultimoPosicionPC++;
 		}
+
+		if(functionCall){//Reseting functionCall boolean if analizadorLinea executed a function call
+			functionCall = false;
+		}
 	}
 
 	free(codigoRecibido);
@@ -617,34 +621,42 @@ t_puntero definirVariable(t_nombre_variable identificador){
 	if(!list_is_empty(PCBRecibido->indiceDeStack)){
 
 		ultimaPosicionOcupada = buscarEnElStackPosicionPagina(PCBRecibido);
+		cargarValoresNuevaPosicion(ultimaPosicionOcupada, variableAAgregar->direccionValorDeVariable);
 
-		if( (ultimoPosicionPC == PCBRecibido->ProgramCounter) && (ultimaPosicionOcupada != NULL)){ //check if is the first row in stack
-			t_registroStack* ultimoRegistro = malloc(sizeof(t_registroStack));
+		t_registroStack* ultimoRegistro;
+		ultimoRegistro = list_get(PCBRecibido->indiceDeStack, PCBRecibido->indiceDeStack->elements_count);
 
-			cargarValoresNuevaPosicion(ultimaPosicionOcupada, variableAAgregar->direccionValorDeVariable);
+		if(functionCall){
 
-			ultimoRegistro = list_get(PCBRecibido->indiceDeStack, PCBRecibido->indiceDeStack->elements_count);
-			list_add(ultimoRegistro->vars, (void*)variableAAgregar);
-
-			posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
-
-			free(ultimoRegistro);
-		}else{//executing different program counter
-			t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
-			registroAAgregar->retVar = NULL; //Memory position to return BY DEFAULT
-			registroAAgregar->retPos = -1; //DEFAULT VALUE
-			registroAAgregar->args = list_create();
-			registroAAgregar->vars = list_create();
-			registroAAgregar->pos = PCBRecibido->indiceDeStack->elements_count - 1;
-
-			cargarValoresNuevaPosicion(ultimaPosicionOcupada, variableAAgregar->direccionValorDeVariable);
-
-			//Every time a record to IndiceStack is created have to be loaded all its variables
-			list_add(registroAAgregar->vars,(void*)variableAAgregar);
-
-			list_add(PCBRecibido->indiceDeStack,registroAAgregar);
+			//adding arguments if is a function call
+			list_add(ultimoRegistro->args, (void*)variableAAgregar);
 
 			posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
+
+		}else{
+			if (ultimoPosicionPC == PCBRecibido->ProgramCounter){
+
+				//add vars to same list if executing the same line
+				list_add(ultimoRegistro->vars, (void*)variableAAgregar);
+
+				posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
+			}else{
+				//add a new register to Indice Stack if is a different line
+				t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
+				registroAAgregar->retVar = NULL; //Memory position to return BY DEFAULT
+				registroAAgregar->retPos = -1; //DEFAULT VALUE
+				registroAAgregar->args = list_create();
+				registroAAgregar->vars = list_create();
+				registroAAgregar->pos = PCBRecibido->indiceDeStack->elements_count - 1;
+
+				//Every time a record to IndiceStack is created have to be loaded all its variables
+				list_add(registroAAgregar->vars,(void*)variableAAgregar);
+
+				list_add(PCBRecibido->indiceDeStack,registroAAgregar);
+
+				posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
+
+			}
 		}
 
 	}else{
@@ -694,29 +706,36 @@ void cargarValoresNuevaPosicion(t_memoryLocation* ultimaPosicionOcupada, t_memor
 
 }
 
+// BEFORE calling this function must be ensure "!list_is_empty(PCBRecibido->indiceDeStack)"
 t_memoryLocation* buscarEnElStackPosicionPagina(t_PCB* pcb){
 
-	t_memoryLocation* ultimaPosicionLlena = malloc(sizeof(t_memoryLocation));
+	t_memoryLocation* ultimaPosicionLlena;
+	t_registroStack* ultimoRegistro;
 
-	if(!list_is_empty(pcb->indiceDeStack)){//first row in stack
-		t_registroStack* ultimoRegistro = malloc(sizeof(t_registroStack));
-		ultimoRegistro = list_get(pcb->indiceDeStack, pcb->indiceDeStack->elements_count -1 );
+	ultimoRegistro = list_get(pcb->indiceDeStack, pcb->indiceDeStack->elements_count -1 );
 
-		if(list_is_empty(ultimoRegistro->args)){//first row in stack
+	if(ultimoRegistro->pos == 0){//first row in stack
+		t_vars* ultimaRegistroVars = NULL;
+		ultimaRegistroVars = list_get(ultimoRegistro->vars, ultimoRegistro->vars->elements_count -1);
+		ultimaPosicionLlena = ultimaRegistroVars->direccionValorDeVariable;
+
+	}else if(functionCall){// check if definir variable was called after llamarConRetorno
+		if (list_is_empty(ultimoRegistro->args)){
 			t_vars* ultimaRegistroVars = NULL;
 			ultimaRegistroVars = list_get(ultimoRegistro->vars, ultimoRegistro->vars->elements_count -1);
-			memcpy(ultimaPosicionLlena, ultimaRegistroVars->direccionValorDeVariable, sizeof(t_memoryLocation));
+			ultimaPosicionLlena = ultimaRegistroVars->direccionValorDeVariable;
 		}else{
-			if (list_is_empty(ultimoRegistro->vars)){
-				ultimaPosicionLlena = list_get(ultimoRegistro->args, ultimoRegistro->args->elements_count -1);
-			}else{
-				t_vars* ultimaRegistroVars = NULL;
-				ultimaRegistroVars = list_get(ultimoRegistro->vars, ultimoRegistro->vars->elements_count -1);
-				memcpy(ultimaPosicionLlena, ultimaRegistroVars->direccionValorDeVariable, sizeof(t_memoryLocation));
-			}
+			ultimaPosicionLlena = list_get(ultimoRegistro->args, ultimoRegistro->args->elements_count -1);
 		}
 
-		free(ultimoRegistro);
+	}else{
+		if (list_is_empty(ultimoRegistro->vars)){
+			ultimaPosicionLlena = list_get(ultimoRegistro->args, ultimoRegistro->args->elements_count -1);
+		}else{
+			t_vars* ultimaRegistroVars = NULL;
+			ultimaRegistroVars = list_get(ultimoRegistro->vars, ultimoRegistro->vars->elements_count -1);
+			ultimaPosicionLlena = ultimaRegistroVars->direccionValorDeVariable;
+		}
 	}
 
 	return ultimaPosicionLlena;
@@ -913,6 +932,8 @@ void irAlLabel(t_nombre_etiqueta etiqueta){
 //AFTER THIS FUNCTION IS ALWAYS CALLED definirVariable
 void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 
+	functionCall = true; //activating functionCall for adding arguments to stack
+
 	//Saving context and adding new entry to indiceStack
 	t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
 	registroAAgregar->retVar = malloc(sizeof(t_memoryLocation));
@@ -929,16 +950,6 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 	}else{
 		registroAAgregar->pos = 0;
 	}
-
-	t_memoryLocation* ultimaPosicionOcupada = NULL;
-	ultimaPosicionOcupada = buscarEnElStackPosicionPagina(PCBRecibido);
-
-	//WE SUPPOSED THAT ALWAYS THE ARGS CREATION IS GOING TO BE THE FIRST ONE (before vargs records)
-	t_memoryLocation* nuevoRegistroArgs = malloc(sizeof(t_memoryLocation));
-
-	cargarValoresNuevaPosicion(ultimaPosicionOcupada, nuevoRegistroArgs);
-
-	list_add(registroAAgregar->args,(void*)nuevoRegistroArgs);
 
 	list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
