@@ -1,6 +1,10 @@
-[INFO] 21:27:38:940 SWAP/(10261:10261): socketServer: 5
+[INFO] 23:20:00:280 SWAP/(17444:17444): socketServer: 4
 
-[INFO] 21:27:40:884 SWAP/(10261:10261): The server is opened.
+[INFO] 23:20:00:300 SWAP/(17444:17444): The server is opened.
 
-[INFO] 21:30:53:516 SWAP/(10261:10261): Message from 'UMC': The process 'UMC' is trying to connect you!
+[INFO] 23:22:44:934 SWAP/(17505:17505): socketServer: 4
+
+[INFO] 23:22:44:934 SWAP/(17505:17505): The server is opened.
+
+[INFO] 23:28:40:442 SWAP/(17505:17505): Message from 'UMC': The process 'UMC' is trying to connect you!
 

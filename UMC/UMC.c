@@ -449,7 +449,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 					case ACCEPTED:{
 						switch(processToConnect){
 							case SWAP:{
-								log_info(UMCLog, "Connected to NUCLEO - Message: %s\n",message->message);
+								log_info(UMCLog, "Connected to SWAP - Message: %s\n",message->message);
 								break;
 							}
 							default:{

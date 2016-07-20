@@ -206,7 +206,6 @@ void handShake (void *parameter){
 		switch ((int) message->process){
 			case CPU:{
 				log_info(logNucleo,"Message from '%s': %s\n", getProcessString(message->process), message->message);
-				close(serverData->socketClient);
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){// Si uso connectTo => debo considerar este bloque
@@ -220,7 +219,7 @@ void handShake (void *parameter){
 				break;
 			}
 			case CONSOLA:{
-			log_info(logNucleo, "Message from '%s': %s\n", getProcessString(message->process), message->message);
+				log_info(logNucleo, "Message from '%s': %s\n", getProcessString(message->process), message->message);
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){
@@ -1307,6 +1306,7 @@ void bloqueoSemaforo(int processID, t_nombre_semaforo semaforo){
 			pthread_mutex_lock(&cSemaforos);
 			queue_push(colas_semaforos[i], proceso);
 			pthread_mutex_unlock(&cSemaforos);
+			log_info(logNucleo,"Se bloquea el PID: %d, por semaforo: %s \n",processID, semaforo);
 			return;
 		}
 		i++;
@@ -1467,18 +1467,20 @@ void crearArchivoDeConfiguracion(char *configFile){
 	configNucleo.ip_umc = config_get_string_value(configuration,"IP_UMC");
 	configNucleo.puerto_umc = config_get_int_value(configuration,"PUERTO_UMC");
 	configNucleo.quantum = config_get_int_value(configuration,"QUANTUM");
+	printf("quantum = %d \n", configNucleo.quantum);
 	configNucleo.quantum_sleep = config_get_int_value(configuration,"QUANTUM_SLEEP");
+	printf("quantum_sleep = %d \n", configNucleo.quantum_sleep);
 	configNucleo.sem_ids = config_get_array_value(configuration,"SEM_IDS");
-	printf("sem_ids = ");
-	imprimirArray(configNucleo.sem_ids);
+	//printf("sem_ids = ");
+	//imprimirArray(configNucleo.sem_ids);
 	configNucleo.sem_init = config_get_array_value(configuration,"SEM_INIT");
-	printf("sem_init = ");
-	imprimirArray(configNucleo.sem_init);
+	//printf("sem_init = ");
+	//imprimirArray(configNucleo.sem_init);
 	configNucleo.io_ids = config_get_array_value(configuration,"IO_IDS");
 	configNucleo.io_sleep = config_get_array_value(configuration,"IO_SLEEP");
 	configNucleo.shared_vars = config_get_array_value(configuration,"SHARED_VARS");
-	printf("shared_vars = ");
-	imprimirArray(configNucleo.shared_vars);
+	//printf("shared_vars = ");
+	//imprimirArray(configNucleo.shared_vars);
 	configNucleo.stack_size = config_get_int_value(configuration,"STACK_SIZE");
 	printf("stack_size = %d \n", configNucleo.stack_size);
 

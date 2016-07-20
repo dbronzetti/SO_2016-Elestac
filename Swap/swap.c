@@ -41,11 +41,11 @@ int main(int argc, char *argv[]){
 	logSwap = log_create(logFile, "SWAP", 0, LOG_LEVEL_TRACE);
 	crearArchivoDeConfiguracion(configurationFile);
 	crearArchivoDeSwap();
-
-	FILE* archivoSwap;
+	//TODO sacar lo que esta aca abajo para que no tire error en las pruebas
+	/*FILE* archivoSwap;
 	archivoSwap=fopen(nombre_swap,"r+");
 	fseek(archivoSwap,0,SEEK_SET);
-	fwrite("1",tamanioDePagina,cantidadDePaginas,archivoSwap);
+	fwrite("1",tamanioDePagina,cantidadDePaginas,archivoSwap);*/
 	char* paginaAEnviar;
 	int socket;
 	bloqueSwap* bloqueInicial=malloc(sizeof(bloqueSwap));

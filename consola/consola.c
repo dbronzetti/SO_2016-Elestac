@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
 	char* codeScript = string_new();
 	int exitCode = EXIT_FAILURE;//por default EXIT_FAILURE
 	char inputTeclado[250];
-	log_info(logConsola,"antes de conectarme\n");
+
 	exitCode = connectTo(NUCLEO, &socketNucleo);
 	if (exitCode == EXIT_SUCCESS) {
 		log_info(logConsola,"CONSOLA connected to NUCLEO successfully\n");
@@ -51,8 +51,6 @@ int main(int argc, char **argv) {
 		log_error(logConsola,"No server available - shutting down proces!!\n");
 		return EXIT_FAILURE;
 	}
-
-	log_info(logConsola,"despues de conectarme\n");
 
 	int tamanioArchivo;
 	enum_processes fromProcess = CONSOLA;
@@ -64,11 +62,11 @@ int main(int argc, char **argv) {
 		char ** comando = string_split(inputTeclado, " ");
 		switch (reconocerComando(comando[0])) {
 		case 1: {
-			log_info(logConsola,"Comando Reconocido.\n");
+			printf("Comando Reconocido.\n");
 
 			codeScript = leerArchivoYGuardarEnCadena(&tamanioArchivo);
-			log_info(logConsola,"Codigo del programa: % .\n", codeScript);
-			log_info(logConsola,"Tamanio del archivo: %d .\n", tamanioArchivo);
+			printf("Codigo del programa: %s .\n", codeScript);
+			printf("Tamanio del archivo: %d .\n", tamanioArchivo);
 
 			string_append(&codeScript,"\0");// "\0" para terminar el string
 			int programCodeLen = tamanioArchivo + 1; //+1 por el '\0'
@@ -85,14 +83,14 @@ int main(int argc, char **argv) {
 			break;
 		}
 		case 2: {
-			log_info(logConsola,"Comando Reconocido.\n");
+			printf("Comando Reconocido.\n");
 			//Envia el tamanio y el fromProcess solamente porque el programa no es necesario para finalizar
 			sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
 			sendMessage(&socketNucleo, &fromProcess, sizeof(int));
 			break;
 		}
 		case 3: {
-			log_info(logConsola,"Comando Reconocido.\n");
+			printf("Comando Reconocido.\n");
 			exit(-1);
 			break;
 		}
@@ -120,7 +118,7 @@ void* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
 	FILE* archivo=NULL;
 
 	int descriptorArchivo;
-	log_info(logConsola,"Ingrese archivo a ejecutar.\n");
+	printf("Ingrese archivo a ejecutar.\n");
 	char nombreDelArchivo[60];
 	scanf("%s", nombreDelArchivo);
 	archivo = fopen(nombreDelArchivo, "r");
@@ -131,6 +129,7 @@ void* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
 	lseek(descriptorArchivo,0,SEEK_SET);
 	if (archivo == NULL) {
 		log_error(logConsola,"Error al abrir el archivo.\n");
+		printf("Error al abrir el archivo.\n");
 	} else {
 		size_t count = 1;
 		fread(textoDeArchivo,*tamanioDeArchivo,count,archivo);
@@ -259,6 +258,5 @@ int reconocerOperacion() {
 	}
 	}
 	free(tamanio);
-	free(operacion);
 	return exitCode;
 }
