@@ -55,6 +55,9 @@ int main(int argc, char *argv[]){
 	listaSwap=list_create();
 	list_add(listaSwap,(void*)bloqueInicial);
 	startServer();
+	while(1){
+		processingMessages(socketsSwap->socketClient);
+	}
 	return 1;
 }
 

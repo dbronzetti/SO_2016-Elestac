@@ -962,12 +962,17 @@ void retornar(t_valor_variable retorno){
 
 	t_registroStack* registroARegresar;
 	t_registroStack* registroActual;
-
-	bool condicionRetorno(t_registroStack* unRegistro){
-		//TODO Leo: esto esta mal... RegistroARegresar no va a tener ningun valor nunca porque no se carga con ningun registro antes de hacer esta comparacion. Por favor volver a pensarlo
-		return (unRegistro->retPos == registroARegresar->pos);
-	}
-
+	registroActual=list_get(PCBRecibido->indiceDeStack,PCBRecibido->StackPointer);
+	t_MessageCPU_UMC* mensajeUMC;
+	char* mensajeSerializado=malloc(sizeof(t_MessageCPU_UMC));
+	t_valor_variable valorRecibido;
+	mensajeUMC->PID=PCBRecibido->PID;
+	mensajeUMC->virtualAddress->pag=registroActual->retVar->pag;
+	mensajeUMC->virtualAddress->offset=registroActual->retVar->offset;
+	mensajeUMC->virtualAddress->size=registroActual->retVar->size;
+	serializeCPU_UMC(mensajeUMC,mensajeSerializado,sizeof(t_MessageCPU_UMC));
+	sendMessage(socketUMC,mensajeSerializado,sizeof(t_MessageCPU_UMC));
+	sendMessage(socketUMC,retorno,sizeof(int));
 	//TODO Leo: lo que esta aca abajo tambien esta to-do mal porque esta funcion NO RETORNA el program counter, esta primitiva ejecuta las lineas del tipo "return f"... lo que esta hecho es un error conceptual de la primitiva
 	//Lo que deberia hacer es:
 	/*	1) buscar ultimo registro del IndiceDeStack
@@ -977,25 +982,6 @@ void retornar(t_valor_variable retorno){
 	 * 	5) copiar el contenido de la variable pedida a la UMC dentro de retVar del registro que se obtuvo en 4)
 	 * 	6) enviar a la UMC que pise el contenido de la posicion de memoria retVar (escritura con la serializacion adecuada)
 	 */
-
-	registroARegresar = (t_registroStack*)list_find(PCBRecibido->indiceDeStack,(void*)condicionRetorno);
-	ultimoPosicionPC = registroARegresar->retPos;
-	PCBRecibido->StackPointer = registroARegresar->pos;
-	registroActual = list_get(PCBRecibido->indiceDeStack,PCBRecibido->StackPointer);
-
-	char* valorRetorno = malloc(sizeof(registroActual->retVar));
-	int offset = 0;
-
-	//1) Send memory location to UMC
-	serializeMemoryLocation(registroActual->retVar, valorRetorno, &offset);
-	sendMessage(&socketUMC, valorRetorno, sizeof(registroActual));
-
-	//2) Send value to UMC (variable values are always int)
-	valorRetorno = realloc(valorRetorno, sizeof(t_valor_variable));
-	memcpy(valorRetorno, &retorno, sizeof(t_valor_variable));
-	sendMessage(&socketUMC, valorRetorno, sizeof(t_valor_variable));
-
-	free(valorRetorno);
 }
 
 void imprimir(t_valor_variable valor_mostrar){
