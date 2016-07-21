@@ -114,7 +114,7 @@ void startServerCPU(){
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
 	t_serverData serverData;
 
-	exitCode = openServerConnection(configNucleo.puerto_cpu, &serverData.socketServer);
+exitCode = openServerConnection(configNucleo.puerto_cpu, &serverData.socketServer);
 	log_info(logNucleo, "SocketServer: %d\n",serverData.socketServer);
 
 	//If exitCode == 0 the server connection is opened and listening
@@ -209,21 +209,23 @@ void handShake (void *parameter){
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){// Si uso connectTo => debo considerar este bloque
-					//Sending stacksize to CPU
+					//Sending stackSize to CPU
 					sendMessage(&serverData->socketClient, &configNucleo.stack_size, sizeof(configNucleo.stack_size));
 					//Adding CPU socket to list
 					t_datosCPU *datosCPU = malloc(sizeof(t_datosCPU));
 					datosCPU->numSocket = serverData->socketClient;
+					datosCPU->estadoCPU = 0;
 					pthread_mutex_lock(&listadoCPU);
 					list_add(listaCPU, (void*)datosCPU);
 					pthread_mutex_unlock(&listadoCPU);
+					log_info(logNucleo, "se agrego CPU: %d a la listaCPU cuyo size es: %d\n",datosCPU->numSocket, list_size(listaCPU));
 				}
 
 				break;
 			}
 			case CONSOLA:{
 				log_info(logNucleo, "Message from '%s': %s\n", getProcessString(message->process), message->message);
-				exitCode = sendClientAcceptation(&serverData->socketClient);//todo brkpoint
+				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){
 
@@ -267,16 +269,14 @@ void processMessageReceived (void *parameter){
 	char *messageRcv = malloc(sizeof(messageSize));
 	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(messageSize));
 
-	log_info(logNucleo, "despues del 1er rcv: tamanio recibido en int* messageRcv: %s cuyos bytes recibidos :%d \n", messageRcv, receivedBytes);
-
 	if ( receivedBytes > 0 ){
 
 		//Get Payload size
 		memcpy(&messageSize, messageRcv, sizeof(messageSize));
+		log_info(logNucleo, "Tamanio messageSize recibido: %d \n", messageSize);
 
 		//Receive process from which the message is going to be interpreted
 		enum_processes fromProcess;
-		log_info(logNucleo, "despues del 2do rcv: recibido como int* entonces *fromProcess: %d\n", fromProcess);
 		messageRcv = realloc(messageRcv, sizeof(fromProcess));
 		receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(fromProcess));
 		memcpy(&fromProcess, messageRcv, sizeof(fromProcess));
@@ -285,7 +285,7 @@ void processMessageReceived (void *parameter){
 
 		switch (fromProcess){
 			case CONSOLA:{
-				log_info(logNucleo, "Processing CONSOLA message received\n");
+				log_info(logNucleo, "Processing %s message received\n", getProcessString(fromProcess));
 				pthread_mutex_lock(&activeProcessMutex);
 				/*int* tamanio = malloc(sizeof(int));
 				receiveMessage(&serverData->socketClient, tamanio, sizeof(int));*/
@@ -317,7 +317,7 @@ void processMessageReceived (void *parameter){
 				break;
 			}
 			case CPU:{
-				log_info(logNucleo, "Processing CPU message received\n");
+				log_info(logNucleo, "Processing %s message received\n", getProcessString(fromProcess));
 				pthread_mutex_lock(&activeProcessMutex);
 				processCPUMessages(messageRcv, messageSize, serverData->socketClient);
 				free(parameter);
@@ -366,10 +366,9 @@ void runScript(char* codeScript, int socketConsola){
 	PCB->StackPointer = 0;
 	PCB->estado = 1;
 	PCB->finalizar = 0;
-	log_info(logNucleo,"se inicializan los campos que no son listas\n.");
-	log_info(logNucleo,"Cantidad de paginas que ocupa el codigo:%d\n.",PCB->cantidadDePaginas);
+	log_info(logNucleo,"se inicializan los campos que no son listas\n");
+	log_info(logNucleo,"Cantidad de paginas que ocupa el codigo: %d\n",PCB->cantidadDePaginas);
 
-	PCB->indiceDeEtiquetas = string_new();
 	PCB->indiceDeCodigo = list_create();
 
 	armarIndiceDeCodigo(PCB, miMetaData);
@@ -380,7 +379,6 @@ void runScript(char* codeScript, int socketConsola){
 	//Get last program line from main
 	int index = miMetaData->instruccion_inicio ;
 	t_registroIndiceCodigo* instruccionActual = malloc(sizeof(t_registroIndiceCodigo));
-
 
 	while (index <miMetaData->instrucciones_size){
 
@@ -407,7 +405,7 @@ void runScript(char* codeScript, int socketConsola){
 	pthread_mutex_lock(&listadoProcesos);
 	list_add(listaProcesos,(void*)PCB);
 	pthread_mutex_unlock(&listadoProcesos);
-	log_info(logNucleo, "myProcess %d - Iniciado  Script: %s",PCB->PID, codeScript);
+	log_info(logNucleo, "myProcess %d - Iniciado  Script: \n %s \n",PCB->PID, codeScript);
 
 	//Agrego a la Cola de Listos
 	datosProceso->ProgramCounter = PCB->ProgramCounter;
@@ -468,6 +466,7 @@ void planificarProceso() {
 		contextoProceso->quantum = configNucleo.quantum;
 		contextoProceso->quantum_sleep=configNucleo.quantum_sleep;
 		pthread_mutex_unlock(&mutex_config);
+		log_info(logNucleo,"Nucleo se prepara para enviar informacion del processID: %d al proceso CPU \n",datosProceso->PID);
 
 		enviarMsjCPU(datosPCB, contextoProceso, serverData);
 	} else {
@@ -931,6 +930,7 @@ int buscarCPULibre() {
 	int cantCPU, i = 0;
 	t_datosCPU* datosCPU;
 	cantCPU = list_size(listaCPU);
+	log_info(logNucleo, "size de listaCPU: %d\n",list_size(listaCPU));
 	for (i = 0; i < cantCPU; i++) {
 		pthread_mutex_lock(&listadoCPU);
 		datosCPU = (t_datosCPU*) list_get(listaCPU, 0);
@@ -1348,6 +1348,7 @@ void armarIndiceDeCodigo(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
 
 void armarIndiceDeEtiquetas(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
 
+	unBloqueControl->indiceDeEtiquetas = string_new();
 	strcpy(unBloqueControl->indiceDeEtiquetas, miMetaData->etiquetas);
 
 	log_error(logNucleo,"'indiceDeEtiquetas' size: %d\n", miMetaData->etiquetas_size);
@@ -1396,7 +1397,7 @@ void finalizarPid(int pid){
 }
 
 void iniciarPrograma(int PID, char *codeScript) {
-	log_info(logNucleo,"Aviso al proceso UMC el inicio del programa %s cuyo processID asignado es: %d \n", codeScript, PID);
+	log_info(logNucleo,"Para el processID: %d, aviso al proceso UMC el inicio  el programa: \n %s \n", PID, codeScript);
 	int bufferSize = 0;
 	int payloadSize = 0;
 	int contentLen = strlen(codeScript) + 1;	//+1 because of '\0'
@@ -1410,10 +1411,15 @@ void iniciarPrograma(int PID, char *codeScript) {
 
 	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->cantPages);
 	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize;
+
+	log_info(logNucleo, "payloadSize a enviar a la UMC: %d", payloadSize);
+	log_info(logNucleo, "bufferSize a enviar a la UMC: %d", bufferSize);
+
 	char *buffer = malloc(bufferSize);
 
 	//Serializar mensaje
 	serializeNucleo_UMC(message, buffer, payloadSize);
+
 
 	//1) Enviar info a la UMC - message serializado
 	sendMessage(&socketUMC, buffer, bufferSize);
@@ -1426,6 +1432,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 	sendMessage(&socketUMC, (void*) codeScript, contentLen);
 
 	free(message);
+	free(buffer);
 
 }
 
