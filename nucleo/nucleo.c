@@ -70,13 +70,13 @@ int main(int argc, char *argv[]) {
 	pthread_create(&serverThread, NULL, (void*) startServerProg, NULL);
 	pthread_create(&serverConsolaThread, NULL, (void*) startServerCPU, NULL);
 
-	exitCode = connectTo(UMC,&socketUMC);
+	/*exitCode = connectTo(UMC,&socketUMC);
 	if (exitCode == EXIT_SUCCESS) {
 		log_info(logNucleo, "NUCLEO connected to UMC successfully\n");
 	}else{
 		log_error(logNucleo, "No server available - shutting down proces!!\n");
 		return EXIT_FAILURE;
-	}
+	}*/
 
 	pthread_join(consolaThread, NULL);
 	pthread_join(serverThread, NULL);
@@ -266,13 +266,14 @@ void processMessageReceived (void *parameter){
 	if ( receivedBytes > 0 ){
 
 		//Get Payload size
-		messageSize = atoi(messageRcv);
+		memcpy(&messageSize, messageRcv, sizeof(messageSize));
 
 		//Receive process from which the message is going to be interpreted
 		enum_processes fromProcess;
 		messageRcv = realloc(messageRcv, sizeof(fromProcess));
 		receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(fromProcess));
-		fromProcess = (enum_processes) messageRcv;
+
+		memcpy(&fromProcess, messageRcv, sizeof(fromProcess));
 
 		log_info(logNucleo,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
 
@@ -551,7 +552,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 	//Receive message using the size read before
 	messageRcv = realloc(messageRcv, messageSize);
-	receiveMessage(&socketLibre,(void*)messageRcv, messageSize);
+	receiveMessage(&socketLibre, messageRcv, messageSize);
 
 	//Deserializo messageRcv
 	deserializeNucleo_CPU(message, messageRcv);
@@ -563,7 +564,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		//change active PID
 		activePID = message->processID;
 
-		receiveMessage(&socketLibre, (void*) datosEntradaSalida, sizeof(t_es));
+		receiveMessage(&socketLibre, datosEntradaSalida, sizeof(t_es));
 		deserializarES(&infoES, datosEntradaSalida);
 
 		//Libero la CPU que ocupaba el proceso
