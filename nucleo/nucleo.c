@@ -70,13 +70,14 @@ int main(int argc, char *argv[]) {
 	pthread_create(&serverThread, NULL, (void*) startServerProg, NULL);
 	pthread_create(&serverConsolaThread, NULL, (void*) startServerCPU, NULL);
 
-	/*exitCode = connectTo(UMC,&socketUMC);
+	exitCode = connectTo(UMC,&socketUMC);
 	if (exitCode == EXIT_SUCCESS) {
 		log_info(logNucleo, "NUCLEO connected to UMC successfully\n");
 	}else{
 		log_error(logNucleo, "No server available - shutting down proces!!\n");
 		return EXIT_FAILURE;
-	}*/
+	}
+
 	pthread_join(consolaThread, NULL);
 	pthread_join(serverThread, NULL);
 	pthread_join(serverConsolaThread, NULL);
@@ -208,6 +209,9 @@ void handShake (void *parameter){
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){// Si uso connectTo => debo considerar este bloque
+					//Sending stacksize to CPU
+					sendMessage(&serverData->socketClient, &configNucleo.stack_size, sizeof(configNucleo.stack_size));
+					//Adding CPU socket to list
 					t_datosCPU *datosCPU = malloc(sizeof(t_datosCPU));
 					datosCPU->numSocket = serverData->socketClient;
 					pthread_mutex_lock(&listadoCPU);
