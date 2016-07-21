@@ -356,7 +356,7 @@ void runScript(char* codeScript, int socketConsola){
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
 	log_info(logNucleo,"creo el PCB del proceso\n");
 
-	//Armo Indice de codigo y etiquetas
+	//Armo Indice de codigo, etiquetas y stack
 	t_metadata_program *miMetaData = metadata_desde_literal(codeScript);
 
 	PCB->PID = idProcesos;
@@ -370,7 +370,6 @@ void runScript(char* codeScript, int socketConsola){
 	log_info(logNucleo,"Cantidad de paginas que ocupa el codigo: %d\n",PCB->cantidadDePaginas);
 
 	PCB->indiceDeCodigo = list_create();
-
 	armarIndiceDeCodigo(PCB, miMetaData);
 	armarIndiceDeEtiquetas(PCB, miMetaData);
 	PCB->indiceDeStack = list_create();
@@ -504,19 +503,26 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		contextoProceso->processID = datosPCB->PID;
 		contextoProceso->stackPointer = datosPCB->StackPointer;
 		contextoProceso->cantidadDePaginas = datosPCB->cantidadDePaginas;
-		strcpy(contextoProceso->indiceDeEtiquetas, datosPCB->indiceDeEtiquetas);
-		contextoProceso->indiceDeEtiquetasTamanio = strlen(datosPCB->indiceDeEtiquetas) + 1;
+		contextoProceso->indiceDeEtiquetasTamanio = datosPCB->indiceDeEtiquetasTamanio;
+		contextoProceso->indiceDeEtiquetas = malloc(contextoProceso->indiceDeEtiquetasTamanio * sizeof(char));
+		memcpy(contextoProceso->indiceDeEtiquetas, datosPCB->indiceDeEtiquetas, contextoProceso->indiceDeEtiquetasTamanio * sizeof(char));
+		//strcpy(contextoProceso->indiceDeEtiquetas, datosPCB->indiceDeEtiquetas);
+		//contextoProceso->indiceDeEtiquetasTamanio = strlen(datosPCB->indiceDeEtiquetas) + 1;
+
+		log_info(logNucleo,"se realiza el traspaso de datosPCB para en enviarle al proceso CPU\n");
 
 		int payloadSize = sizeof(contextoProceso->programCounter) + (sizeof(contextoProceso->processID))
 			+ sizeof(contextoProceso->stackPointer)+ sizeof(contextoProceso->cantidadDePaginas)
 			+ sizeof(contextoProceso->quantum) + sizeof(contextoProceso->quantum_sleep)
-			+ sizeof(contextoProceso->indiceDeEtiquetasTamanio) + strlen(datosPCB->indiceDeEtiquetas) + 1;// +1 because '\0'
+			+ sizeof(contextoProceso->indiceDeEtiquetasTamanio) + contextoProceso->indiceDeEtiquetasTamanio; //+ strlen(datosPCB->indiceDeEtiquetas) + 1;// +1 because '\0'
 
 		int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
-
+		//TODO verificar que lo anterior este bien con respecto al indice de etiquetas y su tamanio.
+		//TODO en las pruebas llega hasta aca y tira error
 		char* bufferEnviar = malloc(bufferSize);
 		//Serializar mensaje basico del PCB
 		serializeNucleo_CPU(contextoProceso, bufferEnviar, payloadSize);
+		log_info(logNucleo,"serializo el mensaje para enviar al proceso CPU\n");
 
 		//Hacer send al CPU de lo que se serializo arriba
 		sendMessage(&serverData->socketClient, bufferEnviar, bufferSize);
@@ -531,6 +537,7 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		sendMessage(&serverData->socketClient, bufferIndiceCodigo, strlen(bufferIndiceCodigo));
 
 		free(bufferIndiceCodigo);
+		free(contextoProceso->indiceDeEtiquetas);
 
 		//serializar estructuras del stack
 		char* bufferIndiceStack =  malloc(sizeof(datosPCB->indiceDeStack->elements_count));
@@ -1349,9 +1356,11 @@ void armarIndiceDeCodigo(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
 void armarIndiceDeEtiquetas(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
 
 	unBloqueControl->indiceDeEtiquetas = string_new();
-	strcpy(unBloqueControl->indiceDeEtiquetas, miMetaData->etiquetas);
+	unBloqueControl->indiceDeEtiquetasTamanio = miMetaData->etiquetas_size;
+	unBloqueControl->indiceDeEtiquetas = malloc(unBloqueControl->indiceDeEtiquetasTamanio * sizeof(char));
+	memcpy(unBloqueControl->indiceDeEtiquetas, miMetaData->etiquetas, unBloqueControl->indiceDeEtiquetasTamanio * sizeof(char));
 
-	log_error(logNucleo,"'indiceDeEtiquetas' size: %d\n", miMetaData->etiquetas_size);
+	log_info(logNucleo,"'sizeindiceDeEtiquetas' : %d\n 'indiceDeEtiquetas' : %s\n", unBloqueControl->indiceDeEtiquetasTamanio, unBloqueControl->indiceDeEtiquetas);
 }
 
 void finalizarPid(int pid){
@@ -1396,6 +1405,7 @@ void finalizarPid(int pid){
 	}
 }
 
+//TODO la UMC esta recibiendo null del fromProcess. Verificar esta funcion:
 void iniciarPrograma(int PID, char *codeScript) {
 	log_info(logNucleo,"Para el processID: %d, aviso al proceso UMC el inicio  el programa: \n %s \n", PID, codeScript);
 	int bufferSize = 0;
@@ -1419,7 +1429,6 @@ void iniciarPrograma(int PID, char *codeScript) {
 
 	//Serializar mensaje
 	serializeNucleo_UMC(message, buffer, payloadSize);
-
 
 	//1) Enviar info a la UMC - message serializado
 	sendMessage(&socketUMC, buffer, bufferSize);

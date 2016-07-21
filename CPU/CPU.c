@@ -60,7 +60,7 @@ int main(int argc, char *argv[]){
 			deserializeCPU_Nucleo(messageWithBasicPCB, messageRcv);
 
 			log_info(logCPU,"Construyendo PCB para PID #%d\n",messageWithBasicPCB->processID);
-
+			//TODO verificar que se este recibiendo lo mismo que se envia desde el proceso NUCLEO
 			PCBRecibido->PID = messageWithBasicPCB->processID;
 			PCBRecibido->ProgramCounter = messageWithBasicPCB->programCounter;
 			PCBRecibido->StackPointer = messageWithBasicPCB->stackPointer;

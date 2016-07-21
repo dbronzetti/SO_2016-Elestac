@@ -263,7 +263,7 @@ void processMessageReceived (void *parameter){
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
-			case NUCLEO:{
+			case NUCLEO:{ //TODO verificar que se este recibiendo correctamente del proceso NUCLEO (se esta recibiendo fromProces = null)
 				log_info(UMCLog, "Processing NUCLEO message received\n");
 				pthread_mutex_lock(&activeProcessMutex);
 				procesNucleoMessages(messageRcv, messageSize, serverData);
