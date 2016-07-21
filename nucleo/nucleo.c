@@ -369,6 +369,9 @@ void runScript(char* codeScript, int socketConsola){
 	log_info(logNucleo,"se inicializan los campos que no son listas\n.");
 	log_info(logNucleo,"Cantidad de paginas que ocupa el codigo:%d\n.",PCB->cantidadDePaginas);
 
+	PCB->indiceDeEtiquetas = string_new();
+	PCB->indiceDeCodigo = list_create();
+
 	armarIndiceDeCodigo(PCB, miMetaData);
 	armarIndiceDeEtiquetas(PCB, miMetaData);
 	PCB->indiceDeStack = list_create();
@@ -1332,7 +1335,6 @@ void bloqueoSemaforo(int processID, t_nombre_semaforo semaforo){
 void armarIndiceDeCodigo(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
 	int i;
 	log_info(logNucleo,"instrucciones_size: %d\n",miMetaData->instrucciones_size);
-	unBloqueControl->indiceDeCodigo = list_create();
 
 	//First instruction
 	for (i=0; i < miMetaData->instrucciones_size ; i++){
@@ -1345,7 +1347,7 @@ void armarIndiceDeCodigo(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
 }
 
 void armarIndiceDeEtiquetas(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
-	unBloqueControl->indiceDeEtiquetas = string_new();
+
 	strcpy(unBloqueControl->indiceDeEtiquetas, miMetaData->etiquetas);
 
 	log_error(logNucleo,"'indiceDeEtiquetas' size: %d\n", miMetaData->etiquetas_size);
