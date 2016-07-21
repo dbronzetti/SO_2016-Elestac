@@ -72,8 +72,8 @@ int main(int argc, char **argv) {
 			int programCodeLen = tamanioArchivo + 1; //+1 por el '\0'
 
 			//1)Envia el tamanio y el fromProcess
-			sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
-			sendMessage(&socketNucleo, &fromProcess, sizeof(int));
+			sendMessage(&socketNucleo, &programCodeLen, sizeof(int));
+			sendMessage(&socketNucleo, &fromProcess, sizeof(fromProcess));
 
 			//2)Envia el codigo del programa
 			exitCode = sendMessage(&socketNucleo, codeScript,programCodeLen);
@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
 			printf("Comando Reconocido.\n");
 			//Envia el tamanio y el fromProcess solamente porque el programa no es necesario para finalizar
 			sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
-			sendMessage(&socketNucleo, &fromProcess, sizeof(int));
+			sendMessage(&socketNucleo, &fromProcess, sizeof(fromProcess));
 			break;
 		}
 		case 3: {
