@@ -41,11 +41,11 @@ int main(int argc, char *argv[]){
 	logSwap = log_create(logFile, "SWAP", 0, LOG_LEVEL_TRACE);
 	crearArchivoDeConfiguracion(configurationFile);
 	crearArchivoDeSwap();
-
-	FILE* archivoSwap;
+	//TODO sacar lo que esta aca abajo para que no tire error en las pruebas
+	/*FILE* archivoSwap;
 	archivoSwap=fopen(nombre_swap,"r+");
 	fseek(archivoSwap,0,SEEK_SET);
-	fwrite("1",tamanioDePagina,cantidadDePaginas,archivoSwap);
+	fwrite("1",tamanioDePagina,cantidadDePaginas,archivoSwap);*/
 	char* paginaAEnviar;
 	int socket;
 	bloqueSwap* bloqueInicial=malloc(sizeof(bloqueSwap));
@@ -62,13 +62,13 @@ int main(int argc, char *argv[]){
 }
 
 void processingMessages(int socketClient){
-	char* mensajeRecibido;
+	char* mensajeRecibido = malloc(sizeof(bloqueSwap)); //FIXING missing memory location
 	char* structUmcSwap=malloc(sizeof(t_MessageUMC_Swap));
 	char* paginaRecibida;
 	char* mensajeDeError = string_new();
 	string_append(&mensajeDeError,"Error: No se pudo enviar los datos");
 	t_MessageUMC_Swap* operacionARealizar;
-	receiveMessage(&socketClient,structUmcSwap,sizeof(int));
+	receiveMessage(&socketClient,structUmcSwap,sizeof(t_MessageUMC_Swap)); //FIXING receiving size
 	deserializeSwap_UMC(operacionARealizar,structUmcSwap);
 	switch(operacionARealizar->operation){
 	case agregar_proceso:{
@@ -81,7 +81,7 @@ void processingMessages(int socketClient){
 		if(verificarEspacioDisponible(listaSwap)>pedidoRecibidoYDeserializado->cantDePaginas){
 				if(existeElBloqueNecesitado(listaSwap)){
 					//"Recibo el tamaño de codigo del nuevo procesos"
-					receiveMessage(&socketClient,&tamanio,sizeof(int));
+					receiveMessage(&socketClient,&tamanio,sizeof(tamanio));
 					//"Recibo el codigo"
 					receiveMessage(&socketClient,codeScript,tamanio);
 					agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
@@ -101,6 +101,7 @@ void processingMessages(int socketClient){
 		bloqueSwap* pedidoRecibidoYDeserializado;
 		int valorDeError;
 		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
+		//TODO Leo: que hace despues con mensajeRecibido despues de recibirlo?
 
 		if(valorDeError != -1){
 
@@ -118,6 +119,7 @@ void processingMessages(int socketClient){
 		char* paginaLeida;
 		int valorDeError;
 		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
+		//TODO Leo: que hace despues con mensajeRecibido despues de recibirlo?
 
 		if(valorDeError != -1){
 			//deserializarBloqueSwap(lecturaNueva,mensajeRecibido);
@@ -435,7 +437,7 @@ void handShake (void *parameter){
 	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(messageSize));
 
 	//Receive message using the size read before
-	memcpy(&messageSize, messageRcv, sizeof(int));
+	memcpy(&messageSize, messageRcv, sizeof(messageSize));
 	//log_info(logSwap,"messageSize received: %d\n",messageSize);
 	messageRcv = realloc(messageRcv,messageSize);
 	receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
