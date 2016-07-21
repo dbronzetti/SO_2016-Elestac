@@ -30,13 +30,13 @@ int main(int argc, char *argv[]){
 	}
 
 	//ERROR if not configuration parameter was passed
-		assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS
+	assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS
 
 	//ERROR if not Log parameter was passed
-		assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
+	assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
 
 	//ERROR if not Log parameter was passed
-		assert(("ERROR - NOT swap file was passed as argument", pathFileSwap != NULL));//Verifies if was passed the swap file as parameter, if DONT FAILS
+	assert(("ERROR - NOT swap file was passed as argument", pathFileSwap != NULL));//Verifies if was passed the swap file as parameter, if DONT FAILS
 
 	logSwap = log_create(logFile, "SWAP", 0, LOG_LEVEL_TRACE);
 	crearArchivoDeConfiguracion(configurationFile);
@@ -79,19 +79,19 @@ void processingMessages(int socketClient){
 		int tamanio;
 		char* codeScript;
 		if(verificarEspacioDisponible(listaSwap)>pedidoRecibidoYDeserializado->cantDePaginas){
-				if(existeElBloqueNecesitado(listaSwap)){
-					//"Recibo el tamaño de codigo del nuevo procesos"
-					receiveMessage(&socketClient,&tamanio,sizeof(tamanio));
-					//"Recibo el codigo"
-					receiveMessage(&socketClient,codeScript,tamanio);
-					agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
-				}else{
-					compactarArchivo(listaSwap);
-					agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
-				}
+			if(existeElBloqueNecesitado(listaSwap)){
+				//"Recibo el tamaño de codigo del nuevo procesos"
+				receiveMessage(&socketClient,&tamanio,sizeof(tamanio));
+				//"Recibo el codigo"
+				receiveMessage(&socketClient,codeScript,tamanio);
+				agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
 			}else{
-				log_error(logSwap,"No hay espacio disponible para agregar el bloque. \n");
+				compactarArchivo(listaSwap);
+				agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
 			}
+		}else{
+			log_error(logSwap,"No hay espacio disponible para agregar el bloque. \n");
+		}
 
 
 
@@ -99,30 +99,16 @@ void processingMessages(int socketClient){
 	}
 	case finalizar_proceso:{
 		bloqueSwap* pedidoRecibidoYDeserializado;
-		int valorDeError;
-		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
-		//TODO Leo: que hace despues con mensajeRecibido despues de recibirlo?
-
-		if(valorDeError != -1){
-
-			pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
-			eliminarProceso(listaSwap,pedidoRecibidoYDeserializado->PID);
-		}else{
-			log_error(logSwap,"No se recibio correctamente los datos. \n");
-		}
+		pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
+		eliminarProceso(listaSwap,pedidoRecibidoYDeserializado->PID);
 		break;
 	}
 
 	case lectura_pagina:{
 		bloqueSwap* pedidoRecibidoYDeserializado;
-		leer_pagina lecturaNueva;
 		char* paginaLeida;
 		int valorDeError;
-		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
-		//TODO Leo: que hace despues con mensajeRecibido despues de recibirlo?
 
-		if(valorDeError != -1){
-			//deserializarBloqueSwap(lecturaNueva,mensajeRecibido);
 			pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
 			pedidoRecibidoYDeserializado->paginaInicial=operacionARealizar->virtualAddress->pag;
 			paginaLeida=leerPagina(pedidoRecibidoYDeserializado,listaSwap);
@@ -140,12 +126,12 @@ void processingMessages(int socketClient){
 		break;
 	}
 	case escritura_pagina:{
-			bloqueSwap* pedidoRecibidoYDeserializado;
-			char* paginaAEscribir=malloc(tamanioDePagina);
-			pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
-			pedidoRecibidoYDeserializado->paginaInicial=operacionARealizar->virtualAddress->pag;
-			receiveMessage(&socketClient,paginaAEscribir,tamanioDePagina);
-			escribirPagina(paginaAEscribir,pedidoRecibidoYDeserializado,listaSwap);
+		bloqueSwap* pedidoRecibidoYDeserializado;
+		char* paginaAEscribir=malloc(tamanioDePagina);
+		pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
+		pedidoRecibidoYDeserializado->paginaInicial=operacionARealizar->virtualAddress->pag;
+		receiveMessage(&socketClient,paginaAEscribir,tamanioDePagina);
+		escribirPagina(paginaAEscribir,pedidoRecibidoYDeserializado,listaSwap);
 
 		break;
 	}
@@ -460,9 +446,9 @@ void handShake (void *parameter){
 			if (exitCode == EXIT_SUCCESS){
 
 				//TODO start receiving request -
-				//TODO LEO: ESTO TIENE QUE LOOPEAR INFINITAMENTE!!!
-				processingMessages(serverData->socketClient);
-
+				while(1){
+					processingMessages(serverData->socketClient);
+				}
 			}
 
 			break;
