@@ -75,22 +75,23 @@ int main(int argc, char *argv[]){
 
 			//receive tamaño de lista indice codigo
 			messageRcv = realloc(messageRcv, sizeof(messageSize));
-			receivedBytes = receiveMessage(&socketNucleo, messageRcv, sizeof(messageSize));
+			receivedBytes = receiveMessage(&socketNucleo, &messageSize, sizeof(messageSize));
 
 			//receive lista indice codigo
-			messageRcv = realloc(messageRcv, atoi(messageRcv));
-			receivedBytes = receiveMessage(&socketNucleo, messageRcv, atoi(messageRcv));
+			messageRcv = realloc(messageRcv, messageSize);
+			receivedBytes = receiveMessage(&socketNucleo, messageRcv, messageSize);
 
 			//deserializar estructuras del indice de codigo
 			deserializarListaIndiceDeCodigo(PCBRecibido->indiceDeCodigo, messageRcv);
 
 			//receive tamaño de lista indice stack
 			messageRcv = realloc(messageRcv, sizeof(messageSize));
-			receivedBytes = receiveMessage(&socketNucleo, messageRcv, sizeof(messageSize));
+			messageSize = -1;//Reseting message size before receiving the new one
+			receivedBytes = receiveMessage(&socketNucleo, &messageSize, sizeof(messageSize));
 
 			//receive lista indice stack
-			messageRcv = realloc(messageRcv, atoi(messageRcv));
-			receivedBytes = receiveMessage(&socketNucleo, messageRcv, atoi(messageRcv));
+			messageRcv = realloc(messageRcv, messageSize);
+			receivedBytes = receiveMessage(&socketNucleo, messageRcv, messageSize);
 
 			//deserializar estructuras del stack
 			deserializarListaStack(PCBRecibido->indiceDeStack, messageRcv);
@@ -272,7 +273,7 @@ int ejecutarPrograma(){
 
 			char *bufferCode = malloc(frameSize);
 			//Receiving information from UMC when the operation was successfully accomplished
-			exitCode = receiveMessage(&socketUMC, &bufferCode, frameSize);
+			exitCode = receiveMessage(&socketUMC, bufferCode, frameSize);
 
 			if(remainingInstruccion >= frameSize){
 				//if the remaining size is greater than frame size then we can append the full buffer received from UMC
@@ -423,18 +424,19 @@ void waitRequestFromNucleo(int *socketClient, char * messageRcv){
 
 	if ( receivedBytes > 0 ){
 		//Get Payload size
-		messageSize = atoi(messageRcv);
+		memcpy(&messageSize, messageRcv, sizeof(messageSize));
 
 		//Receive process from which the message is going to be interpreted
 		enum_processes fromProcess;
 		messageRcv = realloc(messageRcv, sizeof(fromProcess));
 		receivedBytes = receiveMessage(socketClient, messageRcv, sizeof(fromProcess));
-		fromProcess = (enum_processes) messageRcv;
+		memcpy(&fromProcess, messageRcv, sizeof(fromProcess));
 
 		//Receive message using the size read before
 		messageRcv = realloc(messageRcv,messageSize);
 		receivedBytes = receiveMessage(socketClient, messageRcv, messageSize);
 
+		//TODO ver que hace con messageRcv despues de recibirlo!!
 		log_info(logCPU,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
 
 	}else{
@@ -1101,8 +1103,9 @@ void waitPrimitive(t_nombre_semaforo identificador_semaforo){
 
 	//send to Nucleo to execute WAIT function for "identificador_semaforo"
 	int semaforoLen = strlen(identificador_semaforo) + 1;
-	char* respuestaNucleo = malloc(sizeof(int));
 	int respuestaRecibida;
+	char* respuestaNucleo = malloc(sizeof(respuestaRecibida));
+
 
 	// envio al Nucleo el tamanio del semaforo
 	sendMessage(&socketNucleo, &semaforoLen , sizeof(semaforoLen));
@@ -1112,8 +1115,8 @@ void waitPrimitive(t_nombre_semaforo identificador_semaforo){
 	sendMessage(&socketNucleo, identificador_semaforo, semaforoLen);
 
 	// recibir respuesta del Nucleo
-	receiveMessage(&socketNucleo,respuestaNucleo,sizeof(int));
-	memcpy(&respuestaRecibida,respuestaNucleo,sizeof(int));
+	receiveMessage(&socketNucleo,respuestaNucleo,sizeof(respuestaRecibida));
+	memcpy(&respuestaRecibida,respuestaNucleo,sizeof(respuestaRecibida));
 
 	free(respuestaNucleo);
 

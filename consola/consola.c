@@ -119,7 +119,7 @@ void* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
 
 	int descriptorArchivo;
 	printf("Ingrese archivo a ejecutar.\n");
-	char nombreDelArchivo[60];
+	char nombreDelArchivo[100];
 	scanf("%s", nombreDelArchivo);
 	archivo = fopen(nombreDelArchivo, "r");
 	descriptorArchivo=fileno(archivo);
@@ -231,7 +231,7 @@ int reconocerOperacion() {
 	case 1: {	//Recibo del Nucleo el tamanio y el texto a imprimir
 		exitCode = receiveMessage(&socketNucleo, tamanio, sizeof(int));
 		char* textoImprimir = malloc(*tamanio);
-		exitCode = receiveMessage(&socketNucleo, (void*) textoImprimir,sizeof(*tamanio));
+		exitCode = receiveMessage(&socketNucleo, textoImprimir,sizeof(*tamanio));
 		log_info(logConsola, "Texto: %s", textoImprimir);
 		free(textoImprimir);
 		break;
@@ -246,7 +246,7 @@ int reconocerOperacion() {
 	case 3: {//Recibo del Nucleo el tamanio y el texto a imprimir, y luego finalizo proceso.
 		exitCode = receiveMessage(&socketNucleo, tamanio, sizeof(int));
 		char* textoImprimir = malloc(*tamanio);
-		exitCode = receiveMessage(&socketNucleo, (void*) textoImprimir,sizeof(*tamanio));
+		exitCode = receiveMessage(&socketNucleo, textoImprimir,sizeof(*tamanio));
 		log_info(logConsola, "Texto: %s", textoImprimir);
 		free(textoImprimir);
 		exit(0);	//EXIT_SUCCESS

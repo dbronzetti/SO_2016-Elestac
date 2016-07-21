@@ -233,26 +233,29 @@ void processMessageReceived (void *parameter){
 
 	t_serverData *serverData = (t_serverData*) parameter;
 
-	//Receive message size
-	int messageSize = 0;
+	while(1){
+		//Receive message size
+		int messageSize = 0;
 
-	char *messageRcv = malloc(sizeof(messageSize));
-	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(messageSize));
+		char *messageRcv = malloc(sizeof(messageSize));
+		int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(messageSize));
 
-	if ( receivedBytes > 0 ){
+		if ( receivedBytes > 0 ){
 
-		//Get Payload size
-		messageSize = atoi(messageRcv);
+			printf("socket cliente: %d\n", serverData->socketClient);
 
-		//Receive process from which the message is going to be interpreted
-		enum_processes fromProcess;
-		messageRcv = realloc(messageRcv, sizeof(fromProcess));
-		receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(fromProcess));
-		fromProcess = (enum_processes) messageRcv;
+			//Get Payload size
+			memcpy(&messageSize, messageRcv, sizeof(messageSize));
 
-		log_info(UMCLog,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
+			//Receive process from which the message is going to be interpreted
+			enum_processes fromProcess;
+			messageRcv = realloc(messageRcv, sizeof(fromProcess));
+			receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(fromProcess));
+			memcpy(&fromProcess, messageRcv, sizeof(fromProcess));
 
-		switch (fromProcess){
+			log_info(UMCLog,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
+
+			switch (fromProcess){
 			case CPU:{
 				log_info(UMCLog, "Processing CPU message received\n");
 				pthread_mutex_lock(&activeProcessMutex);
@@ -272,18 +275,21 @@ void processMessageReceived (void *parameter){
 				close(serverData->socketClient);
 				break;
 			}
+			}
+
+		}else if (receivedBytes == 0 ){
+			//The client is down when bytes received are 0
+			log_error(UMCLog,"The client went down while receiving! - Please check the client '%d' is down!\n", serverData->socketClient);
+			close(serverData->socketClient);
+			break;
+		}else{
+			log_error(UMCLog, "Error - No able to received - Error receiving from socket '%d', with error: %d\n",serverData->socketClient,errno);
+			close(serverData->socketClient);
+			break;
 		}
 
-	}else if (receivedBytes == 0 ){
-		//The client is down when bytes received are 0
-		log_error(UMCLog,"The client went down while receiving! - Please check the client '%d' is down!\n", serverData->socketClient);
-		close(serverData->socketClient);
-	}else{
-		log_error(UMCLog, "Error - No able to received - Error receiving from socket '%d', with error: %d\n",serverData->socketClient,errno);
-		close(serverData->socketClient);
+		free(messageRcv);
 	}
-
-	free(messageRcv);
 
 }
 
@@ -329,7 +335,7 @@ void procesCPUMessages(char *messageRcv, int messageSize, t_serverData* serverDa
 			messageSize = 0;//reseting size to get the content size
 			receivedBytes = 0;//reseting receivedBytes to get the content size
 
-			receivedBytes = receiveMessage(&serverData->socketClient, (void*) messageSize, sizeof(messageSize));
+			receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
 
 			//Receive content using the size read before
 			content = realloc(content, messageSize);
@@ -375,7 +381,7 @@ void procesNucleoMessages(char *messageRcv, int messageSize, t_serverData* serve
 			messageSize = 0;//reseting size to get the content size
 			receivedBytes = 0;//reseting receivedBytes to get the content size
 
-			receivedBytes = receiveMessage(&serverData->socketClient, (void*) messageSize, sizeof(messageSize));
+			receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
 
 			//Receive content using the size read before
 			void *content = malloc(messageSize);
