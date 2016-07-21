@@ -366,18 +366,19 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 					switch(processToConnect){
 					case UMC:{
 						log_info(logCPU, "Connected to UMC - Message: %s\n",message->message);
-						printf("Receiving frame size\n");
+						log_info(logCPU,"Receiving frame size\n");
 						//After receiving ACCEPTATION has to be received the "Tamanio de pagina" information
-						receivedBytes = receiveMessage(socketClient, &frameSize, sizeof(messageSize));
+						receivedBytes = receiveMessage(socketClient, &frameSize, sizeof(frameSize));
 
-						printf("Tamanio de pagina: %d\n",frameSize);
+						log_info(logCPU,"Tamanio de pagina: %d\n",frameSize);
 						break;
 					}
 					case NUCLEO:{
 						log_info(logCPU, "Connected to NUCLEO - Message: %s\n",message->message);
-						printf("Receiving stack size (number of pages for PID stack)\n");
+						log_info(logCPU,"Receiving stack size (number of pages for PID stack)\n");
 						//After receiving ACCEPTATION has to be received the "Tamanio de pagina" information
-						receivedBytes = receiveMessage(socketClient, &stackSize, sizeof(messageSize));
+						receivedBytes = receiveMessage(socketClient, &stackSize, sizeof(stackSize));
+						log_info(logCPU,"Tamanio de stack: %d\n",stackSize);
 						break;
 					}
 					default:{

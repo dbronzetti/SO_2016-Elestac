@@ -209,6 +209,9 @@ void handShake (void *parameter){
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){// Si uso connectTo => debo considerar este bloque
+					//Sending stacksize to CPU
+					sendMessage(&serverData->socketClient, &configNucleo.stack_size, sizeof(configNucleo.stack_size));
+					//Adding CPU socket to list
 					t_datosCPU *datosCPU = malloc(sizeof(t_datosCPU));
 					datosCPU->numSocket = serverData->socketClient;
 					pthread_mutex_lock(&listadoCPU);
