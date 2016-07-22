@@ -1,0 +1,480 @@
+[INFO] 23:55:53:199 UMC/(19254:19254): '5' frames created and ready for use.
+
+[INFO] 23:55:53:199 UMC/(19254:19254): TLB enable. Size '3'
+
+[INFO] 23:55:53:200 UMC/(19254:19254): Connected to NUCLEO - Message: The server has accepted your connection!
+
+[INFO] 23:55:53:200 UMC/(19254:19254): UMC connected to SWAP successfully
+
+[INFO] 23:55:53:240 UMC/(19254:19263): SocketServer: 5
+
+[INFO] 23:55:53:240 UMC/(19254:19263): The server is opened.
+
+[INFO] 23:57:05:49 UMC/(19254:19282): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 00:00:05:601 UMC/(19254:19381): Message from 'CPU': The process 'CPU' is trying to connect you!
+
+[ERROR] 00:00:23:415 UMC/(19254:19382): The client went down while receiving! - Please check the client '7' is down!
+
+[INFO] 01:23:50:733 UMC/(21371:21371): '5' frames created and ready for use.
+
+[INFO] 01:23:50:733 UMC/(21371:21371): TLB enable. Size '3'
+
+[INFO] 01:23:50:734 UMC/(21371:21371): Connected to NUCLEO - Message: The server has accepted your connection!
+
+[INFO] 01:23:50:734 UMC/(21371:21371): UMC connected to SWAP successfully
+
+[INFO] 01:23:50:735 UMC/(21371:21373): SocketServer: 5
+
+[INFO] 01:23:50:735 UMC/(21371:21373): The server is opened.
+
+[INFO] 01:32:00:972 UMC/(21774:21774): '5' frames created and ready for use.
+
+[INFO] 01:32:00:972 UMC/(21774:21774): TLB enable. Size '3'
+
+[INFO] 01:32:00:974 UMC/(21774:21774): Connected to NUCLEO - Message: The server has accepted your connection!
+
+[INFO] 01:32:00:974 UMC/(21774:21774): UMC connected to SWAP successfully
+
+[INFO] 01:32:00:974 UMC/(21774:21776): SocketServer: 5
+
+[INFO] 01:32:00:974 UMC/(21774:21776): The server is opened.
+
+[INFO] 01:32:59:328 UMC/(21872:21872): '5' frames created and ready for use.
+
+[INFO] 01:32:59:328 UMC/(21872:21872): TLB enable. Size '3'
+
+[INFO] 01:32:59:329 UMC/(21872:21872): Connected to NUCLEO - Message: The server has accepted your connection!
+
+[INFO] 01:32:59:329 UMC/(21872:21872): UMC connected to SWAP successfully
+
+[INFO] 01:32:59:330 UMC/(21872:21874): SocketServer: 5
+
+[INFO] 01:32:59:330 UMC/(21872:21874): The server is opened.
+
+[INFO] 01:34:21:615 UMC/(22182:22182): '5' frames created and ready for use.
+
+[INFO] 01:34:21:615 UMC/(22182:22182): TLB enable. Size '3'
+
+[INFO] 01:34:21:617 UMC/(22182:22182): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 01:34:21:617 UMC/(22182:22182): UMC connected to SWAP successfully
+
+[INFO] 01:34:21:617 UMC/(22182:22184): SocketServer: 5
+
+[INFO] 01:34:21:617 UMC/(22182:22184): The server is opened.
+
+[INFO] 01:34:32:239 UMC/(22182:22194): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[ERROR] 01:49:19:273 UMC/(22182:22195): The client went down while receiving! - Please check the client '6' is down!
+
+[INFO] 01:52:20:947 UMC/(22182:22817): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[ERROR] 01:53:41:209 UMC/(22182:22818): The client went down while receiving! - Please check the client '7' is down!
+
+[INFO] 01:55:46:417 UMC/(22182:22959): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 02:02:01:697 UMC/(22182:23182): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[ERROR] 02:02:22:121 UMC/(22182:23183): The client went down while receiving! - Please check the client '7' is down!
+
+[INFO] 15:11:01:811 UMC/(8179:8179): '5' frames created and ready for use.
+
+[INFO] 15:11:01:813 UMC/(8179:8179): TLB enable. Size '3'
+
+[INFO] 15:11:01:815 UMC/(8179:8179): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 15:11:01:815 UMC/(8179:8179): UMC connected to SWAP successfully
+
+[INFO] 15:11:01:815 UMC/(8179:8181): SocketServer: 5
+
+[INFO] 15:11:01:816 UMC/(8179:8181): The server is opened.
+
+[INFO] 15:21:04:245 UMC/(8179:8403): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 18:58:44:106 UMC/(6350:6350): '5' frames created and ready for use.
+
+[INFO] 18:58:44:116 UMC/(6350:6350): TLB enable. Size '3'
+
+[ERROR] 18:58:44:116 UMC/(6350:6350): I'm not able to connect to the server! - My socket is: '4'
+
+[INFO] 22:21:16:975 UMC/(11550:11550): '5' frames created and ready for use.
+
+[INFO] 22:21:16:975 UMC/(11550:11550): TLB enable. Size '3'
+
+[INFO] 22:21:16:977 UMC/(11550:11550): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 22:21:16:977 UMC/(11550:11550): UMC connected to SWAP successfully
+
+[INFO] 22:21:16:977 UMC/(11550:11552): SocketServer: 5
+
+[INFO] 22:21:16:977 UMC/(11550:11552): The server is opened.
+
+[INFO] 22:26:42:529 UMC/(11550:11762): Message from 'CPU': The process 'CPU' is trying to connect you!
+
+[ERROR] 22:29:31:354 UMC/(11550:11763): The client went down while receiving! - Please check the client '6' is down!
+
+[INFO] 22:34:04:425 UMC/(11550:12035): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 22:34:36:262 UMC/(11550:12075): Message from 'CPU': The process 'CPU' is trying to connect you!
+
+[ERROR] 22:39:08:699 UMC/(11550:12076): The client went down while receiving! - Please check the client '6' is down!
+
+[ERROR] 22:44:12:645 UMC/(11550:12036): The client went down while receiving! - Please check the client '6' is down!
+
+[INFO] 22:55:18:949 UMC/(12851:12851): '5' frames created and ready for use.
+
+[INFO] 22:55:18:949 UMC/(12851:12851): TLB enable. Size '3'
+
+[INFO] 22:55:18:950 UMC/(12851:12851): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 22:55:18:950 UMC/(12851:12851): UMC connected to SWAP successfully
+
+[INFO] 22:55:18:951 UMC/(12851:12853): SocketServer: 5
+
+[INFO] 22:55:18:951 UMC/(12851:12853): The server is opened.
+
+[INFO] 22:55:33:85 UMC/(12851:12858): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 22:55:47:77 UMC/(12851:12889): Message from 'CPU': The process 'CPU' is trying to connect you!
+
+[INFO] 22:55:57:113 UMC/(12851:12910): Message from 'CPU': The process 'CPU' is trying to connect you!
+
+[INFO] 22:56:02:730 UMC/(12851:12924): Message from 'CPU': The process 'CPU' is trying to connect you!
+
+[ERROR] 22:56:11:546 UMC/(12851:12890): The client went down while receiving! - Please check the client '9' is down!
+
+[INFO] 22:56:23:367 UMC/(12851:12938): Message from 'CPU': The process 'CPU' is trying to connect you!
+
+[ERROR] 22:56:29:192 UMC/(12851:12939): The client went down while receiving! - Please check the client '10' is down!
+
+[ERROR] 22:56:31:364 UMC/(12851:12925): The client went down while receiving! - Please check the client '10' is down!
+
+[ERROR] 22:56:36:99 UMC/(12851:12911): The client went down while receiving! - Please check the client '10' is down!
+
+[INFO] 23:49:22:673 UMC/(13949:13949): '5' frames created and ready for use.
+
+[INFO] 23:49:22:674 UMC/(13949:13949): TLB enable. Size '3'
+
+[INFO] 23:49:22:677 UMC/(13949:13949): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 23:49:22:677 UMC/(13949:13949): UMC connected to SWAP successfully
+
+[INFO] 23:49:22:677 UMC/(13949:13951): SocketServer: 5
+
+[INFO] 23:49:22:677 UMC/(13949:13951): The server is opened.
+
+[INFO] 23:49:27:800 UMC/(13949:13962): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 23:50:01:697 UMC/(13949:14040): Message from 'CPU': The process 'CPU' is trying to connect you!
+
+[INFO] 23:50:27:780 UMC/(13949:13963): Bytes received from process '(null)': 0
+
+[ERROR] 23:50:27:780 UMC/(13949:13963): Process not allowed to connect - Invalid process '(null)' send a message to UMC
+
+[ERROR] 23:50:27:780 UMC/(13949:13963): Error - No able to received - Error receiving from socket '7', with error: 9
+
+[ERROR] 23:50:27:784 UMC/(13949:14041): The client went down while receiving! - Please check the client '7' is down!
+
+[INFO] 23:52:07:364 UMC/(13949:14123): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 23:52:25:455 UMC/(13949:14138): Message from 'CPU': The process 'CPU' is trying to connect you!
+
+[ERROR] 23:53:07:111 UMC/(13949:14124): The client went down while receiving! - Please check the client '7' is down!
+
+[ERROR] 23:53:07:967 UMC/(13949:14139): The client went down while receiving! - Please check the client '7' is down!
+
+[INFO] 00:16:35:295 UMC/(27029:27029): '5' frames created and ready for use.
+
+[INFO] 00:16:35:295 UMC/(27029:27029): TLB enable. Size '3'
+
+[INFO] 00:16:35:297 UMC/(27029:27029): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 00:16:35:297 UMC/(27029:27029): UMC connected to SWAP successfully
+
+[INFO] 00:16:35:297 UMC/(27029:27031): SocketServer: 5
+
+[INFO] 00:16:35:297 UMC/(27029:27031): The server is opened.
+
+[INFO] 00:17:55:994 UMC/(27029:27078): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 00:25:02:633 UMC/(27029:27079): Bytes received from process 'NUCLEO': 4
+
+[INFO] 00:25:02:633 UMC/(27029:27079): Processing NUCLEO message received
+
+[INFO] 00:25:02:633 UMC/(27029:27079): Changing to active PID: '#1'
+
+[INFO] 00:28:07:881 UMC/(27029:27030): COMMAND: 'dump estructuras all' - Sorry! There is not information to show you now =(
+
+[INFO] 00:29:08:299 UMC/(27029:27030): COMMAND: 'dump contenido all' - Sorry! There is not information to show you now =(
+
+[ERROR] 00:34:15:180 UMC/(27029:27079): The client went down while receiving! - Please check the client '6' is down!
+
+[INFO] 01:19:28:490 UMC/(28711:28711): '5' frames created and ready for use.
+
+[INFO] 01:19:28:490 UMC/(28711:28711): TLB enable. Size '3'
+
+[INFO] 01:19:28:491 UMC/(28711:28711): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 01:19:28:492 UMC/(28711:28711): UMC connected to SWAP successfully
+
+[INFO] 01:19:28:492 UMC/(28711:28714): SocketServer: 5
+
+[INFO] 01:19:28:492 UMC/(28711:28714): The server is opened.
+
+[INFO] 01:20:15:608 UMC/(28825:28825): '5' frames created and ready for use.
+
+[INFO] 01:20:15:608 UMC/(28825:28825): TLB enable. Size '3'
+
+[INFO] 01:20:52:364 UMC/(28825:28825): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 01:20:52:365 UMC/(28825:28825): UMC connected to SWAP successfully
+
+[INFO] 01:20:52:365 UMC/(28825:28846): SocketServer: 5
+
+[INFO] 01:20:52:365 UMC/(28825:28846): The server is opened.
+
+[INFO] 01:26:08:713 UMC/(29025:29025): '5' frames created and ready for use.
+
+[INFO] 01:26:08:714 UMC/(29025:29025): TLB enable. Size '3'
+
+[INFO] 01:26:08:715 UMC/(29025:29025): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 01:26:08:715 UMC/(29025:29025): UMC connected to SWAP successfully
+
+[INFO] 01:26:08:716 UMC/(29025:29027): SocketServer: 5
+
+[INFO] 01:26:08:716 UMC/(29025:29027): The server is opened.
+
+[INFO] 01:26:28:450 UMC/(29025:29040): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 01:26:38:586 UMC/(29025:29041): Bytes received from process 'NUCLEO': 4
+
+[INFO] 01:26:38:586 UMC/(29025:29041): Processing NUCLEO message received
+
+[INFO] 01:26:38:586 UMC/(29025:29041): Changing to active PID: '#1'
+
+[ERROR] 01:26:40:71 UMC/(29025:29041): The client went down while receiving! - Please check the client '6' is down!
+
+[INFO] 01:27:25:726 UMC/(29163:29163): '5' frames created and ready for use.
+
+[INFO] 01:27:25:726 UMC/(29163:29163): TLB enable. Size '3'
+
+[INFO] 01:27:25:728 UMC/(29163:29163): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 01:27:25:728 UMC/(29163:29163): UMC connected to SWAP successfully
+
+[INFO] 01:27:25:728 UMC/(29163:29165): SocketServer: 5
+
+[INFO] 01:27:25:728 UMC/(29163:29165): The server is opened.
+
+[INFO] 01:29:56:527 UMC/(29163:29306): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 01:30:26:10 UMC/(29163:29307): Bytes received from process 'NUCLEO': 4
+
+[INFO] 01:30:26:10 UMC/(29163:29307): Processing NUCLEO message received
+
+[INFO] 01:30:26:10 UMC/(29163:29307): Changing to active PID: '#1'
+
+[ERROR] 01:31:27:570 UMC/(29163:29307): The client went down while receiving! - Please check the client '6' is down!
+
+[INFO] 01:36:27:75 UMC/(29584:29584): '5' frames created and ready for use.
+
+[INFO] 01:36:27:75 UMC/(29584:29584): TLB enable. Size '3'
+
+[INFO] 01:36:32:418 UMC/(29584:29584): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 01:36:32:419 UMC/(29584:29584): UMC connected to SWAP successfully
+
+[INFO] 01:36:32:419 UMC/(29584:29587): SocketServer: 5
+
+[INFO] 01:36:32:419 UMC/(29584:29587): The server is opened.
+
+[INFO] 01:36:49:280 UMC/(29584:29595): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 01:37:01:890 UMC/(29584:29596): Bytes received from process 'NUCLEO': 4
+
+[INFO] 01:37:01:890 UMC/(29584:29596): Processing NUCLEO message received
+
+[INFO] 01:37:01:890 UMC/(29584:29596): Changing to active PID: '#1'
+
+[ERROR] 01:37:03:542 UMC/(29584:29596): The client went down while receiving! - Please check the client '6' is down!
+
+[INFO] 01:39:38:269 UMC/(29839:29839): '5' frames created and ready for use.
+
+[INFO] 01:39:38:269 UMC/(29839:29839): TLB enable. Size '3'
+
+[INFO] 01:39:38:270 UMC/(29839:29839): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 01:39:38:270 UMC/(29839:29839): UMC connected to SWAP successfully
+
+[INFO] 01:39:38:271 UMC/(29839:29841): SocketServer: 5
+
+[INFO] 01:39:38:271 UMC/(29839:29841): The server is opened.
+
+[INFO] 01:39:42:717 UMC/(29839:29846): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 01:39:53:15 UMC/(29839:29847): Bytes received from process 'NUCLEO': 4
+
+[INFO] 01:39:53:15 UMC/(29839:29847): Processing NUCLEO message received
+
+[INFO] 01:39:53:15 UMC/(29839:29847): Changing to active PID: '#1'
+
+[ERROR] 01:39:54:700 UMC/(29839:29847): The client went down while receiving! - Please check the client '6' is down!
+
+[INFO] 01:41:07:609 UMC/(30031:30031): '5' frames created and ready for use.
+
+[INFO] 01:41:07:609 UMC/(30031:30031): TLB enable. Size '3'
+
+[INFO] 01:41:07:610 UMC/(30031:30031): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 01:41:07:610 UMC/(30031:30031): UMC connected to SWAP successfully
+
+[INFO] 01:41:07:651 UMC/(30031:30038): SocketServer: 5
+
+[INFO] 01:41:07:651 UMC/(30031:30038): The server is opened.
+
+[INFO] 01:41:12:565 UMC/(30031:30044): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 01:41:22:943 UMC/(30031:30045): Bytes received from process 'NUCLEO': 4
+
+[INFO] 01:41:22:943 UMC/(30031:30045): Processing NUCLEO message received
+
+[INFO] 01:41:22:943 UMC/(30031:30045): Changing to active PID: '#1'
+
+[ERROR] 01:43:09:29 UMC/(30031:30045): The client went down while receiving! - Please check the client '6' is down!
+
+[INFO] 01:53:49:945 UMC/(30511:30511): '5' frames created and ready for use.
+
+[INFO] 01:53:49:945 UMC/(30511:30511): TLB enable. Size '3'
+
+[INFO] 01:53:49:947 UMC/(30511:30511): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 01:53:49:947 UMC/(30511:30511): UMC connected to SWAP successfully
+
+[INFO] 01:53:49:947 UMC/(30511:30513): SocketServer: 5
+
+[INFO] 01:53:49:947 UMC/(30511:30513): The server is opened.
+
+[INFO] 01:53:53:60 UMC/(30511:30518): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 01:54:01:965 UMC/(30511:30519): Bytes received from process 'NUCLEO': 4
+
+[INFO] 01:54:01:965 UMC/(30511:30519): Processing NUCLEO message received
+
+[INFO] 01:54:01:966 UMC/(30511:30519): Changing to active PID: '#1'
+
+[ERROR] 01:54:03:663 UMC/(30511:30519): The client went down while receiving! - Please check the client '6' is down!
+
+[INFO] 02:00:22:35 UMC/(30818:30818): '5' frames created and ready for use.
+
+[INFO] 02:00:22:35 UMC/(30818:30818): TLB enable. Size '3'
+
+[INFO] 02:00:22:37 UMC/(30818:30818): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 02:00:22:37 UMC/(30818:30818): UMC connected to SWAP successfully
+
+[INFO] 02:00:22:38 UMC/(30818:30820): SocketServer: 5
+
+[INFO] 02:00:22:38 UMC/(30818:30820): The server is opened.
+
+[INFO] 02:00:24:665 UMC/(30818:30825): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 02:00:47:243 UMC/(30818:30826): Bytes received from process 'NUCLEO': 4
+
+[INFO] 02:00:47:243 UMC/(30818:30826): Processing NUCLEO message received
+
+[INFO] 02:00:47:243 UMC/(30818:30826): Changing to active PID: '#1'
+
+[ERROR] 02:00:48:938 UMC/(30818:30826): The client went down while receiving! - Please check the client '6' is down!
+
+[INFO] 02:03:53:710 UMC/(31059:31059): '5' frames created and ready for use.
+
+[INFO] 02:03:53:710 UMC/(31059:31059): TLB enable. Size '3'
+
+[INFO] 02:03:53:711 UMC/(31059:31059): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 02:03:53:711 UMC/(31059:31059): UMC connected to SWAP successfully
+
+[INFO] 02:03:53:712 UMC/(31059:31061): SocketServer: 5
+
+[INFO] 02:03:53:712 UMC/(31059:31061): The server is opened.
+
+[INFO] 02:03:56:370 UMC/(31059:31066): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 02:04:18:494 UMC/(31059:31067): Bytes received from process 'NUCLEO': 4
+
+[INFO] 02:04:18:494 UMC/(31059:31067): Processing NUCLEO message received
+
+[INFO] 02:04:18:494 UMC/(31059:31067): Changing to active PID: '#1'
+
+[ERROR] 02:04:20:344 UMC/(31059:31067): The client went down while receiving! - Please check the client '6' is down!
+
+[INFO] 12:48:34:306 UMC/(3240:3240): '5' frames created and ready for use.
+
+[INFO] 12:48:34:306 UMC/(3240:3240): TLB enable. Size '3'
+
+[INFO] 12:48:34:307 UMC/(3240:3240): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 12:48:34:307 UMC/(3240:3240): UMC connected to SWAP successfully
+
+[INFO] 12:48:34:307 UMC/(3240:3242): SocketServer: 5
+
+[INFO] 12:48:34:307 UMC/(3240:3242): The server is opened.
+
+[INFO] 12:48:51:570 UMC/(3240:3247): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 12:49:00:594 UMC/(3240:3248): Bytes received from process 'NUCLEO': 4
+
+[INFO] 12:49:00:594 UMC/(3240:3248): Processing NUCLEO message received
+
+[INFO] 12:49:00:594 UMC/(3240:3248): Changing to active PID: '#1'
+
+[ERROR] 12:49:02:106 UMC/(3240:3248): The client went down while receiving! - Please check the client '6' is down!
+
+[INFO] 12:57:15:453 UMC/(3606:3606): '5' frames created and ready for use.
+
+[INFO] 12:57:15:453 UMC/(3606:3606): TLB enable. Size '3'
+
+[INFO] 12:57:15:455 UMC/(3606:3606): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 12:57:15:455 UMC/(3606:3606): UMC connected to SWAP successfully
+
+[INFO] 12:57:15:456 UMC/(3606:3608): SocketServer: 5
+
+[INFO] 12:57:15:456 UMC/(3606:3608): The server is opened.
+
+[INFO] 12:57:31:766 UMC/(3606:3642): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 12:58:01:689 UMC/(3606:3643): Bytes received from process 'NUCLEO': 4
+
+[INFO] 12:58:01:689 UMC/(3606:3643): Processing NUCLEO message received
+
+[INFO] 12:58:01:690 UMC/(3606:3643): Changing to active PID: '#1'
+
+[ERROR] 12:58:02:911 UMC/(3606:3643): The client went down while receiving! - Please check the client '6' is down!
+
+[INFO] 13:00:49:242 UMC/(3963:3963): '5' frames created and ready for use.
+
+[INFO] 13:00:49:243 UMC/(3963:3963): TLB enable. Size '3'
+
+[INFO] 13:00:49:244 UMC/(3963:3963): Connected to SWAP - Message: The server has accepted your connection!
+
+[INFO] 13:00:49:244 UMC/(3963:3963): UMC connected to SWAP successfully
+
+[INFO] 13:00:49:244 UMC/(3963:3965): SocketServer: 5
+
+[INFO] 13:00:49:245 UMC/(3963:3965): The server is opened.
+
+[INFO] 13:00:55:800 UMC/(3963:3970): Message from 'NUCLEO': The process 'NUCLEO' is trying to connect you!
+
+[INFO] 13:02:02:578 UMC/(3963:4248): Message from 'CPU': The process 'CPU' is trying to connect you!
+
+[INFO] 13:02:22:123 UMC/(3963:3971): Bytes received from process '(null)': 0
+
+[ERROR] 13:02:22:123 UMC/(3963:3971): Process not allowed to connect - Invalid process '(null)' send a message to UMC
+
+[ERROR] 13:02:22:123 UMC/(3963:3971): Error - No able to received - Error receiving from socket '7', with error: 9
+
+[ERROR] 13:02:22:127 UMC/(3963:4249): The client went down while receiving! - Please check the client '7' is down!
+
