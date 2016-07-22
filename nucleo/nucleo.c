@@ -318,7 +318,7 @@ void processMessageReceived (void *parameter){
 				log_info(logNucleo, "Processing %s message received\n", getProcessString(fromProcess));
 				pthread_mutex_lock(&activeProcessMutex);
 				processCPUMessages(messageRcv, messageSize, serverData->socketClient);
-				free(parameter);
+				//free(parameter);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
@@ -344,7 +344,7 @@ void processMessageReceived (void *parameter){
 		close(serverData->socketClient);
 	}
 
-	free(messageRcv);
+	//free(messageRcv);
 }
 
 void runScript(char* codeScript){
@@ -424,7 +424,7 @@ void runScript(char* codeScript){
 
 	metadata_destruir(miMetaData);
 
-	//iniciarPrograma(datosConsola->PID, codeScript);
+	iniciarPrograma(datosConsola->PID, codeScript);
 
 	planificarProceso();
 }
@@ -466,6 +466,7 @@ void planificarProceso() {
 		log_info(logNucleo,"Nucleo se prepara para enviar informacion del processID: %d al proceso CPU \n",datosProceso->PID);
 
 		enviarMsjCPU(datosPCB, contextoProceso, serverData);
+		free(contextoProceso);
 	} else {
 		log_info(logNucleo,"Proceso no encontrado\n");
 	}
@@ -492,7 +493,6 @@ void planificarProceso() {
 			printf("Proceso no encontrado en la lista.\n");
 		}
 	}*/
-	//free(contextoProceso);
 }
 
 void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_serverData* serverData){
