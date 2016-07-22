@@ -346,7 +346,7 @@ void processMessageReceived (void *parameter){
 		close(serverData->socketClient);
 	}
 
-	free(messageRcv);
+	free(messageRcv);//TODO raro esta pinchando aca con este mensaje "double free or corruption"
 
 }
 
@@ -356,7 +356,7 @@ void runScript(char* codeScript, int socketConsola){
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
 	log_info(logNucleo,"creo el PCB del proceso\n");
 
-	//Armo Indice de codigo y etiquetas
+	//Armo Indice de codigo, etiquetas y stack
 	t_metadata_program *miMetaData = metadata_desde_literal(codeScript);
 
 	PCB->PID = idProcesos;
@@ -370,7 +370,6 @@ void runScript(char* codeScript, int socketConsola){
 	log_info(logNucleo,"Cantidad de paginas que ocupa el codigo: %d\n",PCB->cantidadDePaginas);
 
 	PCB->indiceDeCodigo = list_create();
-
 	armarIndiceDeCodigo(PCB, miMetaData);
 	armarIndiceDeEtiquetas(PCB, miMetaData);
 	PCB->indiceDeStack = list_create();
@@ -378,9 +377,9 @@ void runScript(char* codeScript, int socketConsola){
 
 	//Get last program line from main
 	int index = miMetaData->instruccion_inicio ;
-	t_registroIndiceCodigo* instruccionActual = malloc(sizeof(t_registroIndiceCodigo));
+	t_registroIndiceCodigo* instruccionActual;
 
-	while (index <miMetaData->instrucciones_size){
+	while (index < miMetaData->instrucciones_size){
 
 		instruccionActual = (t_registroIndiceCodigo*) list_get(PCB->indiceDeCodigo, index);
 
@@ -395,11 +394,9 @@ void runScript(char* codeScript, int socketConsola){
 		index++;
 	}
 
-	free(instruccionActual);
-
 	PCB->finDePrograma = index;
 	log_info(logNucleo,"se asigna el index: %d al PCB que indica el fin del Programa",index);
-
+	//TODO poner un semaforo aca porque la van a estar pisando varios threads seguramente
 	idProcesos++;
 
 	pthread_mutex_lock(&listadoProcesos);
@@ -418,7 +415,7 @@ void runScript(char* codeScript, int socketConsola){
 
 	//Agrego a la lista de Consolas
 	t_datosConsola* datosConsola = malloc(sizeof(t_datosConsola));
-	datosConsola->numSocket = socketConsola;
+	datosConsola->numSocket = socketConsola; //TODO no esta reconociendo el socketnro... se debe estar perdiendo por algun lado
 	datosConsola->PID = PCB->PID;
 	pthread_mutex_lock(&listadoConsola);
 	list_add(listaConsola, (void*) datosConsola);
@@ -504,19 +501,19 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		contextoProceso->processID = datosPCB->PID;
 		contextoProceso->stackPointer = datosPCB->StackPointer;
 		contextoProceso->cantidadDePaginas = datosPCB->cantidadDePaginas;
-		strcpy(contextoProceso->indiceDeEtiquetas, datosPCB->indiceDeEtiquetas);
-		contextoProceso->indiceDeEtiquetasTamanio = strlen(datosPCB->indiceDeEtiquetas) + 1;
 
-		int payloadSize = sizeof(contextoProceso->programCounter) + (sizeof(contextoProceso->processID))
+		log_info(logNucleo,"se realiza el traspaso de datosPCB para en enviarle al proceso CPU\n");
+
+		int payloadSize = sizeof(contextoProceso->programCounter) + sizeof(contextoProceso->processID)
 			+ sizeof(contextoProceso->stackPointer)+ sizeof(contextoProceso->cantidadDePaginas)
-			+ sizeof(contextoProceso->quantum) + sizeof(contextoProceso->quantum_sleep)
-			+ sizeof(contextoProceso->indiceDeEtiquetasTamanio) + strlen(datosPCB->indiceDeEtiquetas) + 1;// +1 because '\0'
+			+ sizeof(contextoProceso->quantum) + sizeof(contextoProceso->quantum_sleep);
 
 		int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
-
+		//TODO en las pruebas llega hasta aca y tira error
 		char* bufferEnviar = malloc(bufferSize);
 		//Serializar mensaje basico del PCB
 		serializeNucleo_CPU(contextoProceso, bufferEnviar, payloadSize);
+		log_info(logNucleo,"serializo el mensaje para enviar al proceso CPU\n");
 
 		//Hacer send al CPU de lo que se serializo arriba
 		sendMessage(&serverData->socketClient, bufferEnviar, bufferSize);
@@ -542,6 +539,14 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		sendMessage(&serverData->socketClient, bufferIndiceStack, strlen(bufferIndiceStack));
 
 		free(bufferIndiceStack);
+
+		//send tamaño de indice de etiquetas
+		sendMessage(&serverData->socketClient, &datosPCB->indiceDeEtiquetasTamanio, sizeof(datosPCB->indiceDeEtiquetasTamanio));
+
+		if (datosPCB->indiceDeEtiquetasTamanio > 0 ){
+			//send indice de etiquetas if > 0
+			sendMessage(&serverData->socketClient, datosPCB->indiceDeEtiquetas, datosPCB->indiceDeEtiquetasTamanio);
+		}
 
 		//Saco el primer elemento de la cola, porque ya lo planifique.
 		pthread_mutex_lock(&cListos);
@@ -1349,9 +1354,14 @@ void armarIndiceDeCodigo(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
 void armarIndiceDeEtiquetas(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
 
 	unBloqueControl->indiceDeEtiquetas = string_new();
-	strcpy(unBloqueControl->indiceDeEtiquetas, miMetaData->etiquetas);
+	unBloqueControl->indiceDeEtiquetasTamanio = miMetaData->etiquetas_size;
+	if (unBloqueControl->indiceDeEtiquetasTamanio > 0 ){
+		unBloqueControl->indiceDeEtiquetas = malloc(unBloqueControl->indiceDeEtiquetasTamanio);
+		memcpy(unBloqueControl->indiceDeEtiquetas, miMetaData->etiquetas, unBloqueControl->indiceDeEtiquetasTamanio);
+		log_info(logNucleo,"'sizeindiceDeEtiquetas' : %d\n 'indiceDeEtiquetas' : %s\n", unBloqueControl->indiceDeEtiquetasTamanio, unBloqueControl->indiceDeEtiquetas);
+	}
 
-	log_error(logNucleo,"'indiceDeEtiquetas' size: %d\n", miMetaData->etiquetas_size);
+	log_info(logNucleo,"'sizeindiceDeEtiquetas' : %d\n", unBloqueControl->indiceDeEtiquetasTamanio);
 }
 
 void finalizarPid(int pid){
@@ -1396,6 +1406,7 @@ void finalizarPid(int pid){
 	}
 }
 
+//TODO la UMC esta recibiendo null del fromProcess. Verificar esta funcion:
 void iniciarPrograma(int PID, char *codeScript) {
 	log_info(logNucleo,"Para el processID: %d, aviso al proceso UMC el inicio  el programa: \n %s \n", PID, codeScript);
 	int bufferSize = 0;
@@ -1420,15 +1431,14 @@ void iniciarPrograma(int PID, char *codeScript) {
 	//Serializar mensaje
 	serializeNucleo_UMC(message, buffer, payloadSize);
 
-
 	//1) Enviar info a la UMC - message serializado
 	sendMessage(&socketUMC, buffer, bufferSize);
 
 	//2) Despues de enviar la info, Enviar el tamanio del prgrama
-	string_append(&codeScript, "\0");	//ALWAYS put \0 for finishing the string
 	sendMessage(&socketUMC, (void*) contentLen, sizeof(contentLen));
 
 	//3) Enviar programa
+	string_append(&codeScript, "\0");	//ALWAYS put \0 for finishing the string
 	sendMessage(&socketUMC, (void*) codeScript, contentLen);
 
 	free(message);

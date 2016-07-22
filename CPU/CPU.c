@@ -60,13 +60,11 @@ int main(int argc, char *argv[]){
 			deserializeCPU_Nucleo(messageWithBasicPCB, messageRcv);
 
 			log_info(logCPU,"Construyendo PCB para PID #%d\n",messageWithBasicPCB->processID);
-
+			//TODO verificar que se este recibiendo lo mismo que se envia desde el proceso NUCLEO
 			PCBRecibido->PID = messageWithBasicPCB->processID;
 			PCBRecibido->ProgramCounter = messageWithBasicPCB->programCounter;
 			PCBRecibido->StackPointer = messageWithBasicPCB->stackPointer;
 			PCBRecibido->cantidadDePaginas = messageWithBasicPCB->cantidadDePaginas;
-			PCBRecibido->indiceDeEtiquetas = malloc(strlen(messageWithBasicPCB->indiceDeEtiquetas) + 1 );
-			strcpy(PCBRecibido->indiceDeEtiquetas, messageWithBasicPCB->indiceDeEtiquetas);
 			PCBRecibido->indiceDeCodigo = list_create();
 			PCBRecibido->indiceDeStack = list_create();
 			QUANTUM = messageWithBasicPCB->quantum;
@@ -96,8 +94,24 @@ int main(int argc, char *argv[]){
 			//deserializar estructuras del stack
 			deserializarListaStack(PCBRecibido->indiceDeStack, messageRcv);
 
-			//Create list for IndiceDeEtiquetas
-			deserializarListaIndiceDeEtiquetas(PCBRecibido->indiceDeEtiquetas, messageWithBasicPCB->indiceDeEtiquetasTamanio);
+			//receive tamaño de lista indice stack
+			messageRcv = realloc(messageRcv, sizeof(messageSize));
+			messageSize = -1;//Reseting message size before receiving the new one
+			receivedBytes = receiveMessage(&socketNucleo, &messageSize, sizeof(messageSize));
+
+			PCBRecibido->indiceDeEtiquetasTamanio = messageSize;
+
+			if (PCBRecibido->indiceDeEtiquetasTamanio > 0){
+				//receive indice de etiquetas if > 0
+				messageRcv = realloc(messageRcv, PCBRecibido->indiceDeEtiquetasTamanio);
+				receivedBytes = receiveMessage(&socketNucleo, messageRcv, PCBRecibido->indiceDeEtiquetasTamanio);
+
+				PCBRecibido->indiceDeEtiquetas = malloc(PCBRecibido->indiceDeEtiquetasTamanio);
+				memcpy(PCBRecibido->indiceDeEtiquetas, messageRcv, PCBRecibido->indiceDeEtiquetasTamanio);
+
+				//Create list for IndiceDeEtiquetas
+				deserializarListaIndiceDeEtiquetas(PCBRecibido->indiceDeEtiquetas, PCBRecibido->indiceDeEtiquetasTamanio);
+			}
 
 			printf("El PCB fue recibido correctamente\n");
 
