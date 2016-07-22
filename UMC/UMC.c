@@ -72,16 +72,16 @@ int main(int argc, char *argv[]){
 
 void startServer(){
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
-	t_serverData serverData;
+	int socketServer;
 
-	exitCode = openServerConnection(configuration.port, &serverData.socketServer);
-	log_info(UMCLog, "SocketServer: %d\n", serverData.socketServer);
+	exitCode = openServerConnection(configuration.port, &socketServer);
+	log_info(UMCLog, "SocketServer: %d\n", socketServer);
 
 	//If exitCode == 0 the server connection is opened and listening
 	if (exitCode == 0) {
 		log_info(UMCLog, "The server is opened.\n");
 
-		exitCode = listen(serverData.socketServer, SOMAXCONN);
+		exitCode = listen(socketServer, SOMAXCONN);
 
 		if (exitCode < 0 ){
 			log_error(UMCLog,"Failed to listen server Port.\n");
@@ -89,7 +89,7 @@ void startServer(){
 		}
 
 		while (1){
-			newClients((void*) &serverData);
+			newClients((void*) &socketServer);
 		}
 	}
 
@@ -99,7 +99,8 @@ void newClients (void *parameter){
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
 	int pid;
 
-	t_serverData *serverData = (t_serverData*) parameter;
+	t_serverData *serverData = malloc(sizeof(t_serverData));
+	memcpy(&serverData->socketServer, parameter, sizeof(serverData->socketServer));
 
 	// disparar un thread para acceptar cada cliente nuevo (debido a que el accept es bloqueante) y para hacer el handshake
 	/**************************************/
@@ -121,6 +122,7 @@ void newClients (void *parameter){
 	if (exitCode == EXIT_FAILURE){
 		log_warning(UMCLog,"There was detected an attempt of wrong connection\n");
 		close(serverData->socketClient);
+		free(serverData);
 	}else{
 
 		//Create thread attribute detached
@@ -130,7 +132,7 @@ void newClients (void *parameter){
 
 		//Create thread for checking new connections in server socket
 		pthread_t handShakeThread;
-		pthread_create(&handShakeThread, &handShakeThreadAttr, (void*) handShake, parameter);
+		pthread_create(&handShakeThread, &handShakeThreadAttr, (void*) handShake, serverData);
 
 		//Destroy thread attribute
 		pthread_attr_destroy(&handShakeThreadAttr);
@@ -162,6 +164,7 @@ void handShake (void *parameter){
 	if ( receivedBytes == 0 ){
 		log_error(UMCLog,"The client went down while handshaking! - Please check the client '%d' is down!\n", serverData->socketClient);
 		close(serverData->socketClient);
+		free(serverData);
 	}else{
 		switch ((int) message->process){
 			case CPU:{
@@ -219,6 +222,7 @@ void handShake (void *parameter){
 			default:{
 				log_error(UMCLog,"Process not allowed to connect - Invalid process '%s' tried to connect to UMC\n", getProcessString(message->process));
 				close(serverData->socketClient);
+				free(serverData);
 				break;
 			}
 		}
@@ -273,6 +277,7 @@ void processMessageReceived (void *parameter){
 			default:{
 				log_error(UMCLog,"Process not allowed to connect - Invalid process '%s' send a message to UMC\n", getProcessString(fromProcess));
 				close(serverData->socketClient);
+				free(serverData);
 				break;
 			}
 			}
@@ -281,10 +286,12 @@ void processMessageReceived (void *parameter){
 			//The client is down when bytes received are 0
 			log_error(UMCLog,"The client went down while receiving! - Please check the client '%d' is down!\n", serverData->socketClient);
 			close(serverData->socketClient);
+			free(serverData);
 			break;
 		}else{
 			log_error(UMCLog, "Error - No able to received - Error receiving from socket '%d', with error: %d\n",serverData->socketClient,errno);
 			close(serverData->socketClient);
+			free(serverData);
 			break;
 		}
 
@@ -401,6 +408,7 @@ void procesNucleoMessages(char *messageRcv, int messageSize, t_serverData* serve
 		default:{
 			log_error(UMCLog, "Process not allowed to connect - Invalid operation for CPU messages '%d' requested to UMC \n",(int) message->operation);
 			close(serverData->socketClient);
+			free(serverData);
 			break;
 		}
 	}
@@ -750,7 +758,7 @@ void initializeProgram(int PID, int totalPagesRequired, char *programCode){
 
 	//overwrite page content in swap (swap out)
 	t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
-	message->virtualAddress = (t_memoryLocation *)malloc(sizeof(t_memoryLocation));
+	message->virtualAddress = malloc(sizeof(t_memoryLocation));
 	message->operation = agregar_proceso;
 	message->PID = PID;
 	message->cantPages = totalPagesRequired;
@@ -769,13 +777,13 @@ void initializeProgram(int PID, int totalPagesRequired, char *programCode){
 	sendMessage(&socketSwap, buffer, bufferSize);
 
 	//After sending information have to be sent the program code
-
+	//TODO received possible error from SWAP if is OK then send code
 	//1) Send program size to swap
-	string_append(&programCode,"\0");//ALWAYS put \0 for finishing the string
-	int programCodeLen = strlen(programCode) + 1;//+1 because of '\0'
+	int programCodeLen = strlen(programCode);//+1 not needed it's being sent from Nucleo
 	sendMessage(&socketSwap, &programCodeLen, sizeof(programCodeLen));
 
 	//2) Send program to swap
+	//string_append(&programCode,"\0");//ALWAYS put \0 for finishing the string
 	sendMessage(&socketSwap, programCode, programCodeLen);
 
 	free(buffer);
