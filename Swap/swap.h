@@ -72,7 +72,6 @@ int retardoCompactacion;
 int retardoAcceso;
 char* nombre_swap;
 t_list* listaSwap;
-t_serverData* socketsSwap;
 t_log* logSwap;
 void* mapearArchivoEnMemoria(int offset,int tamanio);
 void destructorBloqueSwap(bloqueSwap* self);

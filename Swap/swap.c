@@ -47,7 +47,6 @@ int main(int argc, char *argv[]){
 	fseek(archivoSwap,0,SEEK_SET);
 	fwrite("1",tamanioDePagina,cantidadDePaginas,archivoSwap);*/
 	char* paginaAEnviar;
-	int socket;
 	bloqueSwap* bloqueInicial=malloc(sizeof(bloqueSwap));
 	bloqueInicial->PID=0;
 	bloqueInicial->ocupado=0;
@@ -55,101 +54,119 @@ int main(int argc, char *argv[]){
 	listaSwap=list_create();
 	list_add(listaSwap,(void*)bloqueInicial);
 	startServer();
-	while(1){
-		processingMessages(socketsSwap->socketClient);
-	}
 	return 1;
 }
 
 void processingMessages(int socketClient){
-	char* mensajeRecibido = malloc(sizeof(bloqueSwap)); //FIXING missing memory location
-	char* structUmcSwap=malloc(sizeof(t_MessageUMC_Swap));
 	char* paginaRecibida;
-	char* mensajeDeError = string_new();
-	string_append(&mensajeDeError,"Error: No se pudo enviar los datos");
-	t_MessageUMC_Swap* operacionARealizar;
-	receiveMessage(&socketClient,structUmcSwap,sizeof(t_MessageUMC_Swap)); //FIXING receiving size
-	deserializeSwap_UMC(operacionARealizar,structUmcSwap);
-	switch(operacionARealizar->operation){
-	case agregar_proceso:{
-		bloqueSwap* pedidoRecibidoYDeserializado;
-		pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
-		pedidoRecibidoYDeserializado->cantDePaginas=operacionARealizar->cantPages;
-		int valorDeError;
-		int tamanio;
-		char* codeScript;
-		if(verificarEspacioDisponible(listaSwap)>pedidoRecibidoYDeserializado->cantDePaginas){
+	bloqueSwap* pedidoRecibidoYDeserializado = malloc(sizeof(bloqueSwap)); //FIXING missing memory location;
+	t_MessageUMC_Swap* operacionARealizar = malloc(sizeof(t_MessageUMC_Swap)); //FIXING missing memory location
+
+	//FIXING receiving messages - IT WAS ALL WRONG
+	//Receive message size
+	int messageSize = 0;
+
+	char *messageRcv = malloc(sizeof(messageSize));
+	int receivedBytes = receiveMessage(&socketClient, messageRcv, sizeof(messageSize));
+
+	if ( receivedBytes > 0 ){
+
+		//Get Payload size
+		memcpy(&messageSize, messageRcv, sizeof(messageSize));
+
+		//Receive process from which the message is going to be interpreted
+		enum_processes fromProcess;
+		messageRcv = realloc(messageRcv, sizeof(fromProcess));
+		receivedBytes = receiveMessage(&socketClient, messageRcv, sizeof(fromProcess));
+		memcpy(&fromProcess, messageRcv, sizeof(fromProcess));
+		log_info(logSwap,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
+
+		//Receive message using the size read before
+		messageRcv = realloc(messageRcv, messageSize);
+		int receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
+
+		//int receivedBytes = receiveMessage(&socketClient,structUmcSwap,sizeof(operacionARealizar));
+
+		deserializeSwap_UMC(operacionARealizar,messageRcv);
+
+		switch(operacionARealizar->operation){
+		case agregar_proceso:{
+			pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
+			pedidoRecibidoYDeserializado->cantDePaginas=operacionARealizar->cantPages;
+			int valorDeError;
+			int tamanio;
+
+			if(verificarEspacioDisponible(listaSwap)>pedidoRecibidoYDeserializado->cantDePaginas){
+
+				//"Recibo el tamaño de codigo del nuevo procesos"
+				receiveMessage(&socketClient,&tamanio,sizeof(tamanio));
+				//"Recibo el codigo"
+				char* codeScript = malloc(tamanio); //FIXING missing memory location
+				receiveMessage(&socketClient,codeScript,tamanio);
+
 				if(existeElBloqueNecesitado(listaSwap)){
-					//"Recibo el tamaño de codigo del nuevo procesos"
-					receiveMessage(&socketClient,&tamanio,sizeof(tamanio));
-					//"Recibo el codigo"
-					receiveMessage(&socketClient,codeScript,tamanio);
+					//MOVING BLOCK BECAUSE IN ELSE codeScript was not being received
 					agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
 				}else{
 					compactarArchivo(listaSwap);
 					agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
 				}
+
+				free(codeScript);//adding free memory
 			}else{
 				log_error(logSwap,"No hay espacio disponible para agregar el bloque. \n");
+				//TODO aca se debe enviar un error a la UMC
 			}
 
+			break;
+		}
+		case finalizar_proceso:{
 
-
-		break;
-	}
-	case finalizar_proceso:{
-		bloqueSwap* pedidoRecibidoYDeserializado;
-		int valorDeError;
-		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
-		//TODO Leo: que hace despues con mensajeRecibido despues de recibirlo?
-
-		if(valorDeError != -1){
+			//DELETING unnecessary receive
 
 			pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
 			eliminarProceso(listaSwap,pedidoRecibidoYDeserializado->PID);
-		}else{
-			log_error(logSwap,"No se recibio correctamente los datos. \n");
+			break;
 		}
-		break;
-	}
 
-	case lectura_pagina:{
-		bloqueSwap* pedidoRecibidoYDeserializado;
-		leer_pagina lecturaNueva;
-		char* paginaLeida;
-		int valorDeError;
-		valorDeError = receiveMessage(&socketClient,mensajeRecibido,sizeof(bloqueSwap));
-		//TODO Leo: que hace despues con mensajeRecibido despues de recibirlo?
+		case lectura_pagina:{
 
-		if(valorDeError != -1){
+			leer_pagina lecturaNueva;
+			char* paginaLeida;
+			//DELETING unnecessary receive
+
 			//deserializarBloqueSwap(lecturaNueva,mensajeRecibido);
 			pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
 			pedidoRecibidoYDeserializado->paginaInicial=operacionARealizar->virtualAddress->pag;
 			paginaLeida=leerPagina(pedidoRecibidoYDeserializado,listaSwap);
+
 			int valorDeError = sendMessage(&socketClient,paginaLeida,tamanioDePagina);
-			if(valorDeError != -1){
+			if(valorDeError == EXIT_SUCCESS){// cambiando al valor apropiado la funcion nunca retorna -1
 				log_info(logSwap,"Se enviaron correctamente los datos. \n");
 			}else{
 				log_error(logSwap,"No se enviaron correctamente los datos. \n");
+				/* TODO esto esta mal, si no pudo hacer el send a quien va a volver a hacer otro send con un mensaje de error????
 				sendMessage(&socketClient,mensajeDeError,string_length(mensajeDeError));
-
+				*/
 			}
-		}else{
-			log_error(logSwap,"No se recibio correctamente los datos. \n");
+			free(paginaLeida);//Adding free because it was never being freed the memory requested in leerPagina()
+			break;
 		}
-		break;
-	}
-	case escritura_pagina:{
-			bloqueSwap* pedidoRecibidoYDeserializado;
+		case escritura_pagina:{
+
 			char* paginaAEscribir=malloc(tamanioDePagina);
 			pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
 			pedidoRecibidoYDeserializado->paginaInicial=operacionARealizar->virtualAddress->pag;
 			receiveMessage(&socketClient,paginaAEscribir,tamanioDePagina);
 			escribirPagina(paginaAEscribir,pedidoRecibidoYDeserializado,listaSwap);
 
-		break;
-	}
-	default: log_warning(logSwap,"La operacion recibida es invalida. \n");
+			free(paginaAEscribir);//Adding free because it was never being freed the memory requested
+			break;
+		}
+		default: log_warning(logSwap,"La operacion recibida es invalida. \n");
+		}
+	}else{
+		log_error(logSwap,"No se recibio correctamente los datos. \n");
 	}
 }
 
@@ -286,7 +303,7 @@ bloqueSwap* buscarProcesoAEliminar(int PID,t_list* unaLista){
 		}
 	}
 	log_error(logSwap,"No se encontro un bloque para eliminar. \n");
-	bloqueSwap* bloqueNulo=NULL;
+	bloqueSwap* bloqueNulo=NULL; //TODO Leo: ESTO ESTA MAL! SIEMPRE ESTA ENVIANDO UN PUNTERO A NULL, nunca va a hacer nada en TODOS los lugares que se la llama
 	return bloqueNulo;
 
 }
@@ -366,6 +383,7 @@ int condicionDeCompactacion(bloqueSwap* unBloque,bloqueSwap* otroBloque){
 }
 
 int existeElBloqueNecesitado(t_list* listaSwap){
+	//TODO esta tirando segmentation fault CORREGIR - LA FUNCION condicionDeCompactacion() NO TIENE QUE RECIBIR 2 PARAMETROS!! VER tests en: https://github.com/sisoputnfrba/so-commons-library/blob/master/tests/unit-tests/test_list.c
 	return list_any_satisfy(listaSwap,(void*)condicionDeCompactacion);
 }
 
@@ -399,9 +417,7 @@ void startServer(){
 			return;
 		}
 
-		while (1){
-			newClients((void*) &serverData);
-		}
+		newClients((void*) &serverData);
 	}
 
 }
@@ -459,9 +475,11 @@ void handShake (void *parameter){
 
 			if (exitCode == EXIT_SUCCESS){
 
-				//TODO start receiving request -
-				//TODO LEO: ESTO TIENE QUE LOOPEAR INFINITAMENTE!!!
-				processingMessages(serverData->socketClient);
+				//start receiving requests
+				while(1){
+					processingMessages(serverData->socketClient);//FIXING socketsSwap wrong variable
+					//processingMessages(socketsSwap->socketClient); //socketsSwap was never loaded
+				}
 
 			}
 
@@ -490,7 +508,7 @@ bloqueSwap* buscarBloqueALlenar(bloqueSwap* unBloque,t_list* unaLista){
 		}
 	}
 	log_error(logSwap,"No se encontro un bloque para llenar. \n");
-	return unBloque;
+	return unBloque;// TODO Leo: esto esta mal, esta haciendo un return de algo que ya devuelve por referencia - VER LA LLAMADA QUE SE HACE PORQUE EL RETURN Y unBloque son lo mismo y se estan igualando sin sentido
 
 }
 
