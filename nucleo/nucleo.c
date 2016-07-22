@@ -346,7 +346,7 @@ void processMessageReceived (void *parameter){
 		close(serverData->socketClient);
 	}
 
-	free(messageRcv);
+	free(messageRcv);//TODO raro esta pinchando aca con este mensaje "double free or corruption"
 
 }
 
@@ -377,9 +377,9 @@ void runScript(char* codeScript, int socketConsola){
 
 	//Get last program line from main
 	int index = miMetaData->instruccion_inicio ;
-	t_registroIndiceCodigo* instruccionActual = malloc(sizeof(t_registroIndiceCodigo));
+	t_registroIndiceCodigo* instruccionActual;
 
-	while (index <miMetaData->instrucciones_size){
+	while (index < miMetaData->instrucciones_size){
 
 		instruccionActual = (t_registroIndiceCodigo*) list_get(PCB->indiceDeCodigo, index);
 
@@ -394,11 +394,9 @@ void runScript(char* codeScript, int socketConsola){
 		index++;
 	}
 
-	free(instruccionActual);
-
 	PCB->finDePrograma = index;
 	log_info(logNucleo,"se asigna el index: %d al PCB que indica el fin del Programa",index);
-
+	//TODO poner un semaforo aca porque la van a estar pisando varios threads seguramente
 	idProcesos++;
 
 	pthread_mutex_lock(&listadoProcesos);
@@ -417,7 +415,7 @@ void runScript(char* codeScript, int socketConsola){
 
 	//Agrego a la lista de Consolas
 	t_datosConsola* datosConsola = malloc(sizeof(t_datosConsola));
-	datosConsola->numSocket = socketConsola;
+	datosConsola->numSocket = socketConsola; //TODO no esta reconociendo el socketnro... se debe estar perdiendo por algun lado
 	datosConsola->PID = PCB->PID;
 	pthread_mutex_lock(&listadoConsola);
 	list_add(listaConsola, (void*) datosConsola);
@@ -503,21 +501,14 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		contextoProceso->processID = datosPCB->PID;
 		contextoProceso->stackPointer = datosPCB->StackPointer;
 		contextoProceso->cantidadDePaginas = datosPCB->cantidadDePaginas;
-		contextoProceso->indiceDeEtiquetasTamanio = datosPCB->indiceDeEtiquetasTamanio;
-		contextoProceso->indiceDeEtiquetas = malloc(contextoProceso->indiceDeEtiquetasTamanio * sizeof(char));
-		memcpy(contextoProceso->indiceDeEtiquetas, datosPCB->indiceDeEtiquetas, contextoProceso->indiceDeEtiquetasTamanio * sizeof(char));
-		//strcpy(contextoProceso->indiceDeEtiquetas, datosPCB->indiceDeEtiquetas);
-		//contextoProceso->indiceDeEtiquetasTamanio = strlen(datosPCB->indiceDeEtiquetas) + 1;
 
 		log_info(logNucleo,"se realiza el traspaso de datosPCB para en enviarle al proceso CPU\n");
 
-		int payloadSize = sizeof(contextoProceso->programCounter) + (sizeof(contextoProceso->processID))
+		int payloadSize = sizeof(contextoProceso->programCounter) + sizeof(contextoProceso->processID)
 			+ sizeof(contextoProceso->stackPointer)+ sizeof(contextoProceso->cantidadDePaginas)
-			+ sizeof(contextoProceso->quantum) + sizeof(contextoProceso->quantum_sleep)
-			+ sizeof(contextoProceso->indiceDeEtiquetasTamanio) + contextoProceso->indiceDeEtiquetasTamanio; //+ strlen(datosPCB->indiceDeEtiquetas) + 1;// +1 because '\0'
+			+ sizeof(contextoProceso->quantum) + sizeof(contextoProceso->quantum_sleep);
 
 		int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
-		//TODO verificar que lo anterior este bien con respecto al indice de etiquetas y su tamanio.
 		//TODO en las pruebas llega hasta aca y tira error
 		char* bufferEnviar = malloc(bufferSize);
 		//Serializar mensaje basico del PCB
@@ -537,7 +528,6 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		sendMessage(&serverData->socketClient, bufferIndiceCodigo, strlen(bufferIndiceCodigo));
 
 		free(bufferIndiceCodigo);
-		free(contextoProceso->indiceDeEtiquetas);
 
 		//serializar estructuras del stack
 		char* bufferIndiceStack =  malloc(sizeof(datosPCB->indiceDeStack->elements_count));
@@ -549,6 +539,14 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		sendMessage(&serverData->socketClient, bufferIndiceStack, strlen(bufferIndiceStack));
 
 		free(bufferIndiceStack);
+
+		//send tamaño de indice de etiquetas
+		sendMessage(&serverData->socketClient, &datosPCB->indiceDeEtiquetasTamanio, sizeof(datosPCB->indiceDeEtiquetasTamanio));
+
+		if (datosPCB->indiceDeEtiquetasTamanio > 0 ){
+			//send indice de etiquetas if > 0
+			sendMessage(&serverData->socketClient, datosPCB->indiceDeEtiquetas, datosPCB->indiceDeEtiquetasTamanio);
+		}
 
 		//Saco el primer elemento de la cola, porque ya lo planifique.
 		pthread_mutex_lock(&cListos);
@@ -1357,10 +1355,13 @@ void armarIndiceDeEtiquetas(t_PCB *unBloqueControl,t_metadata_program* miMetaDat
 
 	unBloqueControl->indiceDeEtiquetas = string_new();
 	unBloqueControl->indiceDeEtiquetasTamanio = miMetaData->etiquetas_size;
-	unBloqueControl->indiceDeEtiquetas = malloc(unBloqueControl->indiceDeEtiquetasTamanio * sizeof(char));
-	memcpy(unBloqueControl->indiceDeEtiquetas, miMetaData->etiquetas, unBloqueControl->indiceDeEtiquetasTamanio * sizeof(char));
+	if (unBloqueControl->indiceDeEtiquetasTamanio > 0 ){
+		unBloqueControl->indiceDeEtiquetas = malloc(unBloqueControl->indiceDeEtiquetasTamanio);
+		memcpy(unBloqueControl->indiceDeEtiquetas, miMetaData->etiquetas, unBloqueControl->indiceDeEtiquetasTamanio);
+		log_info(logNucleo,"'sizeindiceDeEtiquetas' : %d\n 'indiceDeEtiquetas' : %s\n", unBloqueControl->indiceDeEtiquetasTamanio, unBloqueControl->indiceDeEtiquetas);
+	}
 
-	log_info(logNucleo,"'sizeindiceDeEtiquetas' : %d\n 'indiceDeEtiquetas' : %s\n", unBloqueControl->indiceDeEtiquetasTamanio, unBloqueControl->indiceDeEtiquetas);
+	log_info(logNucleo,"'sizeindiceDeEtiquetas' : %d\n", unBloqueControl->indiceDeEtiquetasTamanio);
 }
 
 void finalizarPid(int pid){
@@ -1434,10 +1435,10 @@ void iniciarPrograma(int PID, char *codeScript) {
 	sendMessage(&socketUMC, buffer, bufferSize);
 
 	//2) Despues de enviar la info, Enviar el tamanio del prgrama
-	string_append(&codeScript, "\0");	//ALWAYS put \0 for finishing the string
 	sendMessage(&socketUMC, (void*) contentLen, sizeof(contentLen));
 
 	//3) Enviar programa
+	string_append(&codeScript, "\0");	//ALWAYS put \0 for finishing the string
 	sendMessage(&socketUMC, (void*) codeScript, contentLen);
 
 	free(message);

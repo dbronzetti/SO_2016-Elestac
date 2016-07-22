@@ -65,8 +65,6 @@ typedef struct{
 	int stackPointer;
 	int quantum_sleep;
 	int quantum;
-	int indiceDeEtiquetasTamanio;
-	char *indiceDeEtiquetas;
 } t_MessageNucleo_CPU;
 
 int openServerConnection(int newSocketServerPort, int *socketServer);

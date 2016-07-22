@@ -656,14 +656,6 @@ void serializeNucleo_CPU(t_MessageNucleo_CPU *value, char *buffer, int valueSize
 	memcpy(buffer + offset, &value->quantum, sizeof(value->quantum));
 	offset += sizeof(value->quantum);
 
-    //8)indiceDeEtiquetasTamanio
-    value->indiceDeEtiquetasTamanio = strlen(value->indiceDeEtiquetas) + 1;//+1 because of '\0'
-	memcpy(buffer + offset, &value->indiceDeEtiquetasTamanio, sizeof(value->indiceDeEtiquetasTamanio));
-	offset += sizeof(value->indiceDeEtiquetasTamanio);
-
-	//9)indiceDeEtiquetas
-    memcpy(buffer + offset, value->indiceDeEtiquetas, value->indiceDeEtiquetasTamanio);
-
 }
 
 void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char * bufferReceived) {
@@ -692,13 +684,6 @@ void deserializeCPU_Nucleo(t_MessageNucleo_CPU *value, char * bufferReceived) {
 	//7)quantum
 	memcpy(&value->quantum, bufferReceived + offset, sizeof(value->quantum));
 	offset += sizeof(value->quantum);
-
-	//8)indiceDeEtiquetasTamanio
-	memcpy(&value->indiceDeEtiquetasTamanio, bufferReceived + offset, sizeof(value->indiceDeEtiquetasTamanio));
-	offset += sizeof(value->indiceDeEtiquetasTamanio);
-
-	//9)indiceDeEtiquetas
-	memcpy(&value->indiceDeEtiquetas, bufferReceived + offset, value->indiceDeEtiquetasTamanio);
 
 }
 
