@@ -10,3 +10,39 @@
 
 [INFO] 13:15:30:649 SWAP/(3434:3434): Message from 'UMC': The process 'UMC' is trying to connect you!
 
+[INFO] 14:26:50:165 SWAP/(4242:4242): socketServer: 4
+
+[INFO] 14:26:50:165 SWAP/(4242:4242): The server is opened.
+
+[INFO] 14:26:56:104 SWAP/(4242:4242): messageSize received: 52
+
+[INFO] 14:26:56:104 SWAP/(4242:4242): Message from 'UMC': The process 'UMC' is trying to connect you!
+
+[INFO] 14:32:43:317 SWAP/(4271:4271): socketServer: 4
+
+[INFO] 14:32:43:317 SWAP/(4271:4271): The server is opened.
+
+[INFO] 14:32:45:681 SWAP/(4271:4271): messageSize received: 52
+
+[INFO] 14:32:45:681 SWAP/(4271:4271): Message from 'UMC': The process 'UMC' is trying to connect you!
+
+[INFO] 14:35:53:602 SWAP/(4370:4370): socketServer: 4
+
+[INFO] 14:35:53:602 SWAP/(4370:4370): The server is opened.
+
+[INFO] 14:35:57:809 SWAP/(4370:4370): messageSize received: 52
+
+[INFO] 14:35:57:809 SWAP/(4370:4370): Message from 'UMC': The process 'UMC' is trying to connect you!
+
+[INFO] 14:39:02:963 SWAP/(4434:4434): socketServer: 4
+
+[INFO] 14:39:02:963 SWAP/(4434:4434): The server is opened.
+
+[INFO] 14:39:06:639 SWAP/(4434:4434): messageSize received: 52
+
+[INFO] 14:39:06:639 SWAP/(4434:4434): Message from 'UMC': The process 'UMC' is trying to connect you!
+
+[INFO] 14:45:19:26 SWAP/(4464:4464): socketServer: 4
+
+[INFO] 14:45:19:26 SWAP/(4464:4464): The server is opened.
+
