@@ -87,7 +87,7 @@ int verificarEspacioDisponible(t_list* listaSwap);
 char* leerPagina(bloqueSwap* bloqueDeSwap,t_list* listaSwap);
 void crearArchivoDeConfiguracion();
 void processingMessages(int socketClient);
-int existeElBloqueNecesitado(t_list* listaSwap);
+int existeElBloqueNecesitado(t_list* listaSwap,bloqueSwap* unBloque);
 bool condicionLeer(bloqueSwap* unBloque,bloqueSwap* otroBloque);
 int elementosVacios(bloqueSwap* unElemento);
 bloqueSwap* buscarBloqueALlenar(bloqueSwap* unBloque,t_list* unaLista);

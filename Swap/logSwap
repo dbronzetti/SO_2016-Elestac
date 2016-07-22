@@ -1,0 +1,12 @@
+[INFO] 12:55:22:80 SWAP/(3343:3343): socketServer: 4
+
+[INFO] 12:55:22:81 SWAP/(3343:3343): The server is opened.
+
+[INFO] 12:59:27:673 SWAP/(3434:3434): socketServer: 4
+
+[INFO] 12:59:27:673 SWAP/(3434:3434): The server is opened.
+
+[INFO] 13:15:30:649 SWAP/(3434:3434): messageSize received: 52
+
+[INFO] 13:15:30:649 SWAP/(3434:3434): Message from 'UMC': The process 'UMC' is trying to connect you!
+
