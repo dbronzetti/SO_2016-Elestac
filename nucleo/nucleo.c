@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
 	pthread_mutex_init(&cBloqueados, NULL);
 	pthread_mutex_init(&cFinalizar, NULL);
 	pthread_mutex_init(&cSemaforos, NULL);
-	pthread_mutex_init(&socketMutex, NULL);
+	pthread_mutex_init(&globalMutex, NULL);
 	pthread_mutex_init(&activeProcessMutex, NULL);
 	pthread_mutex_init(&mutex_config, NULL);
 
@@ -255,7 +255,6 @@ void handShake (void *parameter){
  	}
 
 	free(messageRcv);
-	free(message->message);
 	free(message);
 }
 
@@ -310,9 +309,8 @@ void processMessageReceived (void *parameter){
 				receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
 				log_info(logNucleo,"El Nucleo recibe el codigo del programa:\n %s del socket: %d \n",messageRcv, serverData->socketClient);
-			
-				runScript(messageRcv,socketConsola);
-
+				socketConsola = serverData->socketClient;
+				runScript(messageRcv);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
@@ -320,7 +318,7 @@ void processMessageReceived (void *parameter){
 				log_info(logNucleo, "Processing %s message received\n", getProcessString(fromProcess));
 				pthread_mutex_lock(&activeProcessMutex);
 				processCPUMessages(messageRcv, messageSize, serverData->socketClient);
-				free(parameter);
+				//free(parameter);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
@@ -346,11 +344,10 @@ void processMessageReceived (void *parameter){
 		close(serverData->socketClient);
 	}
 
-	free(messageRcv);//TODO raro esta pinchando aca con este mensaje "double free or corruption"
-
+	//free(messageRcv);
 }
 
-void runScript(char* codeScript, int socketConsola){
+void runScript(char* codeScript){
 	//Creo el PCB del proceso.
 	t_PCB* PCB = malloc(sizeof(t_PCB));
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
@@ -359,7 +356,11 @@ void runScript(char* codeScript, int socketConsola){
 	//Armo Indice de codigo, etiquetas y stack
 	t_metadata_program *miMetaData = metadata_desde_literal(codeScript);
 
+	pthread_mutex_lock(&globalMutex);
 	PCB->PID = idProcesos;
+	idProcesos++;
+	pthread_mutex_unlock(&globalMutex);
+
 	PCB->ProgramCounter = miMetaData->instruccion_inicio;
 	int contentLen = strlen(codeScript) + 1;	//+1 debido al '\0'
 	PCB->cantidadDePaginas = (int) ceil((double) contentLen/ (double) frameSize);
@@ -387,6 +388,7 @@ void runScript(char* codeScript, int socketConsola){
 		memcpy(line, codeScript + instruccionActual->inicioDeInstruccion, instruccionActual->longitudInstruccionEnBytes);
 
 		if (string_starts_with(line,TEXT_END)){
+			free(line);
 			break;
 		}
 
@@ -396,8 +398,6 @@ void runScript(char* codeScript, int socketConsola){
 
 	PCB->finDePrograma = index;
 	log_info(logNucleo,"se asigna el index: %d al PCB que indica el fin del Programa",index);
-	//TODO poner un semaforo aca porque la van a estar pisando varios threads seguramente
-	idProcesos++;
 
 	pthread_mutex_lock(&listadoProcesos);
 	list_add(listaProcesos,(void*)PCB);
@@ -415,7 +415,7 @@ void runScript(char* codeScript, int socketConsola){
 
 	//Agrego a la lista de Consolas
 	t_datosConsola* datosConsola = malloc(sizeof(t_datosConsola));
-	datosConsola->numSocket = socketConsola; //TODO no esta reconociendo el socketnro... se debe estar perdiendo por algun lado
+	datosConsola->numSocket = socketConsola;
 	datosConsola->PID = PCB->PID;
 	pthread_mutex_lock(&listadoConsola);
 	list_add(listaConsola, (void*) datosConsola);
@@ -466,6 +466,7 @@ void planificarProceso() {
 		log_info(logNucleo,"Nucleo se prepara para enviar informacion del processID: %d al proceso CPU \n",datosProceso->PID);
 
 		enviarMsjCPU(datosPCB, contextoProceso, serverData);
+		free(contextoProceso);
 	} else {
 		log_info(logNucleo,"Proceso no encontrado\n");
 	}
@@ -492,7 +493,6 @@ void planificarProceso() {
 			printf("Proceso no encontrado en la lista.\n");
 		}
 	}*/
-	//free(contextoProceso);
 }
 
 void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_serverData* serverData){
@@ -509,14 +509,13 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 			+ sizeof(contextoProceso->quantum) + sizeof(contextoProceso->quantum_sleep);
 
 		int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
-		//TODO en las pruebas llega hasta aca y tira error
 		char* bufferEnviar = malloc(bufferSize);
 		//Serializar mensaje basico del PCB
 		serializeNucleo_CPU(contextoProceso, bufferEnviar, payloadSize);
-		log_info(logNucleo,"serializo el mensaje para enviar al proceso CPU\n");
 
 		//Hacer send al CPU de lo que se serializo arriba
 		sendMessage(&serverData->socketClient, bufferEnviar, bufferSize);
+		log_info(logNucleo,"Se envia el mensaje basico del PCB al proceso CPU\n");
 
 		//serializar estructuras del indice de codigo
 		char* bufferIndiceCodigo =  malloc(sizeof(datosPCB->indiceDeCodigo->elements_count));
@@ -528,15 +527,18 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		sendMessage(&serverData->socketClient, bufferIndiceCodigo, strlen(bufferIndiceCodigo));
 
 		free(bufferIndiceCodigo);
+		log_info(logNucleo,"se envia la lista indice de codigo al proceso CPU\n");
 
 		//serializar estructuras del stack
 		char* bufferIndiceStack =  malloc(sizeof(datosPCB->indiceDeStack->elements_count));
 		serializarListaStack(datosPCB->indiceDeStack, bufferIndiceStack);
+		log_info(logNucleo,"serializo la lista indice de stack para preparar su envio al proceso CPU\n");
 
 		//send tamaño de lista indice stack
 		sendMessage(&serverData->socketClient, (void*) strlen(bufferIndiceStack), sizeof(int));
 		//send lista indice stack
 		sendMessage(&serverData->socketClient, bufferIndiceStack, strlen(bufferIndiceStack));
+		log_info(logNucleo,"se envia la lista indice de stack al proceso CPU\n");
 
 		free(bufferIndiceStack);
 
@@ -546,6 +548,8 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		if (datosPCB->indiceDeEtiquetasTamanio > 0 ){
 			//send indice de etiquetas if > 0
 			sendMessage(&serverData->socketClient, datosPCB->indiceDeEtiquetas, datosPCB->indiceDeEtiquetasTamanio);
+			log_info(logNucleo,"se envia el indice de etiquetas al proceso CPU\n");
+
 		}
 
 		//Saco el primer elemento de la cola, porque ya lo planifique.
@@ -557,23 +561,25 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		int estado = 2;
 		cambiarEstadoProceso(datosPCB->PID, estado);
 
+		free(bufferEnviar);
+		free(proceso);
+
 		//1) Recibo mensajes del CPU
+		log_info(logNucleo,"El NUCLEO se queda esperando una respuesta del proceso CPU\n");
 		processMessageReceived(&serverData);
 
 		//2) processCPUMessages se hace dentro de processMessageReceived (case CPU)
 
-		free(bufferEnviar);
-		free(proceso);
 }
 
-void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
+void processCPUMessages(char* messageRcv,int messageSize,int socketCPULibre){
 	log_info(logNucleo, "Processing CPU message \n");
 
 	t_MessageCPU_Nucleo *message=malloc(sizeof(t_MessageCPU_Nucleo));
 
 	//Receive message using the size read before
 	messageRcv = realloc(messageRcv, messageSize);
-	receiveMessage(&socketLibre, messageRcv, messageSize);
+	receiveMessage(&socketCPULibre, messageRcv, messageSize);
 
 	//Deserializo messageRcv
 	deserializeNucleo_CPU(message, messageRcv);
@@ -585,11 +591,11 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		//change active PID
 		activePID = message->processID;
 
-		receiveMessage(&socketLibre, datosEntradaSalida, sizeof(t_es));
+		receiveMessage(&socketCPULibre, datosEntradaSalida, sizeof(t_es));
 		deserializarES(&infoES, datosEntradaSalida);
 
 		//Libero la CPU que ocupaba el proceso
-		liberarCPU(socketLibre);
+		liberarCPU(socketCPULibre);
 
 		//Cambio el PC del Proceso
 		actualizarPC(message->processID, infoES.ProgramCounter);
@@ -603,11 +609,11 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		break;
 	}
 	case 2:{ 	//Finaliza Proceso Bien
-		finalizaProceso(socketLibre, message->processID,message->operacion);
+		finalizaProceso(socketCPULibre, message->processID,message->operacion);
 		break;
 	}
 	case 3:{ 	//Finaliza Proceso Mal
-		finalizaProceso(socketLibre, message->processID,message->operacion);
+		finalizaProceso(socketCPULibre, message->processID,message->operacion);
 		break;
 	}
 	case 4:{
@@ -616,7 +622,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 	}
 	case 5:{ 	//Corte por Quantum
 		log_info(logNucleo, "Se procesa la atencion del corte por Quantum");
-		atenderCorteQuantum(socketLibre, message->processID);
+		atenderCorteQuantum(socketCPULibre, message->processID);
 		break;
 	}
 	//TODO mutex configNucleo
@@ -624,11 +630,11 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 		// 1) Recibir tamanio de la variable
 		int* variableLen = malloc(sizeof(int));
-		receiveMessage(&socketLibre, variableLen, sizeof(int));
+		receiveMessage(&socketCPULibre, variableLen, sizeof(int));
 
 		// 2) Recibir la variable
 		t_nombre_compartida variable = malloc(*variableLen);
-		receiveMessage(&socketLibre, variable, *variableLen);
+		receiveMessage(&socketCPULibre, variable, *variableLen);
 
 		t_valor_variable* valorVariable = obtenerValor(variable);
 
@@ -637,7 +643,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 			break;
 		}
 
-		sendMessage(&socketLibre, valorVariable, sizeof(t_valor_variable));
+		sendMessage(&socketCPULibre, valorVariable, sizeof(t_valor_variable));
 		free(variableLen);
 		free(valorVariable);
 		break;
@@ -646,15 +652,15 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 		// 1) Recibir valor
 		t_valor_variable* valor = malloc(sizeof(t_valor_variable));
-		receiveMessage(&socketLibre, valor, sizeof(t_valor_variable));
+		receiveMessage(&socketCPULibre, valor, sizeof(t_valor_variable));
 
 		// 2) Recibir tamanio de la variable
 		int* variableLen = malloc(sizeof(int));
-		receiveMessage(&socketLibre, variableLen, sizeof(int));
+		receiveMessage(&socketCPULibre, variableLen, sizeof(int));
 
 		// 3) Recibir la variable
 		t_nombre_compartida variable = malloc(*variableLen);
-		receiveMessage(&socketLibre, variable, *variableLen);
+		receiveMessage(&socketCPULibre, variable, *variableLen);
 
 		grabarValor(variable, valor);
 		log_info(logNucleo, "Se graba el valor: %d en la variable: %s id, con el tamanio: %d  \n",valor, variable, *variableLen);
@@ -668,11 +674,11 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 	case 8:{	// WAIT - Grabar semaforo y enviar al CPU
 		//Recibo el tamanio del wait
 		int* tamanio = malloc(sizeof(int));
-		receiveMessage(&socketLibre, tamanio, sizeof(int));
+		receiveMessage(&socketCPULibre, tamanio, sizeof(int));
 
 		//Recibo el semaforo wait
 		t_nombre_semaforo semaforo = malloc(*tamanio);
-		receiveMessage(&socketLibre, semaforo, *tamanio);
+		receiveMessage(&socketCPULibre, semaforo, *tamanio);
 
 		log_info(logNucleo, "Se recibe el semaforo WAIT: %s, con el tamanio: %d  \n",semaforo, *tamanio);
 
@@ -683,16 +689,16 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 				valorAEnviar = 1;
 				log_info(logNucleo, "Recibi proceso %d mando a bloquear por semaforo: %d \n", (message->processID)%6+1, semaforo);
-				sendMessage(&socketLibre, &valorAEnviar,sizeof(int));// 1 si se bloquea. 0 si no se bloquea
+				sendMessage(&socketCPULibre, &valorAEnviar,sizeof(int));// 1 si se bloquea. 0 si no se bloquea
 
 				//TODO Verificar: recibir PCB del CPU para volver a planificarlo
 				//agregarlo a donde corresponda: (se hace en bloqueoSemaforo) para volver a enviarlo cuando se desbloquee el semaforo
 
 				int* tamanioStack = malloc(sizeof(int));
-				receiveMessage(&socketLibre, tamanioStack, sizeof(int));
+				receiveMessage(&socketCPULibre, tamanioStack, sizeof(int));
 
 				char* listaStackSerializada = malloc(sizeof(*tamanioStack));
-				receiveMessage(&socketLibre, listaStackSerializada, sizeof(int));
+				receiveMessage(&socketCPULibre, listaStackSerializada, sizeof(int));
 
 				t_list* listaIndiceDeStack = list_create();
 				deserializarListaStack(listaIndiceDeStack, listaStackSerializada);
@@ -700,11 +706,13 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 				bloqueoSemaforo(message->processID, semaforo);
 
 				//Libero la CPU que ocupaba el proceso
-				liberarCPU(socketLibre);//
+				liberarCPU(socketCPULibre);
+				free(tamanioStack);
+				free(listaStackSerializada);
 			}else{
 				grabarSemaforo(semaforo,*pideSemaforo(semaforo)-1);
 				valorAEnviar=0;
-				sendMessage(&socketLibre, &valorAEnviar, sizeof(int));
+				sendMessage(&socketCPULibre, &valorAEnviar, sizeof(int));
 			}
 		}
 		free(tamanio);
@@ -715,11 +723,11 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 		//Recibo el tamanio del signal
 		int* tamanio = malloc(sizeof(int));
-		receiveMessage(&socketLibre, tamanio, sizeof(int));
+		receiveMessage(&socketCPULibre, tamanio, sizeof(int));
 
 		//Recibo el semaforo wait
 		t_nombre_semaforo semaforo = malloc(*tamanio);
-		receiveMessage(&socketLibre, semaforo, *tamanio);
+		receiveMessage(&socketCPULibre, semaforo, *tamanio);
 		log_info(logNucleo, "Proceso %d libera semaforo:%s \n", message->processID, semaforo);
 		liberaSemaforo(semaforo);
 
@@ -737,7 +745,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 
 		//Received value from CPU
 		t_valor_variable* valor = malloc(sizeof(t_valor_variable));
-		receiveMessage(&socketLibre, valor, sizeof(t_valor_variable));
+		receiveMessage(&socketCPULibre, valor, sizeof(t_valor_variable));
 
 		//Enviar operacion=2 para que la Consola sepa que es un valor
 		int operacion = 2;
@@ -760,10 +768,10 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		char* texto = malloc(*tamanio);
 
 		//Recibo el tamanio del texto
-		receiveMessage(&socketLibre, tamanio,sizeof(int));
+		receiveMessage(&socketCPULibre, tamanio,sizeof(int));
 
 		//Recibo el texto
-		receiveMessage(&socketLibre, texto, *tamanio);
+		receiveMessage(&socketCPULibre, texto, *tamanio);
 
 		//Enviar operacion=1 para que la Consola sepa que es un un texto
 		int operacion = 1;
@@ -791,13 +799,13 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketLibre){
 		pthread_mutex_unlock(&listadoProcesos);
 
 		//send back the last line information to the CPU requestor
-		sendMessage(&socketLibre, &infoProceso->finDePrograma, sizeof(infoProceso->finDePrograma));
+		sendMessage(&socketCPULibre, &infoProceso->finDePrograma, sizeof(infoProceso->finDePrograma));
 
 		break;
 	}
 	case 72:{
 		alertFlag = 1;
-		atenderCorteQuantum(socketLibre, message->processID);
+		atenderCorteQuantum(socketCPULibre, message->processID);
 		break;
 	}
 	default:
@@ -1443,6 +1451,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 
 	free(message);
 	free(buffer);
+	log_info(logNucleo,"Se realiza correctamente el envio del programa al proceso UMC");
 
 }
 

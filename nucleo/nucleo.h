@@ -81,9 +81,10 @@ pthread_mutex_t cListos;
 pthread_mutex_t cBloqueados;
 pthread_mutex_t cFinalizar;
 pthread_mutex_t cSemaforos;
-pthread_mutex_t socketMutex;
+pthread_mutex_t globalMutex;
 pthread_mutex_t activeProcessMutex;
 pthread_mutex_t mutex_config;
+
 
 //Semaforo Contador
 sem_t semBloqueados;
@@ -118,7 +119,7 @@ int alertFlag = 0;
 
 //Encabezamientos de Funciones Principales
 
-void runScript(char* codeScript,int socketConsola);
+void runScript(char* codeScript);
 void planificarProceso();
 void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso,t_serverData* serverData);
 void finalizaProceso(int socket, int PID, int estado);
