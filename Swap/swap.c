@@ -104,7 +104,7 @@ void processingMessages(int socketClient){
 				char* codeScript = malloc(tamanio); //FIXING missing memory location
 				receiveMessage(&socketClient,codeScript,tamanio);
 
-				if(existeElBloqueNecesitado(listaSwap)){
+				if(existeElBloqueNecesitado(listaSwap,pedidoRecibidoYDeserializado)){
 					//MOVING BLOCK BECAUSE IN ELSE codeScript was not being received
 					agregarProceso(pedidoRecibidoYDeserializado,listaSwap,codeScript);
 				}else{
@@ -303,7 +303,7 @@ bloqueSwap* buscarProcesoAEliminar(int PID,t_list* unaLista){
 		}
 	}
 	log_error(logSwap,"No se encontro un bloque para eliminar. \n");
-	bloqueSwap* bloqueNulo=NULL; //TODO Leo: ESTO ESTA MAL! SIEMPRE ESTA ENVIANDO UN PUNTERO A NULL, nunca va a hacer nada en TODOS los lugares que se la llama
+	bloqueSwap* bloqueNulo=NULL;
 	return bloqueNulo;
 
 }
@@ -378,12 +378,12 @@ int verificarEspacioDisponible(t_list* listaSwap){
 	return acum;
 }
 
-int condicionDeCompactacion(bloqueSwap* unBloque,bloqueSwap* otroBloque){
-	return(unBloque->cantDePaginas>=otroBloque->cantDePaginas);
-}
 
-int existeElBloqueNecesitado(t_list* listaSwap){
-	//TODO esta tirando segmentation fault CORREGIR - LA FUNCION condicionDeCompactacion() NO TIENE QUE RECIBIR 2 PARAMETROS!! VER tests en: https://github.com/sisoputnfrba/so-commons-library/blob/master/tests/unit-tests/test_list.c
+
+int existeElBloqueNecesitado(t_list* listaSwap,bloqueSwap* otroBloque){
+	int condicionDeCompactacion(bloqueSwap* unBloque){
+		return(unBloque->cantDePaginas>=otroBloque->cantDePaginas);
+	}
 	return list_any_satisfy(listaSwap,(void*)condicionDeCompactacion);
 }
 
