@@ -107,6 +107,7 @@ void destroyIndiceEtiquetas();
 void manejarES(int PID, int pcActualizado, int* banderaFinQuantum, int tiempoBloqueo);
 void serializarES(t_es *value, t_nombre_dispositivo buffer, int valueSize);
 void cargarValoresNuevaPosicion(t_memoryLocation* ultimaPosicionOcupada, t_memoryLocation* variableAAgregar);
+void getReturnStackRegister(t_registroStack* registroARegresar);
 t_memoryLocation* buscarEnElStackPosicionPagina(t_PCB* pcb);
 t_memoryLocation* buscarUltimaPosicionOcupada(t_PCB* pcbEjecutando);
 
