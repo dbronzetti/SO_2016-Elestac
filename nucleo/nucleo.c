@@ -515,19 +515,19 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 
 		//Hacer send al CPU de lo que se serializo arriba
 		sendMessage(&serverData->socketClient, bufferEnviar, bufferSize);
-		log_info(logNucleo,"Se envia el mensaje basico del PCB al proceso CPU\n");
+		log_info(logNucleo,"Se envia el mensaje basico del PCB al proceso CPU de bufferSize: %d\n", bufferSize);
 
 		//serializar estructuras del indice de codigo
-		char* bufferIndiceCodigo =  malloc(sizeof(datosPCB->indiceDeCodigo->elements_count));
-		serializarListaIndiceDeCodigo(datosPCB->indiceDeCodigo, bufferIndiceCodigo);
+		char* bufferIndiceCodigo = NULL;
+		int tamanioIndiceCodigo = serializarListaIndiceDeCodigo(datosPCB->indiceDeCodigo, bufferIndiceCodigo);
 
 		//send tamaño de lista indice codigo
-		sendMessage(&serverData->socketClient, (void*) strlen(bufferIndiceCodigo), sizeof(int));
+		sendMessage(&serverData->socketClient, &tamanioIndiceCodigo, sizeof(tamanioIndiceCodigo));
 		//send lista indice codigo
-		sendMessage(&serverData->socketClient, bufferIndiceCodigo, strlen(bufferIndiceCodigo));
+		sendMessage(&serverData->socketClient, bufferIndiceCodigo, tamanioIndiceCodigo);
 
 		free(bufferIndiceCodigo);
-		log_info(logNucleo,"se envia la lista indice de codigo al proceso CPU - Tamanio indice Codigo: %d\n");
+		log_info(logNucleo,"se envia la lista de indice de codigo de %d elementos al proceso CPU - Tamanio indice Codigo: %d\n",datosPCB->indiceDeCodigo->elements_count, tamanioIndiceCodigo);
 
 		//serializar estructuras del stack
 		char* bufferIndiceStack =  malloc(sizeof(datosPCB->indiceDeStack->elements_count));
@@ -536,11 +536,12 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 
 		//send tamaño de lista indice stack
 		sendMessage(&serverData->socketClient, (void*) strlen(bufferIndiceStack), sizeof(int));
+		log_info(logNucleo,"Se envia el tamanio %d (strlen) del buffer indice de Stack al proceso CPU\n",strlen(bufferIndiceStack));
 
 		if (datosPCB->indiceDeStack->elements_count > 0 ){
 			//send lista indice stack
 			sendMessage(&serverData->socketClient, bufferIndiceStack, strlen(bufferIndiceStack));
-			log_info(logNucleo,"se envia la lista indice de stack al proceso CPU - Tamanio indice Stack: %d\n", bufferIndiceStack);
+			log_info(logNucleo,"se envia la lista de indice de stack de %d elementos al proceso CPU - Tamanio indice Stack: %d\n", datosPCB->indiceDeStack->elements_count ,bufferIndiceStack);
 		}
 
 		free(bufferIndiceStack);

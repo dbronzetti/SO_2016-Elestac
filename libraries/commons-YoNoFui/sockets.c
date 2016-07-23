@@ -410,9 +410,10 @@ void deserializarIndiceDeCodigo(t_registroIndiceCodigo* registroARecibir, char* 
 
 }
 
-void serializarListaIndiceDeCodigo(t_list* listaASerializar, char* listaSerializada){
+int serializarListaIndiceDeCodigo(t_list* listaASerializar, char* listaSerializada){
 	int offset = 0 ;
-	t_registroIndiceCodigo* registroObtenido = malloc(sizeof(t_registroIndiceCodigo));
+	t_registroIndiceCodigo* registroObtenido ;
+	listaSerializada = malloc(sizeof(listaASerializar->elements_count));
 
 	memcpy(listaSerializada, &listaASerializar->elements_count,	sizeof(listaASerializar->elements_count));
 	offset += sizeof(listaASerializar->elements_count);
@@ -431,8 +432,7 @@ void serializarListaIndiceDeCodigo(t_list* listaASerializar, char* listaSerializ
 		offset += sizeof(t_registroIndiceCodigo);
 	}
 
-	free(registroObtenido);
-
+	return offset;
 }
 
 void deserializarListaIndiceDeCodigo(t_list* listaARecibir, char* listaSerializada){
