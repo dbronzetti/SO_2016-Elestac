@@ -41,6 +41,7 @@ int main(int argc, char *argv[]){
 
 	exitCode = connectTo(NUCLEO,&socketNucleo);
 
+	PCBRecibido = malloc(sizeof(t_PCB));
 	while ((exitCode == EXIT_SUCCESS) && !(SignalActivated)){//No wait for more messages if signal was activated during processing
 
 		if(exitCode == EXIT_SUCCESS){
@@ -211,7 +212,7 @@ int main(int argc, char *argv[]){
 		}
 
 	}//llave agregada, faltaba para cerrar el main
-
+	free(PCBRecibido);
 	return EXIT_SUCCESS;
 }
 
