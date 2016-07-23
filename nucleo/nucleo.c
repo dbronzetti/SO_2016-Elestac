@@ -527,7 +527,7 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		sendMessage(&serverData->socketClient, bufferIndiceCodigo, strlen(bufferIndiceCodigo));
 
 		free(bufferIndiceCodigo);
-		log_info(logNucleo,"se envia la lista indice de codigo al proceso CPU\n");
+		log_info(logNucleo,"se envia la lista indice de codigo al proceso CPU - Tamanio indice Codigo: %d\n");
 
 		//serializar estructuras del stack
 		char* bufferIndiceStack =  malloc(sizeof(datosPCB->indiceDeStack->elements_count));
@@ -536,9 +536,12 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 
 		//send tamaño de lista indice stack
 		sendMessage(&serverData->socketClient, (void*) strlen(bufferIndiceStack), sizeof(int));
-		//send lista indice stack
-		sendMessage(&serverData->socketClient, bufferIndiceStack, strlen(bufferIndiceStack));
-		log_info(logNucleo,"se envia la lista indice de stack al proceso CPU\n");
+
+		if (datosPCB->indiceDeStack->elements_count > 0 ){
+			//send lista indice stack
+			sendMessage(&serverData->socketClient, bufferIndiceStack, strlen(bufferIndiceStack));
+			log_info(logNucleo,"se envia la lista indice de stack al proceso CPU - Tamanio indice Stack: %d\n", bufferIndiceStack);
+		}
 
 		free(bufferIndiceStack);
 
@@ -548,7 +551,7 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		if (datosPCB->indiceDeEtiquetasTamanio > 0 ){
 			//send indice de etiquetas if > 0
 			sendMessage(&serverData->socketClient, datosPCB->indiceDeEtiquetas, datosPCB->indiceDeEtiquetasTamanio);
-			log_info(logNucleo,"se envia el indice de etiquetas al proceso CPU\n");
+			log_info(logNucleo,"se envia el indice de etiquetas al proceso CPU - Tamanio indice Etiquetas: %d\n", datosPCB->indiceDeEtiquetasTamanio);
 
 		}
 

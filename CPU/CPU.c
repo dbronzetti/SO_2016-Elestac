@@ -82,19 +82,25 @@ int main(int argc, char *argv[]){
 			//deserializar estructuras del indice de codigo
 			deserializarListaIndiceDeCodigo(PCBRecibido->indiceDeCodigo, messageRcv);
 
+			log_info(logCPU,"Tamanio indice Codigo %d - Proceso %d ", messageSize, PCBRecibido->PID);
+
 			//receive tamaño de lista indice stack
 			messageRcv = realloc(messageRcv, sizeof(messageSize));
 			messageSize = -1;//Reseting message size before receiving the new one
 			receivedBytes = receiveMessage(&socketNucleo, &messageSize, sizeof(messageSize));
 
-			//receive lista indice stack
-			messageRcv = realloc(messageRcv, messageSize);
-			receivedBytes = receiveMessage(&socketNucleo, messageRcv, messageSize);
+			if (messageSize > 0 ){
+				//receive lista indice stack
+				messageRcv = realloc(messageRcv, messageSize);
+				receivedBytes = receiveMessage(&socketNucleo, messageRcv, messageSize);
 
-			//deserializar estructuras del stack
-			deserializarListaStack(PCBRecibido->indiceDeStack, messageRcv);
+				//deserializar estructuras del stack
+				deserializarListaStack(PCBRecibido->indiceDeStack, messageRcv);
+			}
 
-			//receive tamaño de lista indice stack
+			log_info(logCPU,"Tamanio indice stack %d - Proceso %d ", messageSize, PCBRecibido->PID);
+
+			//receive tamaño de lista indice etiquetas
 			messageRcv = realloc(messageRcv, sizeof(messageSize));
 			messageSize = -1;//Reseting message size before receiving the new one
 			receivedBytes = receiveMessage(&socketNucleo, &messageSize, sizeof(messageSize));
@@ -113,7 +119,9 @@ int main(int argc, char *argv[]){
 				deserializarListaIndiceDeEtiquetas(PCBRecibido->indiceDeEtiquetas, PCBRecibido->indiceDeEtiquetasTamanio);
 			}
 
-			printf("El PCB fue recibido correctamente\n");
+			log_info(logCPU,"Tamanio indice de Etiquetas %d - Proceso %d ", messageSize, PCBRecibido->PID);
+
+			log_info(logCPU,"El PCB fue recibido correctamente\n");
 
 			int j = 0;
 			while (j < QUANTUM){
