@@ -299,7 +299,7 @@ void procesCPUMessages(int messageSize, t_serverData* serverData){
 	int exitcode = EXIT_SUCCESS;
 
 	//Receive message using the size read before
-	char *messageRcv = malloc(sizeof(messageSize));
+	char *messageRcv = malloc(messageSize);
 	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
 	t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
@@ -329,6 +329,8 @@ void procesCPUMessages(int messageSize, t_serverData* serverData){
 				sendMessage(&serverData->socketClient, &exitcode, sizeof(exitcode));
 			}
 
+			free(content);
+
 			break;
 		}
 		case escritura_pagina:{
@@ -340,7 +342,7 @@ void procesCPUMessages(int messageSize, t_serverData* serverData){
 			receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
 
 			//Receive content using the size read before
-			content = realloc(content, messageSize);
+			content = malloc(messageSize);
 			receivedBytes = receiveMessage(&serverData->socketClient, content, messageSize);
 
 			exitcode = writeBytesToPage(message->virtualAddress, content);
@@ -352,6 +354,8 @@ void procesCPUMessages(int messageSize, t_serverData* serverData){
 				//The main memory hasn't any free frames - inform status of the operation
 				sendMessage(&serverData->socketClient, &exitcode, sizeof(exitcode));
 			}
+
+			free(content);
 
 			break;
 		}
@@ -366,7 +370,7 @@ void procesNucleoMessages(int messageSize, t_serverData* serverData){
 	int exitcode = EXIT_SUCCESS;
 
 	//Receive message using the size read before
-	char *messageRcv = malloc(sizeof(messageSize));
+	char *messageRcv = malloc(messageSize);
 	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
 	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
@@ -1002,7 +1006,7 @@ void checkPageModification(t_memoryAdmin *memoryElement){
 		memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + memoryElement->virtualAddress->offset;
 		content = realloc(content, memoryElement->virtualAddress->size);
 		memcpy(content, memoryBlockOffset, memoryElement->virtualAddress->size);
-		sendMessage(&socketSwap, content, memoryElement->virtualAddress->size);
+		sendMessage(&socketSwap, content, memoryElement->virtualAddress->size); //OJO asegurarse que el CPU siempre envie pagesize
 
 		log_info(UMCLog, "From PID '%d' - Content in page '#%d' swapped OUT\n",memoryElement->PID, memoryElement->virtualAddress->pag);
 

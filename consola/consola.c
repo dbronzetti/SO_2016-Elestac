@@ -65,12 +65,9 @@ int main(int argc, char **argv) {
 			printf("Comando Reconocido.\n");
 
 			codeScript = leerArchivoYGuardarEnCadena(&tamanioArchivo);
-			printf("Codigo del programa: %s .\n", codeScript);
 			printf("Tamanio del archivo: %d .\n", tamanioArchivo);
 
 			string_append(&codeScript,"\0");// "\0" para terminar el string
-			int strlenProgram = strlen(codeScript);
-			printf("strlen del programa: %d\n",strlenProgram);
 			int programCodeLen = tamanioArchivo + 1; //+1 por el '\0'
 
 			//1)Envia el tamanio y el fromProcess
@@ -79,8 +76,6 @@ int main(int argc, char **argv) {
 
 			//2)Envia el codigo del programa
 			exitCode = sendMessage(&socketNucleo, codeScript,programCodeLen);
-
-			fgets(inputTeclado, sizeof(inputTeclado), stdin);
 
 			break;
 		}
@@ -139,7 +134,6 @@ void* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
 
 	}
 	int strlenProgram = (int) strlen(textoDeArchivo);
-	printf("strlen del programa adentro de la funcion: %d\n",strlenProgram);
 	fclose(archivo);
 	return textoDeArchivo;
 }

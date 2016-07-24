@@ -122,6 +122,8 @@ int main(int argc, char *argv[]){
 
 				//Create list for IndiceDeEtiquetas
 				deserializarListaIndiceDeEtiquetas(PCBRecibido->indiceDeEtiquetas, PCBRecibido->indiceDeEtiquetasTamanio);
+			}else{
+				PCBRecibido->indiceDeEtiquetas = string_new();//initializing indice etiquetas if size is 0
 			}
 
 			log_info(logCPU,"Tamanio indice de Etiquetas %d - Proceso %d \n", messageSize, PCBRecibido->PID);

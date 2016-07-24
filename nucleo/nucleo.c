@@ -308,7 +308,7 @@ void processMessageReceived (void *parameter){
 				}
 
 				//Recibo el codigo del programa (messageRcv) usando el tamanio leido antes
-				char *messageRcv = malloc(sizeof(messageSize));
+				char *messageRcv = malloc(messageSize);
 				receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
 				runScript(messageRcv, serverData->socketClient);
@@ -1440,7 +1440,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 	int contentLen = strlen(codeScript);
 	int cantPages = (int) ceil((double) contentLen /(double) frameSize);
 
-	log_info(logNucleo,"strlen del codigo del programa: %d \n", PID, contentLen);
+	log_info(logNucleo,"strlen del codigo del programa: %d \n", contentLen);
 
 	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
 

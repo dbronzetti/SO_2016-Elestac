@@ -84,7 +84,7 @@ void processingMessages(int socketClient){
 		log_info(logSwap,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
 
 		//Receive message using the size read before
-		char *messageRcv = malloc(sizeof(messageSize));
+		char *messageRcv = malloc(messageSize);
 		int receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
 		log_info(logSwap, "message received: %s \n", messageRcv);
 
@@ -100,7 +100,7 @@ void processingMessages(int socketClient){
 			pedidoRecibidoYDeserializado->tamanioDelBloque = operacionARealizar->cantPages * tamanioDePagina;
 			pedidoRecibidoYDeserializado->ocupado = 1; //BLOQUE OCUPADO
 			int valorDeError;
-			int tamanio;
+			int tamanio = 0;
 
 			if(verificarEspacioDisponible() >= pedidoRecibidoYDeserializado->cantDePaginas){
 
@@ -166,7 +166,7 @@ void processingMessages(int socketClient){
 			char* paginaAEscribir=malloc(tamanioDePagina);
 			pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
 			pedidoRecibidoYDeserializado->paginaInicial=operacionARealizar->virtualAddress->pag;
-			receiveMessage(&socketClient,paginaAEscribir,tamanioDePagina);
+			receiveMessage(&socketClient,paginaAEscribir,operacionARealizar->virtualAddress->size);//cambio para asegurar que el receive siempre se haga bien
 			escribirPagina(paginaAEscribir,pedidoRecibidoYDeserializado);
 
 			free(paginaAEscribir);//Adding free because it was never being freed the memory requested
@@ -370,17 +370,17 @@ void* mapearArchivoEnMemoria(int offset,int tamanio){
 
 }
 
-int elementosVacios(bloqueSwap* unElemento){
-	return unElemento->ocupado==0;
+bool elementosVacios(bloqueSwap* unElemento){ //changing to bool
+	return (unElemento->ocupado == 0);
 }
 int verificarEspacioDisponible(){
 	t_list* listaFiltrada;
 	int i;
 	int acum = 0;
 	bloqueSwap* bloqueDevuelto;
-	listaFiltrada=list_filter(listaSwap,(void*)elementosVacios);
-	for(i=0;i<listaFiltrada->elements_count;i++){
-		bloqueDevuelto=list_get(listaFiltrada,i);
+	listaFiltrada = list_filter(listaSwap,(void*)elementosVacios);
+	for(i=0; i < listaFiltrada->elements_count; i++){
+		bloqueDevuelto = list_get(listaFiltrada,i);
 		acum += (bloqueDevuelto->cantDePaginas);
 	}
 

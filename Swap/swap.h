@@ -90,7 +90,7 @@ void crearArchivoDeConfiguracion();
 void processingMessages(int socketClient);
 bloqueSwap* existeElBloqueNecesitado(bloqueSwap* otroBloque);
 bool condicionLeer(bloqueSwap* unBloque,bloqueSwap* otroBloque);
-int elementosVacios(bloqueSwap* unElemento);
+bool elementosVacios(bloqueSwap* unElemento);
 bloqueSwap* buscarBloqueALlenar(bloqueSwap* unBloque);
 int eliminarProceso(int PID);
 bloqueSwap* buscarProcesoAEliminar(int PID);
