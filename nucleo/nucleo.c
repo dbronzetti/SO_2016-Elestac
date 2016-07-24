@@ -265,20 +265,17 @@ void processMessageReceived (void *parameter){
 
 	//Receive message size
 	int messageSize = 0;
-	char *messageRcv = malloc(sizeof(messageSize));
-	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(messageSize));
+	//Get Payload size
+	int receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
 
 	if ( receivedBytes > 0 ){
 
-		//Get Payload size
-		memcpy(&messageSize, messageRcv, sizeof(messageSize));
+		char *messageRcv = malloc(sizeof(messageSize));
 		//log_info(logNucleo, "message size received: %d \n", messageSize);
 
 		//Receive process from which the message is going to be interpreted
 		enum_processes fromProcess;
-		messageRcv = realloc(messageRcv, sizeof(fromProcess));
-		receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(fromProcess));
-		memcpy(&fromProcess, messageRcv, sizeof(fromProcess));
+		receivedBytes = receiveMessage(&serverData->socketClient, &fromProcess, sizeof(fromProcess));
 
 		log_info(logNucleo,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
 
@@ -305,7 +302,7 @@ void processMessageReceived (void *parameter){
 				}
 
 				//Recibo el codigo del programa (messageRcv) usando el tamanio leido antes
-				messageRcv = realloc(messageRcv, messageSize);
+				memset(messageRcv, '\0',messageSize);//adding this for testing
 				receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
 				log_info(logNucleo,"Tamanio del codigo del programa:\n %d del socket: %d \n",messageSize, serverData->socketClient);
