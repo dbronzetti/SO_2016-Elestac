@@ -37,7 +37,7 @@ int main(int argc, char *argv[]){
 
 	exitCode = connectTo(UMC,&socketUMC);
 	if(exitCode == EXIT_SUCCESS){
-		printf("CPU connected to UMC successfully\n");
+		log_info(logCPU,"CPU connected to UMC successfully");
 	}
 
 
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]){
 	while ((exitCode == EXIT_SUCCESS) && !(SignalActivated)){//No wait for more messages if signal was activated during processing
 
 		if(exitCode == EXIT_SUCCESS){
-			printf("CPU connected to NUCLEO successfully\n");
+			log_info(logCPU,"CPU connected to NUCLEO successfully");
 			messageRcv = malloc(sizeof(int));//for receiving message size
 			waitRequestFromNucleo(&socketNucleo, &messageRcv);
 		}
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]){
 
 			deserializeCPU_Nucleo(messageWithBasicPCB, messageRcv);
 
-			log_info(logCPU,"Construyendo PCB para PID #%d\n",messageWithBasicPCB->processID);
+			log_info(logCPU,"Construyendo PCB para PID #%d",messageWithBasicPCB->processID);
 			//TODO verificar que se este recibiendo lo mismo que se envia desde el proceso NUCLEO
 			PCBRecibido->PID = messageWithBasicPCB->processID;
 			PCBRecibido->ProgramCounter = messageWithBasicPCB->programCounter;
@@ -85,9 +85,7 @@ int main(int argc, char *argv[]){
 			//deserializar estructuras del indice de codigo
 			deserializarListaIndiceDeCodigo(PCBRecibido->indiceDeCodigo, messageRcv);
 
-			log_info(logCPU,
-					"Tamanio indice Codigo %d - Cantidad de elementos indice de codigo %d - Proceso %d ",
-					messageSize, PCBRecibido->indiceDeCodigo->elements_count,PCBRecibido->PID);
+			log_info(logCPU,"Tamanio indice Codigo %d - Cantidad de elementos indice de codigo %d - Proceso '%d'",messageSize, PCBRecibido->indiceDeCodigo->elements_count,PCBRecibido->PID);
 
 			//receive tamaño de lista indice stack
 			messageRcv = realloc(messageRcv, sizeof(messageSize));
@@ -103,7 +101,7 @@ int main(int argc, char *argv[]){
 				deserializarListaStack(PCBRecibido->indiceDeStack, messageRcv);
 			}
 
-			log_info(logCPU,"Tamanio indice stack %d - Proceso %d \n", messageSize, PCBRecibido->PID);
+			log_info(logCPU,"Tamanio indice stack %d - Proceso '%d'", messageSize, PCBRecibido->PID);
 
 			//receive tamaño de lista indice etiquetas
 			messageRcv = realloc(messageRcv, sizeof(messageSize));
@@ -126,9 +124,8 @@ int main(int argc, char *argv[]){
 				PCBRecibido->indiceDeEtiquetas = string_new();//initializing indice etiquetas if size is 0
 			}
 
-			log_info(logCPU,"Tamanio indice de Etiquetas %d - Proceso %d \n", messageSize, PCBRecibido->PID);
-
-			log_info(logCPU,"El PCB fue recibido correctamente\n");
+			log_info(logCPU,"Tamanio indice de Etiquetas %d - Proceso '%d'", messageSize, PCBRecibido->PID);
+			log_info(logCPU,"El PCB del proceso '%d' fue recibido correctamente", PCBRecibido->PID);
 
 			int j = 0;
 			while (j < QUANTUM){
@@ -154,7 +151,7 @@ int main(int argc, char *argv[]){
 								corteQuantum->operacion = 72;//operacion 72 es por Desconexion del CPU
 								quantumUsed = j;
 							}else{// When j == QUANTUM
-								log_info(logCPU, "Corte por quantum cumplido - Proceso %d ", PCBRecibido->PID);
+								log_info(logCPU, "Corte por quantum cumplido - Proceso '%d'", PCBRecibido->PID);
 								corteQuantum->operacion = 5;//operacion 5 es por quantum
 								quantumUsed = QUANTUM;
 							}
@@ -284,7 +281,7 @@ int ejecutarPrograma(){
 		if(returnCode == EXIT_FAILURE){
 
 			//Envia aviso que finaliza incorrectamente el proceso a NUCLEO
-			log_error(logCPU, "No se pudo obtener la solicitud a ejecutar - Proceso %d - Error al finalizar", PCBRecibido->PID);
+			log_error(logCPU, "No se pudo obtener la solicitud a ejecutar - Proceso '%d' - Error al finalizar", PCBRecibido->PID);
 
 			t_MessageCPU_Nucleo* respuestaFinFalla = malloc( sizeof(t_MessageCPU_Nucleo));
 			respuestaFinFalla->operacion = 4;
@@ -359,7 +356,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 		break;
 	}
 	default:{
-		log_info(logCPU,"Process '%s' NOT VALID to be connected by NUCLEO.\n", getProcessString(processToConnect));
+		log_info(logCPU,"Process '%s' NOT VALID to be connected by NUCLEO.", getProcessString(processToConnect));
 		break;
 	}
 	}
@@ -396,25 +393,25 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 				case ACCEPTED:{
 					switch(processToConnect){
 					case UMC:{
-						log_info(logCPU, "Connected to UMC - Message: %s\n",message->message);
-						log_info(logCPU,"Receiving frame size\n");
+						log_info(logCPU, "Connected to UMC - Message: %s",message->message);
+						log_info(logCPU,"Receiving frame size");
 						//After receiving ACCEPTATION has to be received the "Tamanio de pagina" information
 						receivedBytes = receiveMessage(socketClient, &frameSize, sizeof(frameSize));
 
-						log_info(logCPU,"Tamanio de pagina: %d\n",frameSize);
+						log_info(logCPU,"Tamanio de pagina: %d",frameSize);
 						break;
 					}
 					case NUCLEO:{
-						log_info(logCPU, "Connected to NUCLEO - Message: %s\n",message->message);
-						log_info(logCPU,"Receiving stack size (number of pages for PID stack)\n");
+						log_info(logCPU, "Connected to NUCLEO - Message: %s",message->message);
+						log_info(logCPU,"Receiving stack size (number of pages for PID stack)");
 						//After receiving ACCEPTATION has to be received the "Tamanio de pagina" information
 						receivedBytes = receiveMessage(socketClient, &stackSize, sizeof(stackSize));
-						log_info(logCPU,"Tamanio de stack: %d\n",stackSize);
+						log_info(logCPU,"Tamanio de stack: %d",stackSize);
 						break;
 					}
 					default:{
 						log_error(logCPU,
-								"Handshake not accepted when tried to connect your '%s' with '%s'\n",
+								"\nHandshake not accepted when tried to connect your '%s' with '%s'\n",
 								getProcessString(processToConnect),	getProcessString(message->process));
 						close(*socketClient);
 						exitcode = EXIT_FAILURE;
@@ -466,7 +463,7 @@ void waitRequestFromNucleo(int *socketClient, char **messageRcv){
 		receivedBytes = receiveMessage(socketClient, *messageRcv, messageSize);
 
 		//TODO ver que hace con messageRcv despues de recibirlo!!
-		log_info(logCPU,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
+		log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), socketClient, messageSize);
 
 	}else{
 		*messageRcv = NULL;
@@ -491,12 +488,12 @@ void deserializarListaIndiceDeEtiquetas(char* charEtiquetas, int listaSize){
 		regIndiceEtiqueta->funcion = string_substring(charEtiquetas, offset, j);
 		offset += j + 1;//+1 por '\0's
 
-		log_info(logCPU,"funcion: %s\n", regIndiceEtiqueta->funcion);
+		log_info(logCPU,"funcion: '%s'", regIndiceEtiqueta->funcion);
 
 		memcpy(&regIndiceEtiqueta->posicionDeLaEtiqueta, charEtiquetas +offset, sizeof(regIndiceEtiqueta->posicionDeLaEtiqueta));
 		offset += sizeof(regIndiceEtiqueta->posicionDeLaEtiqueta);
 
-		log_info(logCPU,"posicionDeLaEtiqueta: %d\n", regIndiceEtiqueta->posicionDeLaEtiqueta);
+		log_info(logCPU,"posicionDeLaEtiqueta: %d", regIndiceEtiqueta->posicionDeLaEtiqueta);
 
 		list_add(listaIndiceEtiquetas,(void*)regIndiceEtiqueta);
 
@@ -523,7 +520,7 @@ void crearArchivoDeConfiguracion(char *configFile){
 }
 
 void sighandler(int signum){
-	log_info(logCPU,"Caught signal %d, coming out after sending information to Nucleo...\n", signum);
+	log_info(logCPU,"Caught signal %d, coming out after sending information to Nucleo...", signum);
 	//Activating flag for shutting down CPU
 	SignalActivated = true;
 }
@@ -577,7 +574,7 @@ void finalizar(void){
 	//ANALIZA SI ES EL FINAL DEL PROGRAMA
 	if(finDePrograma == ultimoPosicionPC){
 		//Fin Programa main
-		log_info(logCPU, "Proceso %d - Finalizado correctamente", PCBRecibido->PID);
+		log_info(logCPU, "Proceso '%d' - Finalizado correctamente", PCBRecibido->PID);
 
 		//Envia aviso que finaliza correctamente el proceso a NUCLEO
 		t_MessageCPU_Nucleo* respuestaFinOK = malloc(sizeof(t_MessageCPU_Nucleo));
@@ -1097,7 +1094,7 @@ void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo) {
 	serializarES(datosParaPlanifdeES, bufferDatosES,payloadSizeES);
 	sendMessage(&socketNucleo, bufferDatosES, bufferSizeES);
 
-	log_info(logCPU, "proceso: %d en entrada-salida de tiempo: %d \n", PCBRecibido->PID,tiempo);
+	log_info(logCPU, "Proceso: '%d' en entrada-salida de tiempo: %d", PCBRecibido->PID,tiempo);
 
 	free(bufferRespuesta);
 	free(entradaSalida);
