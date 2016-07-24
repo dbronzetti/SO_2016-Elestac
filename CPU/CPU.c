@@ -34,10 +34,12 @@ int main(int argc, char *argv[]){
 	//Creo Archivo de Log
 	logCPU = log_create(logFile,"CPU",0,LOG_LEVEL_TRACE);
 
+
 	exitCode = connectTo(UMC,&socketUMC);
 	if(exitCode == EXIT_SUCCESS){
 		printf("CPU connected to UMC successfully\n");
 	}
+
 
 	exitCode = connectTo(NUCLEO,&socketNucleo);
 
@@ -83,7 +85,9 @@ int main(int argc, char *argv[]){
 			//deserializar estructuras del indice de codigo
 			deserializarListaIndiceDeCodigo(PCBRecibido->indiceDeCodigo, messageRcv);
 
-			log_info(logCPU,"Tamanio indice Codigo %d - Proceso %d ", messageSize, PCBRecibido->PID);
+			log_info(logCPU,
+					"Tamanio indice Codigo %d - Cantidad de elementos indice de codigo %d - Proceso %d ",
+					messageSize, PCBRecibido->indiceDeCodigo->elements_count,PCBRecibido->PID);
 
 			//receive tamaño de lista indice stack
 			messageRcv = realloc(messageRcv, sizeof(messageSize));
@@ -99,7 +103,7 @@ int main(int argc, char *argv[]){
 				deserializarListaStack(PCBRecibido->indiceDeStack, messageRcv);
 			}
 
-			log_info(logCPU,"Tamanio indice stack %d - Proceso %d ", messageSize, PCBRecibido->PID);
+			log_info(logCPU,"Tamanio indice stack %d - Proceso %d \n", messageSize, PCBRecibido->PID);
 
 			//receive tamaño de lista indice etiquetas
 			messageRcv = realloc(messageRcv, sizeof(messageSize));
@@ -120,7 +124,7 @@ int main(int argc, char *argv[]){
 				deserializarListaIndiceDeEtiquetas(PCBRecibido->indiceDeEtiquetas, PCBRecibido->indiceDeEtiquetasTamanio);
 			}
 
-			log_info(logCPU,"Tamanio indice de Etiquetas %d - Proceso %d ", messageSize, PCBRecibido->PID);
+			log_info(logCPU,"Tamanio indice de Etiquetas %d - Proceso %d \n", messageSize, PCBRecibido->PID);
 
 			log_info(logCPU,"El PCB fue recibido correctamente\n");
 

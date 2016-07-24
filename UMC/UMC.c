@@ -243,6 +243,7 @@ void processMessageReceived (void *parameter){
 
 		//Get Payload size
 		int receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
+		log_info(UMCLog, "message size received: %d \n", messageSize);
 
 		if ( receivedBytes > 0 ){
 
@@ -262,7 +263,7 @@ void processMessageReceived (void *parameter){
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
-			case NUCLEO:{ //TODO verificar que se este recibiendo correctamente del proceso NUCLEO (se esta recibiendo fromProces = null)
+			case NUCLEO:{
 				log_info(UMCLog, "Processing NUCLEO message received\n");
 				pthread_mutex_lock(&activeProcessMutex);
 				procesNucleoMessages(messageSize, serverData);
@@ -383,10 +384,12 @@ void procesNucleoMessages(int messageSize, t_serverData* serverData){
 			receivedBytes = 0;//reseting receivedBytes to get the content size
 
 			receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
+			log_info(UMCLog, "message size received: %d \n", messageSize);
 
 			//Receive content using the size read before
 			void *content = malloc(messageSize);
 			receivedBytes = receiveMessage(&serverData->socketClient, content, messageSize);
+			log_info(UMCLog, "message received: %s \n", content);
 
 			initializeProgram(message->PID, message->cantPages, content);
 

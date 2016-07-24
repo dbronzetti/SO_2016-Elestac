@@ -86,6 +86,7 @@ void processingMessages(int socketClient){
 		//Receive message using the size read before
 		char *messageRcv = malloc(sizeof(messageSize));
 		int receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
+		log_info(logSwap, "message received: %s \n", messageRcv);
 
 		//int receivedBytes = receiveMessage(&socketClient,structUmcSwap,sizeof(operacionARealizar));
 
@@ -103,11 +104,14 @@ void processingMessages(int socketClient){
 
 			if(verificarEspacioDisponible() >= pedidoRecibidoYDeserializado->cantDePaginas){
 
-				//"Recibo el tamaño de codigo del nuevo procesos"
+				//"Recibo el tamaño de codigo del nuevo proceso"
 				receiveMessage(&socketClient,&tamanio,sizeof(tamanio));
+				log_info(logSwap, "message size received: %d \n", tamanio);
+
 				//"Recibo el codigo"
 				char* codeScript = malloc(tamanio); //FIXING missing memory location
 				receiveMessage(&socketClient,codeScript,tamanio);
+				log_info(logSwap, "message received: %s \n", codeScript);
 
 				if(existeElBloqueNecesitado(pedidoRecibidoYDeserializado) != NULL){
 					//MOVING BLOCK BECAUSE IN ELSE codeScript was not being received
