@@ -206,11 +206,11 @@ void deserializarRegistroStack(t_registroStack* registroRecibido, char* registro
 
 }
 
-void serializarListaStack(t_list* listaASerializar, char* listaSerializada){
+int serializarListaStack(t_list* listaASerializar, char** listaSerializada){
 	int offset = 0;
 	t_registroStack* registroStack = malloc(sizeof(t_registroStack));
 
-	memcpy(listaSerializada, &listaASerializar->elements_count, sizeof(listaASerializar->elements_count));
+	memcpy(*listaSerializada, &listaASerializar->elements_count, sizeof(listaASerializar->elements_count));
 	offset += sizeof(listaASerializar->elements_count);
 
 	int i;
@@ -219,10 +219,11 @@ void serializarListaStack(t_list* listaASerializar, char* listaSerializada){
 		registroStack = list_get(listaASerializar,i);
 
 		//serialize the element to the buffer
-		serializarRegistroStack(registroStack,listaSerializada, &offset);
+		serializarRegistroStack(registroStack,*listaSerializada, &offset);
 	}
 
 	free(registroStack);
+	return offset;
 }
 
 void deserializarListaStack(t_list* listaARecibir, char* listaSerializada){
@@ -410,24 +411,23 @@ void deserializarIndiceDeCodigo(t_registroIndiceCodigo* registroARecibir, char* 
 
 }
 
-int serializarListaIndiceDeCodigo(t_list* listaASerializar, char* listaSerializada){
+int serializarListaIndiceDeCodigo(t_list* listaASerializar, char** listaSerializada){
 	int offset = 0 ;
-	t_registroIndiceCodigo* registroObtenido ;
-	listaSerializada = malloc(sizeof(listaASerializar->elements_count));
+	t_registroIndiceCodigo* registroObtenido;
 
-	memcpy(listaSerializada, &listaASerializar->elements_count,	sizeof(listaASerializar->elements_count));
+	memcpy(*listaSerializada + offset, &listaASerializar->elements_count, sizeof(listaASerializar->elements_count));
 	offset += sizeof(listaASerializar->elements_count);
 
 	int i;
 	for (i = 0; i < listaASerializar->elements_count; i++) {
 		//Request more memory for the new element to be serialized
-		listaSerializada = realloc(listaSerializada, offset + sizeof(t_registroIndiceCodigo));
+		*listaSerializada = realloc(*listaSerializada, offset + sizeof(t_registroIndiceCodigo));
 
 		//get the element from the list by index
 		registroObtenido = list_get(listaASerializar,i);
 
 		//serialize the element to the buffer
-		serializarIndiceDeCodigo(registroObtenido, listaSerializada + offset);
+		serializarIndiceDeCodigo(registroObtenido, *listaSerializada + offset);
 
 		offset += sizeof(t_registroIndiceCodigo);
 	}
