@@ -119,7 +119,7 @@ int alertFlag = 0;
 
 //Encabezamientos de Funciones Principales
 
-void runScript(char* codeScript);
+void runScript(char* codeScript, int socketConsola);
 void planificarProceso();
 void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso,t_serverData* serverData);
 void finalizaProceso(int socket, int PID, int estado);

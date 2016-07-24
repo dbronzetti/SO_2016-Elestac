@@ -256,6 +256,7 @@ void handShake (void *parameter){
 
 	free(messageRcv);
 	free(message);
+	free(message->message);
 }
 
 void processMessageReceived (void *parameter){
@@ -267,9 +268,9 @@ void processMessageReceived (void *parameter){
 	int messageSize = 0;
 	//Get Payload size
 	int receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
+	log_info(logNucleo, "message size received: %d \n", messageSize);
 
 	if ( receivedBytes > 0 ){
-
 		char *messageRcv = malloc(sizeof(messageSize));
 		//log_info(logNucleo, "message size received: %d \n", messageSize);
 
@@ -302,13 +303,9 @@ void processMessageReceived (void *parameter){
 				}
 
 				//Recibo el codigo del programa (messageRcv) usando el tamanio leido antes
-				memset(messageRcv, '\0',messageSize);//adding this for testing
 				receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
-				log_info(logNucleo,"Tamanio del codigo del programa:\n %d del socket: %d \n",messageSize, serverData->socketClient);
-				log_info(logNucleo, "STRLEN DEL CODIGO DEL PROGRAMA APENAS SE RECIBE: %d \n", strlen(messageRcv));
-				socketConsola = serverData->socketClient;
-				runScript(messageRcv);
+				runScript(messageRcv, serverData->socketClient);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
@@ -316,7 +313,7 @@ void processMessageReceived (void *parameter){
 				log_info(logNucleo, "Processing %s message received\n", getProcessString(fromProcess));
 				pthread_mutex_lock(&activeProcessMutex);
 				processCPUMessages(messageRcv, messageSize, serverData->socketClient);
-				//free(parameter);
+				free(parameter);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
@@ -328,6 +325,7 @@ void processMessageReceived (void *parameter){
 				break;
 			}
 		}
+		free(messageRcv);
 
 	}else if (receivedBytes == 0 ){
 		//The client is down when bytes received are 0
@@ -341,14 +339,11 @@ void processMessageReceived (void *parameter){
 				serverData->socketClient, errno);
 		close(serverData->socketClient);
 	}
-
-	//free(messageRcv);
 }
 
-void runScript(char* codeScript){
+void runScript(char* codeScript, int socketConsola){
 	//Creo el PCB del proceso.
 	t_PCB* PCB = malloc(sizeof(t_PCB));
-	t_proceso* datosProceso = malloc(sizeof(t_proceso));
 	log_info(logNucleo,"creo el PCB del proceso\n");
 
 	//Armo Indice de codigo, etiquetas y stack
@@ -404,6 +399,7 @@ void runScript(char* codeScript){
 	log_info(logNucleo, "Proceso %d - Iniciado  Script \n",PCB->PID);
 
 	//Agrego a la Cola de Listos
+	t_proceso* datosProceso = malloc(sizeof(t_proceso));
 	datosProceso->ProgramCounter = PCB->ProgramCounter;
 	datosProceso->PID = PCB->PID;
 
