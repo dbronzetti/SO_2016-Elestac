@@ -222,15 +222,15 @@ void crearArchivoDeConfiguracion(char *configFile){
 }
 
 int reconocerOperacion() {
-	int* tamanio = malloc(sizeof(int));
+	int tamanio;
 	int operacion = -1;
 	int exitCode = EXIT_FAILURE;
 	exitCode = receiveMessage(&socketNucleo, &operacion, sizeof(int));
 	switch (operacion) {
 	case 1: {	//Recibo del Nucleo el tamanio y el texto a imprimir
-		exitCode = receiveMessage(&socketNucleo, tamanio, sizeof(int));
-		char* textoImprimir = malloc(*tamanio);
-		exitCode = receiveMessage(&socketNucleo, textoImprimir,sizeof(*tamanio));
+		exitCode = receiveMessage(&socketNucleo, &tamanio, sizeof(int));
+		char* textoImprimir = malloc(tamanio);
+		exitCode = receiveMessage(&socketNucleo, textoImprimir,sizeof(tamanio));
 		log_info(logConsola, "Texto: %s", textoImprimir);
 		free(textoImprimir);
 		break;
@@ -243,9 +243,9 @@ int reconocerOperacion() {
 		break;
 	}
 	case 3: {//Recibo del Nucleo el tamanio y el texto a imprimir, y luego finalizo proceso.
-		exitCode = receiveMessage(&socketNucleo, tamanio, sizeof(int));
-		char* textoImprimir = malloc(*tamanio);
-		exitCode = receiveMessage(&socketNucleo, textoImprimir,sizeof(*tamanio));
+		exitCode = receiveMessage(&socketNucleo, &tamanio, sizeof(int));
+		char* textoImprimir = malloc(tamanio);
+		exitCode = receiveMessage(&socketNucleo, textoImprimir,sizeof(tamanio));
 		log_info(logConsola, "Texto: %s", textoImprimir);
 		free(textoImprimir);
 		exit(0);	//EXIT_SUCCESS
@@ -256,6 +256,5 @@ int reconocerOperacion() {
 		break;
 	}
 	}
-	free(tamanio);
 	return exitCode;
 }
