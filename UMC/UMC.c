@@ -303,7 +303,7 @@ void procesCPUMessages(int messageSize, t_serverData* serverData){
 	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
 	t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
-	message->virtualAddress = (t_memoryLocation *)malloc(sizeof(t_memoryLocation));
+	message->virtualAddress = malloc(sizeof(t_memoryLocation));
 
 	//Deserialize messageRcv
 	deserializeUMC_CPU(message, messageRcv);
@@ -814,7 +814,7 @@ void endProgram(int PID){
 
 	//overwrite page content in swap (swap out)
 	t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
-	message->virtualAddress = (t_memoryLocation *)malloc(sizeof(t_memoryLocation));
+	message->virtualAddress = malloc(sizeof(t_memoryLocation));
 	message->operation = finalizar_proceso;
 	message->PID = PID;
 	message->cantPages = -1; //DEFAULT value when the operation doesn't need it
@@ -986,7 +986,7 @@ void checkPageModification(t_memoryAdmin *memoryElement){
 
 		//overwrite page content in swap (swap out)
 		t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
-		message->virtualAddress = (t_memoryLocation *)malloc(sizeof(t_memoryLocation));
+		message->virtualAddress = malloc(sizeof(t_memoryLocation));
 		message->operation = escritura_pagina;
 		message->PID = memoryElement->PID;
 		message->cantPages = -1; //DEFAULT value when the operation doesnt need it
@@ -1026,7 +1026,7 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID){
 
 	// request page content to swap
 	t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
-	message->virtualAddress = (t_memoryLocation *)malloc(sizeof(t_memoryLocation));
+	message->virtualAddress = malloc(sizeof(t_memoryLocation));
 	message->operation = lectura_pagina;
 	message->PID = PID;
 	message->cantPages = -1; //DEFAULT value when the operation doesnt need it
