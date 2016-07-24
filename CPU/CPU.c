@@ -47,7 +47,7 @@ int main(int argc, char *argv[]){
 		if(exitCode == EXIT_SUCCESS){
 			printf("CPU connected to NUCLEO successfully\n");
 			messageRcv = malloc(sizeof(int));//for receiving message size
-			waitRequestFromNucleo(&socketNucleo, messageRcv);
+			waitRequestFromNucleo(&socketNucleo, &messageRcv);
 		}
 
 		//exitCode=receiveMessage(&socketNucleo,PCBrecibido,sizeof(t_PCB));
@@ -441,30 +441,27 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 	return exitcode;
 }
 
-void waitRequestFromNucleo(int *socketClient, char * messageRcv){
+void waitRequestFromNucleo(int *socketClient, char **messageRcv){
 	//Receive message size
 	int messageSize = 0;
-	int receivedBytes = receiveMessage(socketClient, messageRcv, sizeof(messageSize));
+	//Get Payload size
+	int receivedBytes = receiveMessage(socketClient, &messageSize, sizeof(messageSize));
 
 	if ( receivedBytes > 0 ){
-		//Get Payload size
-		memcpy(&messageSize, messageRcv, sizeof(messageSize));
 
 		//Receive process from which the message is going to be interpreted
 		enum_processes fromProcess;
-		messageRcv = realloc(messageRcv, sizeof(fromProcess));
-		receivedBytes = receiveMessage(socketClient, messageRcv, sizeof(fromProcess));
-		memcpy(&fromProcess, messageRcv, sizeof(fromProcess));
+		receivedBytes = receiveMessage(socketClient, &fromProcess, sizeof(fromProcess));
 
 		//Receive message using the size read before
-		messageRcv = realloc(messageRcv,messageSize);
-		receivedBytes = receiveMessage(socketClient, messageRcv, messageSize);
+		*messageRcv = realloc(*messageRcv,messageSize);
+		receivedBytes = receiveMessage(socketClient, *messageRcv, messageSize);
 
 		//TODO ver que hace con messageRcv despues de recibirlo!!
 		log_info(logCPU,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
 
 	}else{
-		messageRcv = NULL;
+		*messageRcv = NULL;
 	}
 
 }

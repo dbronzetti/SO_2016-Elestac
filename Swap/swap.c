@@ -73,23 +73,18 @@ void processingMessages(int socketClient){
 	//Receive message size
 	int messageSize = 0;
 
-	char *messageRcv = malloc(sizeof(messageSize));
-	int receivedBytes = receiveMessage(&socketClient, messageRcv, sizeof(messageSize));
+	//Get Payload size
+	int receivedBytes = receiveMessage(&socketClient, &messageSize, sizeof(messageSize));
 
 	if ( receivedBytes > 0 ){
 
-		//Get Payload size
-		memcpy(&messageSize, messageRcv, sizeof(messageSize));
-
 		//Receive process from which the message is going to be interpreted
 		enum_processes fromProcess;
-		messageRcv = realloc(messageRcv, sizeof(fromProcess));
-		receivedBytes = receiveMessage(&socketClient, messageRcv, sizeof(fromProcess));
-		memcpy(&fromProcess, messageRcv, sizeof(fromProcess));
+		receivedBytes = receiveMessage(&socketClient, &fromProcess, sizeof(fromProcess));
 		log_info(logSwap,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
 
 		//Receive message using the size read before
-		messageRcv = realloc(messageRcv, messageSize);
+		char *messageRcv = malloc(sizeof(messageSize));
 		int receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
 
 		//int receivedBytes = receiveMessage(&socketClient,structUmcSwap,sizeof(operacionARealizar));
