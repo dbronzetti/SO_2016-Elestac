@@ -67,7 +67,6 @@ int main(int argc, char *argv[]){
 void processingMessages(int socketClient){
 	char* paginaRecibida;
 	bloqueSwap* pedidoRecibidoYDeserializado = malloc(sizeof(bloqueSwap)); //FIXING missing memory location;
-	t_MessageUMC_Swap* operacionARealizar = malloc(sizeof(t_MessageUMC_Swap)); //FIXING missing memory location
 
 	//FIXING receiving messages - IT WAS ALL WRONG
 	//Receive message size
@@ -89,7 +88,8 @@ void processingMessages(int socketClient){
 		log_info(logSwap, "message received: %s \n", messageRcv);
 
 		//int receivedBytes = receiveMessage(&socketClient,structUmcSwap,sizeof(operacionARealizar));
-
+		t_MessageUMC_Swap* operacionARealizar = malloc(sizeof(t_MessageUMC_Swap)); //FIXING missing memory location
+		operacionARealizar->virtualAddress = malloc(sizeof(t_memoryLocation)); //FIXING missing memory location
 		deserializeSwap_UMC(operacionARealizar,messageRcv);
 
 		switch(operacionARealizar->operation){
