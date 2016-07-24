@@ -37,32 +37,23 @@ int main(int argc, char *argv[]) {
 	assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
 
 	//Creo el archivo de Log
-		logNucleo = log_create(logFile, "NUCLEO", 0, LOG_LEVEL_TRACE);
+	logNucleo = log_create(logFile, "NUCLEO", 0, LOG_LEVEL_TRACE);
 	//Creo archivo de configuracion
-		//configurationFile = "/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo";
-		crearArchivoDeConfiguracion(configurationFile);
+	//configurationFile = "/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo";
+	crearArchivoDeConfiguracion(configurationFile);
 	//Creo la lista de CPUs
-		listaCPU = list_create();
+	listaCPU = list_create();
 	//Creo la lista de Consolas
-		listaConsola = list_create();
+	listaConsola = list_create();
 	//Creo Lista Procesos
-		listaProcesos = list_create();
+	listaProcesos = list_create();
 	//Creo la Cola de Listos
-		colaListos = queue_create();
+	colaListos = queue_create();
 	//Creo cola de Procesos a Finalizar (por Finalizar PID).
-		colaFinalizar = queue_create();
+	colaFinalizar = queue_create();
 
-	// Inicializacion de los mutex
-	pthread_mutex_init(&listadoCPU, NULL);
-	pthread_mutex_init(&listadoConsola, NULL);
-	pthread_mutex_init(&listadoProcesos, NULL);
-	pthread_mutex_init(&cListos, NULL);
-	pthread_mutex_init(&cBloqueados, NULL);
-	pthread_mutex_init(&cFinalizar, NULL);
-	pthread_mutex_init(&cSemaforos, NULL);
-	pthread_mutex_init(&globalMutex, NULL);
-	pthread_mutex_init(&activeProcessMutex, NULL);
-	pthread_mutex_init(&mutex_config, NULL);
+	//Inicializacion de los mutex
+	inicializarMutex();
 
 	pthread_create(&consolaThread, NULL, (void*) startNucleoConsole, NULL);
 
@@ -298,11 +289,11 @@ void processMessageReceived (void *parameter){
 				if (opFinalizar == -1) { 	//Finaliza Proceso
 					int PID = buscarPIDConsola(serverData->socketClient);
 					if (PID==-1){
-						log_error(logNucleo,"No se encontro Consola para el socket: %d \n",serverData->socketClient);
+						log_error(logNucleo,"No se encontro Consola para el socket: %d ",serverData->socketClient);
 						pthread_mutex_unlock(&activeProcessMutex);
 						break;
 					}
-					log_info(logNucleo,"Solicitando finalizar el programa:%d para el socket: %d \n",PID, serverData->socketClient);
+					log_info(logNucleo,"Solicitando finalizar el programa:%d para el socket: %d ",PID, serverData->socketClient);
 					finalizarPid(PID);
 					//OJO con los DEADLOCKS - Si se retorna sin desbloquear puede bloquear el proceso.
 					pthread_mutex_unlock(&activeProcessMutex);
@@ -315,15 +306,14 @@ void processMessageReceived (void *parameter){
 
 				runScript(messageRcv, serverData->socketClient);
 				log_info(logNucleo,"Bytes received for code: %d\n",receivedBytes);
-				log_info(logNucleo, "STRLEN DEL CODIGO DEL PROGRAMA APENAS SE RECIBE: %d \n", strlen(messageRcv));
-				//free(messageRcv);
+				free(messageRcv);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
 			case CPU:{
 				log_info(logNucleo, "Processing %s message received\n", getProcessString(fromProcess));
 				pthread_mutex_lock(&activeProcessMutex);
-				processCPUMessages(messageSize, serverData->socketClient);
+				processCPUMessages(messageSize, serverData->socketClient); //el free del messageRcv se hace adentro
 				free(parameter);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
@@ -333,7 +323,7 @@ void processMessageReceived (void *parameter){
 					"Process not allowed to connect - Invalid process '%s' send a message to NUCLEO \n",
 					getProcessString(fromProcess));
 			close(serverData->socketClient);
-			free(serverData);
+			//free(serverData);
 				break;
 			}
 		}
@@ -344,13 +334,13 @@ void processMessageReceived (void *parameter){
 				"The client went down while receiving! - Please check the client '%d' is down!\n",
 				serverData->socketClient);
 		close(serverData->socketClient);
-		free(serverData);
+		//free(serverData);
 	}else{
 		log_error(logNucleo,
 				"Error - No able to received - Error receiving from socket '%d', with error: %d\n",
 				serverData->socketClient, errno);
 		close(serverData->socketClient);
-		free(serverData);
+		//free(serverData);
 	}
 }
 
@@ -369,13 +359,12 @@ void runScript(char* codeScript, int socketConsola){
 
 	PCB->ProgramCounter = miMetaData->instruccion_inicio;
 	int contentLen = strlen(codeScript);
-	log_info(logNucleo, "el strlen del codeScript adentro de la funcion runScript tiene: %d",contentLen);
 	PCB->cantidadDePaginas = (int) ceil((double) contentLen/ (double) frameSize);
 	PCB->StackPointer = 0;
 	PCB->estado = 1;
 	PCB->finalizar = 0;
-	log_info(logNucleo,"se inicializan los campos que no son listas\n");
-	log_info(logNucleo,"Cantidad de paginas que ocupa el codigo: %d\n",PCB->cantidadDePaginas);
+	log_info(logNucleo,"se inicializan los campos que no son listas");
+	log_info(logNucleo,"Cantidad de paginas que ocupa el codigo: %d",PCB->cantidadDePaginas);
 
 	PCB->indiceDeCodigo = list_create();
 	armarIndiceDeCodigo(PCB, miMetaData);
@@ -409,7 +398,7 @@ void runScript(char* codeScript, int socketConsola){
 	pthread_mutex_lock(&listadoProcesos);
 	list_add(listaProcesos,(void*)PCB);
 	pthread_mutex_unlock(&listadoProcesos);
-	log_info(logNucleo, "Proceso %d - Iniciado  Script \n",PCB->PID);
+	log_info(logNucleo, "Proceso %d - Iniciado  Script\n",PCB->PID);
 
 	//Agrego a la Cola de Listos
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
@@ -454,7 +443,8 @@ void planificarProceso() {
 
 	//Le envio la informacion a la CPU
 	t_PCB* datosPCB;
-	t_MessageNucleo_CPU* contextoProceso = NULL;
+	t_MessageNucleo_CPU* contextoProceso = malloc(sizeof(t_MessageNucleo_CPU));
+	//t_MessageNucleo_CPU* contextoProceso = NULL;
 	t_proceso* datosProceso;
 
 	pthread_mutex_lock(&cListos);
@@ -471,36 +461,14 @@ void planificarProceso() {
 		contextoProceso->quantum = configNucleo.quantum;
 		contextoProceso->quantum_sleep=configNucleo.quantum_sleep;
 		pthread_mutex_unlock(&mutex_config);
-		log_info(logNucleo,"Nucleo se prepara para enviar informacion del processID: %d al proceso CPU \n",datosProceso->PID);
+		log_info(logNucleo,"Nucleo se prepara para enviar informacion del processID: %d al proceso CPU",datosProceso->PID);
 
 		enviarMsjCPU(datosPCB, contextoProceso, serverData);
-		//free(contextoProceso);
 	} else {
-		log_info(logNucleo,"Proceso no encontrado\n");
+		log_error(logNucleo,"Proceso '%d' no encontrado",datosProceso->PID);
 	}
+	free(contextoProceso);
 
-	/*if (queue_is_empty(colaFinalizar)) {
-
-		//Aca iba lo anerior en el caso de que se le avise al CPU operacion=0
-
-	} else {
-		pthread_mutex_lock(&cFinalizar);
-		datosProceso = (t_proceso*) queue_peek(colaFinalizar);
-		pthread_mutex_unlock(&cFinalizar);
-		int posicion = buscarPCB(datosProceso->PID);
-		if (posicion != -1) {
-			pthread_mutex_lock(&listadoProcesos);
-			datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
-			pthread_mutex_unlock(&listadoProcesos);
-
-		// Aviso al CPU que finalice el proceso (op = 1) y luego voy a esperar la Respuesta(processCPUMessages)
-			contextoProceso->operacion = 1;
-			enviarMsjCPU(datosPCB, contextoProceso, serverData);
-
-		} else {
-			printf("Proceso no encontrado en la lista.\n");
-		}
-	}*/
 }
 
 void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_serverData* serverData){
@@ -1444,7 +1412,7 @@ void finalizarPid(int pid){
 
 //TODO la UMC esta recibiendo null del fromProcess. Verificar esta funcion:
 void iniciarPrograma(int PID, char *codeScript) {
-	log_info(logNucleo,"Para el processID: %d, aviso al proceso UMC el inicio  el programa: \n %s \n", PID, codeScript);
+	log_info(logNucleo,"Para el processID: %d, aviso al proceso UMC el inicio  el programa \n", PID);
 	int bufferSize = 0;
 	int payloadSize = 0;
 	int contentLen = strlen(codeScript);
@@ -1474,7 +1442,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 
 	//3) Enviar programa
 	sendMessage(&socketUMC, codeScript, contentLen);
-	log_info(logNucleo,"Se realiza correctamente el envio del programa %s de tamanio %d al proceso UMC", codeScript, contentLen);
+	log_info(logNucleo,"Se realiza correctamente el envio del programa con tamanio %d al proceso UMC", contentLen);
 
 	free(message);
 	free(buffer);
@@ -1527,6 +1495,19 @@ void deserializarES(t_es* datos, char* bufferReceived) {
 	memcpy(datos->dispositivo, bufferReceived + offset, dispositivoLen);
 
 	//Se esta enviando el tamanio del dispositivo que es un char* y se esta considerando el \0 en el offset
+}
+
+void inicializarMutex() {
+	pthread_mutex_init(&listadoCPU, NULL);
+	pthread_mutex_init(&listadoConsola, NULL);
+	pthread_mutex_init(&listadoProcesos, NULL);
+	pthread_mutex_init(&cListos, NULL);
+	pthread_mutex_init(&cBloqueados, NULL);
+	pthread_mutex_init(&cFinalizar, NULL);
+	pthread_mutex_init(&cSemaforos, NULL);
+	pthread_mutex_init(&globalMutex, NULL);
+	pthread_mutex_init(&activeProcessMutex, NULL);
+	pthread_mutex_init(&mutex_config, NULL);
 }
 
 void crearArchivoDeConfiguracion(char *configFile){

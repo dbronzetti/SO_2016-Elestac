@@ -85,7 +85,6 @@ pthread_mutex_t globalMutex;
 pthread_mutex_t activeProcessMutex;
 pthread_mutex_t mutex_config;
 
-
 //Semaforo Contador
 sem_t semBloqueados;
 
@@ -137,6 +136,7 @@ int buscarPIDConsola(int socket);
 int buscarSocketConsola(int PID);
 int estaEjecutando(int PID);
 void actualizarPC(int PID, int ProgramCounter);
+void inicializarMutex();
 void crearArchivoDeConfiguracion(char* configFile);
 void *initialize(int tamanio);
 void imprimirArray(char** array);
