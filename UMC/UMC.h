@@ -90,8 +90,8 @@ pthread_mutex_t delayMutex;
 /***** Prototype functions *****/
 
 //UMC operations
-void procesCPUMessages(char *messageRcv, int messageSize, t_serverData* serverData);
-void procesNucleoMessages(char *messageRcv, int messageSize, t_serverData* serverData);
+void procesCPUMessages(int messageSize, t_serverData* serverData);
+void procesNucleoMessages(int messageSize, t_serverData* serverData);
 void getConfiguration(char *configFile);
 void createTLB();
 void resetTLBAllEntries();

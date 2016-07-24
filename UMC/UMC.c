@@ -241,21 +241,16 @@ void processMessageReceived (void *parameter){
 		//Receive message size
 		int messageSize = 0;
 
-		char *messageRcv = malloc(sizeof(messageSize));
-		int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(messageSize));
+		//Get Payload size
+		int receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
 
 		if ( receivedBytes > 0 ){
 
 			printf("socket cliente: %d\n", serverData->socketClient);
 
-			//Get Payload size
-			memcpy(&messageSize, messageRcv, sizeof(messageSize));
-
 			//Receive process from which the message is going to be interpreted
 			enum_processes fromProcess;
-			messageRcv = realloc(messageRcv, sizeof(fromProcess));
-			receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(fromProcess));
-			memcpy(&fromProcess, messageRcv, sizeof(fromProcess));
+			receivedBytes = receiveMessage(&serverData->socketClient, &fromProcess, sizeof(fromProcess));
 
 			log_info(UMCLog,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
 
@@ -263,14 +258,14 @@ void processMessageReceived (void *parameter){
 			case CPU:{
 				log_info(UMCLog, "Processing CPU message received\n");
 				pthread_mutex_lock(&activeProcessMutex);
-				procesCPUMessages(messageRcv, messageSize, serverData);
+				procesCPUMessages(messageSize, serverData);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
 			case NUCLEO:{ //TODO verificar que se este recibiendo correctamente del proceso NUCLEO (se esta recibiendo fromProces = null)
 				log_info(UMCLog, "Processing NUCLEO message received\n");
 				pthread_mutex_lock(&activeProcessMutex);
-				procesNucleoMessages(messageRcv, messageSize, serverData);
+				procesNucleoMessages(messageSize, serverData);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
@@ -295,16 +290,15 @@ void processMessageReceived (void *parameter){
 			break;
 		}
 
-		free(messageRcv);
 	}
 
 }
 
-void procesCPUMessages(char *messageRcv, int messageSize, t_serverData* serverData){
+void procesCPUMessages(int messageSize, t_serverData* serverData){
 	int exitcode = EXIT_SUCCESS;
 
 	//Receive message using the size read before
-	messageRcv = realloc(messageRcv, messageSize);
+	char *messageRcv = malloc(sizeof(messageSize));
 	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
 	t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
@@ -367,11 +361,11 @@ void procesCPUMessages(char *messageRcv, int messageSize, t_serverData* serverDa
 	}
 }
 
-void procesNucleoMessages(char *messageRcv, int messageSize, t_serverData* serverData){
+void procesNucleoMessages(int messageSize, t_serverData* serverData){
 	int exitcode = EXIT_SUCCESS;
 
 	//Receive message using the size read before
-	messageRcv = realloc(messageRcv, messageSize);
+	char *messageRcv = malloc(sizeof(messageSize));
 	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
 	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
