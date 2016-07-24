@@ -69,6 +69,8 @@ int main(int argc, char **argv) {
 			printf("Tamanio del archivo: %d .\n", tamanioArchivo);
 
 			string_append(&codeScript,"\0");// "\0" para terminar el string
+			int strlenProgram = strlen(codeScript);
+			printf("strlen del programa: %d\n",strlenProgram);
 			int programCodeLen = tamanioArchivo + 1; //+1 por el '\0'
 
 			//1)Envia el tamanio y el fromProcess
@@ -134,7 +136,10 @@ void* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
 		size_t count = 1;
 		fread(textoDeArchivo,*tamanioDeArchivo,count,archivo);
 		//log_info(logConsola,"Tamanio adentro de la funcion: %i\n",*tamanioDeArchivo);
+
 	}
+	int strlenProgram = (int) strlen(textoDeArchivo);
+	printf("strlen del programa adentro de la funcion: %d\n",strlenProgram);
 	fclose(archivo);
 	return textoDeArchivo;
 }

@@ -272,7 +272,7 @@ void processMessageReceived (void *parameter){
 
 		//Get Payload size
 		memcpy(&messageSize, messageRcv, sizeof(messageSize));
-		log_info(logNucleo, "message size received: %d \n", messageSize);
+		//log_info(logNucleo, "message size received: %d \n", messageSize);
 
 		//Receive process from which the message is going to be interpreted
 		enum_processes fromProcess;
@@ -308,7 +308,8 @@ void processMessageReceived (void *parameter){
 				messageRcv = realloc(messageRcv, messageSize);
 				receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
-				log_info(logNucleo,"El Nucleo recibe el codigo del programa:\n %s del socket: %d \n",messageRcv, serverData->socketClient);
+				log_info(logNucleo,"Tamanio del codigo del programa:\n %d del socket: %d \n",messageSize, serverData->socketClient);
+				log_info(logNucleo, "STRLEN DEL CODIGO DEL PROGRAMA APENAS SE RECIBE: %d \n", strlen(messageRcv));
 				socketConsola = serverData->socketClient;
 				runScript(messageRcv);
 				pthread_mutex_unlock(&activeProcessMutex);
@@ -363,6 +364,7 @@ void runScript(char* codeScript){
 
 	PCB->ProgramCounter = miMetaData->instruccion_inicio;
 	int contentLen = strlen(codeScript);
+	log_info(logNucleo, "el strlen del codeScript adentro de la funcion runScript tiene: %d",contentLen);
 	PCB->cantidadDePaginas = (int) ceil((double) contentLen/ (double) frameSize);
 	PCB->StackPointer = 0;
 	PCB->estado = 1;
@@ -1430,8 +1432,10 @@ void iniciarPrograma(int PID, char *codeScript) {
 	log_info(logNucleo,"Para el processID: %d, aviso al proceso UMC el inicio  el programa: \n %s \n", PID, codeScript);
 	int bufferSize = 0;
 	int payloadSize = 0;
-	int contentLen = strlen(codeScript);	//+1 because of '\0'
+	int contentLen = strlen(codeScript);
 	int cantPages = (int) ceil((double) contentLen /(double) frameSize);
+
+	log_info(logNucleo,"strlen del codigo del programa: %d \n", PID, contentLen);
 
 	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
 
@@ -1457,7 +1461,6 @@ void iniciarPrograma(int PID, char *codeScript) {
 	sendMessage(&socketUMC, (void*) contentLen, sizeof(contentLen));
 
 	//3) Enviar programa
-	string_append(&codeScript, "\0");	//ALWAYS put \0 for finishing the string
 	sendMessage(&socketUMC, (void*) codeScript, contentLen);
 	log_info(logNucleo,"Se realiza correctamente el envio del programa %s de tamanio %d al proceso UMC", codeScript, contentLen);
 
