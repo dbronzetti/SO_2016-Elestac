@@ -80,7 +80,7 @@ void deserializeHandShake(t_MessageGenericHandshake *value, char *bufferReceived
 void serializarRegistroStack(t_registroStack* registroASerializar, char* registroSerializado, int *offset);
 void deserializarRegistroStack(t_registroStack* registroRecibido, char* registroSerializado, int *offset);
 
-void serializarListaStack(t_list* listaASerializar, char* listaSerializada);
+int serializarListaStack(t_list* listaASerializar, char** listaSerializada);
 void deserializarListaStack(t_list* listaARecibir, char* listaSerializada);
 
 void serializarVars(t_vars* miRegistro, char* value, int *offset);
@@ -101,7 +101,7 @@ void deserializeListasArgs(t_list* listaArgs,char* listaSerializada, int *offset
 void serializarIndiceDeCodigo(t_registroIndiceCodigo* registroEnviar, char* registroSerializado);
 void deserializarIndiceDeCodigo(t_registroIndiceCodigo* registroARecibir, char* registroSerializado);
 
-int serializarListaIndiceDeCodigo(t_list* listaASerializar, char* listaSerializada);
+int serializarListaIndiceDeCodigo(t_list* listaASerializar, char** listaSerializada);
 void deserializarListaIndiceDeCodigo(t_list* listaARecibir, char* listaSerializada);
 
 char *getProcessString (enum_processes process);
