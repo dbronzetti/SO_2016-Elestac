@@ -1,0 +1,301 @@
+[INFO] 04:10:47:660 NUCLEO/(6725:6725): Creando el archivo de configuracion: ../configuracion.nucleo 
+
+[INFO] 04:10:47:661 NUCLEO/(6725:6725): El archivo de configuracion: '../configuracion.nucleo' se creo correctamente 
+
+[INFO] 04:10:47:664 NUCLEO/(6725:6725): Conectado a UMC - Message: The server has accepted your connection!
+
+[INFO] 04:10:47:665 NUCLEO/(6725:6725): NUCLEO connected to UMC successfully
+
+[INFO] 04:10:47:665 NUCLEO/(6725:6728): SocketServer: 5
+
+[INFO] 04:10:47:665 NUCLEO/(6725:6728): the server is opened
+
+[INFO] 04:10:47:665 NUCLEO/(6725:6727): SocketServer: 7
+
+[INFO] 04:10:47:665 NUCLEO/(6725:6727): the server is opened
+
+[INFO] 04:10:50:621 NUCLEO/(6725:6732): Message from 'CONSOLA': The process 'CONSOLA' is trying to connect you!
+
+[INFO] 04:10:50:622 NUCLEO/(6725:6733): Socket client connected to NUCLEO: 8
+
+[INFO] 04:11:31:984 NUCLEO/(6725:6733): message size received: 71 
+
+[INFO] 04:11:32:21 NUCLEO/(6725:6733): Bytes received from process 'CONSOLA': 4
+
+[INFO] 04:11:32:21 NUCLEO/(6725:6733): Processing CONSOLA message received
+
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): Tamanio del codigo del programa:
+ 71 del socket: 8 
+
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): STRLEN DEL CODIGO DEL PROGRAMA APENAS SE RECIBE: 71 
+
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): creo el PCB del proceso
+
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): etiquetas size directo de la metadata: 0
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): el strlen del codeScript adentro de la funcion runScript tiene: 71
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): se inicializan los campos que no son listas
+
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): Cantidad de paginas que ocupa el codigo: 2
+
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): instrucciones_size: 5
+
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): size de la lista indice de codigo: 5
+
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): 'sizeindiceDeEtiquetas' : 0 'indiceDeEtiquetas' : 
+
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): se arman las listas
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): Se asigna el index: 4 al PCB que indica el fin del Programa
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): Proceso 1 - Iniciado  Script 
+
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): size colaListos: 1
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): size listaConsola: 1
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): Para el processID: 1, aviso al proceso UMC el inicio  el programa: 
+ #!/usr/bin/ansisop
+begin
+	variables a, b
+	a = 3
+	b = 5
+	a = b + 12
+end0 
+
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): strlen del codigo del programa: 1 
+
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): payloadSize a enviar a la UMC: 12
+[INFO] 04:11:32:22 NUCLEO/(6725:6733): bufferSize a enviar a la UMC: 20
+[INFO] 04:11:32:23 NUCLEO/(6725:6733): Se realiza correctamente el envio del programa #!/usr/bin/ansisop
+begin
+	variables a, b
+	a = 3
+	b = 5
+	a = b + 12
+end0 de tamanio 71 al proceso UMC
+[INFO] 04:11:32:23 NUCLEO/(6725:6733): size de listaCPU: 0
+
+[ERROR] 04:11:32:23 NUCLEO/(6725:6733): No hay CPU libre 
+
+[INFO] 04:12:33:794 NUCLEO/(6841:6841): Creando el archivo de configuracion: /home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo 
+
+[INFO] 04:12:33:795 NUCLEO/(6841:6841): El archivo de configuracion: '/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo' se creo correctamente 
+
+[INFO] 04:12:33:831 NUCLEO/(6841:6847): SocketServer: 4
+
+[INFO] 04:12:33:831 NUCLEO/(6841:6847): the server is opened
+
+[INFO] 04:12:33:833 NUCLEO/(6841:6848): SocketServer: 7
+
+[INFO] 04:12:33:833 NUCLEO/(6841:6848): the server is opened
+
+[INFO] 04:12:33:834 NUCLEO/(6841:6841): Conectado a UMC - Message: The server has accepted your connection!
+
+[INFO] 04:12:33:835 NUCLEO/(6841:6841): NUCLEO connected to UMC successfully
+
+[INFO] 04:12:40:473 NUCLEO/(6841:6853): Message from 'CONSOLA': The process 'CONSOLA' is trying to connect you!
+
+[INFO] 04:12:53:202 NUCLEO/(6841:6854): Socket client connected to NUCLEO: 5
+
+[INFO] 04:13:18:306 NUCLEO/(6841:6854): message size received: 0 
+
+[ERROR] 04:13:21:641 NUCLEO/(6841:6854): The client went down while receiving! - Please check the client '5' is down!
+
+[INFO] 04:19:26:327 NUCLEO/(7697:7697): Creando el archivo de configuracion: ../configuracion.nucleo 
+
+[INFO] 04:19:26:329 NUCLEO/(7697:7697): El archivo de configuracion: '../configuracion.nucleo' se creo correctamente 
+
+[INFO] 04:19:26:332 NUCLEO/(7697:7697): Conectado a UMC - Message: The server has accepted your connection!
+
+[INFO] 04:19:26:333 NUCLEO/(7697:7697): NUCLEO connected to UMC successfully
+
+[INFO] 04:19:26:333 NUCLEO/(7697:7700): SocketServer: 5
+
+[INFO] 04:19:26:333 NUCLEO/(7697:7700): the server is opened
+
+[INFO] 04:19:26:333 NUCLEO/(7697:7699): SocketServer: 7
+
+[INFO] 04:19:26:333 NUCLEO/(7697:7699): the server is opened
+
+[INFO] 04:19:44:786 NUCLEO/(7697:7719): Message from 'CONSOLA': The process 'CONSOLA' is trying to connect you!
+
+[INFO] 04:19:44:787 NUCLEO/(7697:7720): Socket client connected to NUCLEO: 8
+
+[INFO] 04:19:50:887 NUCLEO/(7697:7720): message size received: 71 
+
+[INFO] 04:19:50:925 NUCLEO/(7697:7720): Bytes received from process 'CONSOLA': 4
+
+[INFO] 04:19:50:925 NUCLEO/(7697:7720): Processing CONSOLA message received
+
+[INFO] 04:19:50:925 NUCLEO/(7697:7720): creo el PCB del proceso
+
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): etiquetas size directo de la metadata: 0
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): el strlen del codeScript adentro de la funcion runScript tiene: 71
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): se inicializan los campos que no son listas
+
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): Cantidad de paginas que ocupa el codigo: 2
+
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): instrucciones_size: 5
+
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): size de la lista indice de codigo: 5
+
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): 'sizeindiceDeEtiquetas' : 0 'indiceDeEtiquetas' : 
+
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): se arman las listas
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): Se asigna el index: 4 al PCB que indica el fin del Programa
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): Proceso 1 - Iniciado  Script 
+
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): size colaListos: 1
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): size listaConsola: 1
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): Para el processID: 1, aviso al proceso UMC el inicio  el programa: 
+ #!/usr/bin/ansisop
+begin
+	variables a, b
+	a = 3
+	b = 5
+	a = b + 12
+end4 
+
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): strlen del codigo del programa: 1 
+
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): payloadSize a enviar a la UMC: 12
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): bufferSize a enviar a la UMC: 20
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): Se realiza correctamente el envio del programa #!/usr/bin/ansisop
+begin
+	variables a, b
+	a = 3
+	b = 5
+	a = b + 12
+end4 de tamanio 71 al proceso UMC
+[INFO] 04:19:50:926 NUCLEO/(7697:7720): size de listaCPU: 0
+
+[ERROR] 04:19:50:926 NUCLEO/(7697:7720): No hay CPU libre 
+
+[INFO] 04:26:17:438 NUCLEO/(7775:7775): Creando el archivo de configuracion: ../configuracion.nucleo 
+
+[INFO] 04:26:17:440 NUCLEO/(7775:7775): El archivo de configuracion: '../configuracion.nucleo' se creo correctamente 
+
+[INFO] 04:26:17:444 NUCLEO/(7775:7775): Conectado a UMC - Message: The server has accepted your connection!
+
+[INFO] 04:26:17:451 NUCLEO/(7775:7775): NUCLEO connected to UMC successfully
+
+[INFO] 04:26:17:451 NUCLEO/(7775:7778): SocketServer: 5
+
+[INFO] 04:26:17:451 NUCLEO/(7775:7778): the server is opened
+
+[INFO] 04:26:17:451 NUCLEO/(7775:7777): SocketServer: 7
+
+[INFO] 04:26:17:451 NUCLEO/(7775:7777): the server is opened
+
+[INFO] 04:26:32:155 NUCLEO/(7775:7782): Message from 'CONSOLA': The process 'CONSOLA' is trying to connect you!
+
+[INFO] 04:26:32:155 NUCLEO/(7775:7783): Socket client connected to NUCLEO: 8
+
+[INFO] 04:26:38:841 NUCLEO/(7775:7783): message size received: 71 
+
+[INFO] 04:26:38:879 NUCLEO/(7775:7783): Bytes received from process 'CONSOLA': 4
+
+[INFO] 04:26:38:879 NUCLEO/(7775:7783): Processing CONSOLA message received
+
+[INFO] 04:26:38:879 NUCLEO/(7775:7783): creo el PCB del proceso
+
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): etiquetas size directo de la metadata: 0
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): el strlen del codeScript adentro de la funcion runScript tiene: 71
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): se inicializan los campos que no son listas
+
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): Cantidad de paginas que ocupa el codigo: 2
+
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): instrucciones_size: 5
+
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): size de la lista indice de codigo: 5
+
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): 'sizeindiceDeEtiquetas' : 0 'indiceDeEtiquetas' : 
+
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): se arman las listas
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): Se asigna el index: 4 al PCB que indica el fin del Programa
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): Proceso 1 - Iniciado  Script 
+
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): size colaListos: 1
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): size listaConsola: 1
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): Para el processID: 1, aviso al proceso UMC el inicio  el programa: 
+ #!/usr/bin/ansisop
+begin
+	variables a, b
+	a = 3
+	b = 5
+	a = b + 12
+end2 
+
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): strlen del codigo del programa: 1 
+
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): payloadSize a enviar a la UMC: 12
+[INFO] 04:26:38:880 NUCLEO/(7775:7783): bufferSize a enviar a la UMC: 20
+[INFO] 04:26:38:881 NUCLEO/(7775:7783): Se realiza correctamente el envio del programa #!/usr/bin/ansisop
+begin
+	variables a, b
+	a = 3
+	b = 5
+	a = b + 12
+end2 de tamanio 71 al proceso UMC
+[INFO] 04:26:38:881 NUCLEO/(7775:7783): size de listaCPU: 0
+
+[ERROR] 04:26:38:881 NUCLEO/(7775:7783): No hay CPU libre 
+
+[INFO] 04:27:37:283 NUCLEO/(7825:7825): Creando el archivo de configuracion: /home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo 
+
+[INFO] 04:27:37:283 NUCLEO/(7825:7825): El archivo de configuracion: '/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo' se creo correctamente 
+
+[INFO] 04:27:37:285 NUCLEO/(7825:7825): Conectado a UMC - Message: The server has accepted your connection!
+
+[INFO] 04:27:37:285 NUCLEO/(7825:7825): NUCLEO connected to UMC successfully
+
+[INFO] 04:27:37:287 NUCLEO/(7825:7828): SocketServer: 5
+
+[INFO] 04:27:37:287 NUCLEO/(7825:7828): the server is opened
+
+[INFO] 04:27:37:287 NUCLEO/(7825:7827): SocketServer: 7
+
+[INFO] 04:27:37:287 NUCLEO/(7825:7827): the server is opened
+
+[INFO] 04:28:02:842 NUCLEO/(7863:7863): Creando el archivo de configuracion: /home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo 
+
+[INFO] 04:28:02:842 NUCLEO/(7863:7863): El archivo de configuracion: '/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo' se creo correctamente 
+
+[INFO] 04:28:02:867 NUCLEO/(7863:7870): SocketServer: 4
+
+[INFO] 04:28:02:867 NUCLEO/(7863:7870): the server is opened
+
+[INFO] 04:28:02:870 NUCLEO/(7863:7871): SocketServer: 7
+
+[INFO] 04:28:02:870 NUCLEO/(7863:7871): the server is opened
+
+[INFO] 04:28:02:870 NUCLEO/(7863:7863): Conectado a UMC - Message: The server has accepted your connection!
+
+[INFO] 04:28:02:870 NUCLEO/(7863:7863): NUCLEO connected to UMC successfully
+
+[INFO] 04:28:24:311 NUCLEO/(7863:7876): Message from 'CONSOLA': The process 'CONSOLA' is trying to connect you!
+
+[INFO] 04:28:57:119 NUCLEO/(7863:7892): Socket client connected to NUCLEO: 5
+
+[INFO] 04:29:34:787 NUCLEO/(7936:7936): Creando el archivo de configuracion: /home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo 
+
+[INFO] 04:29:34:787 NUCLEO/(7936:7936): El archivo de configuracion: '/home/utnso/git/tp-2016-1c-YoNoFui/nucleo/configuracion.nucleo' se creo correctamente 
+
+[INFO] 04:29:34:816 NUCLEO/(7936:7942): SocketServer: 4
+
+[INFO] 04:29:34:816 NUCLEO/(7936:7942): the server is opened
+
+[INFO] 04:29:34:825 NUCLEO/(7936:7943): SocketServer: 7
+
+[INFO] 04:29:34:825 NUCLEO/(7936:7943): the server is opened
+
+[INFO] 04:29:34:827 NUCLEO/(7936:7936): Conectado a UMC - Message: The server has accepted your connection!
+
+[INFO] 04:29:34:827 NUCLEO/(7936:7936): NUCLEO connected to UMC successfully
+
+[INFO] 04:29:40:146 NUCLEO/(7936:7948): Message from 'CONSOLA': The process 'CONSOLA' is trying to connect you!
+
+[INFO] 04:29:44:421 NUCLEO/(7936:7949): Socket client connected to NUCLEO: 5
+
+[INFO] 04:30:00:243 NUCLEO/(7936:7949): message size received: 71 
+
+[INFO] 04:31:07:372 NUCLEO/(7936:7949): Bytes received from process 'CONSOLA': 4
+
+[INFO] 04:31:08:899 NUCLEO/(7936:7949): Processing CONSOLA message received
+

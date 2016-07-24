@@ -1,0 +1,231 @@
+[INFO] 00:48:01:744 CPU/(4788:4788): Connected to UMC - Message: The server has accepted your connection!
+
+[INFO] 00:48:01:744 CPU/(4788:4788): Receiving frame size
+
+[INFO] 00:48:01:744 CPU/(4788:4788): Tamanio de pagina: 64
+
+[INFO] 00:48:01:744 CPU/(4788:4788): Connected to NUCLEO - Message: The server has accepted your connection!
+
+[INFO] 00:48:01:744 CPU/(4788:4788): Receiving stack size (number of pages for PID stack)
+
+[INFO] 00:48:01:744 CPU/(4788:4788): Tamanio de stack: 8
+
+[INFO] 00:48:19:776 CPU/(4788:4788): Bytes received from process 'NUCLEO': 24
+
+[INFO] 00:48:19:776 CPU/(4788:4788): Construyendo PCB para PID #1
+
+[INFO] 00:48:19:777 CPU/(4788:4788): Tamanio indice Codigo 52 - Cantidad de elementos indice de codigo 6 - Proceso 1 
+[INFO] 00:48:19:777 CPU/(4788:4788): Tamanio indice stack 0 - Proceso 1 
+
+[INFO] 00:48:19:777 CPU/(4788:4788): Tamanio indice de Etiquetas 0 - Proceso 1 
+
+[INFO] 00:48:19:777 CPU/(4788:4788): El PCB fue recibido correctamente
+
+[INFO] 00:55:05:504 CPU/(4911:4911): Connected to UMC - Message: The server has accepted your connection!
+
+[INFO] 00:55:05:504 CPU/(4911:4911): Receiving frame size
+
+[INFO] 00:55:05:504 CPU/(4911:4911): Tamanio de pagina: 64
+
+[INFO] 00:55:05:506 CPU/(4911:4911): Connected to NUCLEO - Message: The server has accepted your connection!
+
+[INFO] 00:55:05:506 CPU/(4911:4911): Receiving stack size (number of pages for PID stack)
+
+[INFO] 00:55:05:506 CPU/(4911:4911): Tamanio de stack: 8
+
+[INFO] 00:55:17:799 CPU/(4911:4911): Bytes received from process 'NUCLEO': 24
+
+[INFO] 00:55:17:799 CPU/(4911:4911): Construyendo PCB para PID #1
+
+[INFO] 00:55:17:800 CPU/(4911:4911): Tamanio indice Codigo 52 - Cantidad de elementos indice de codigo 6 - Proceso 1 
+[INFO] 00:55:17:800 CPU/(4911:4911): Tamanio indice stack 0 - Proceso 1 
+
+[INFO] 00:55:17:800 CPU/(4911:4911): Tamanio indice de Etiquetas 0 - Proceso 1 
+
+[INFO] 00:55:17:800 CPU/(4911:4911): El PCB fue recibido correctamente
+
+[INFO] 01:01:36:54 CPU/(5110:5110): Connected to UMC - Message: The server has accepted your connection!
+
+[INFO] 01:01:36:54 CPU/(5110:5110): Receiving frame size
+
+[INFO] 01:01:36:54 CPU/(5110:5110): Tamanio de pagina: 64
+
+[INFO] 01:01:36:55 CPU/(5110:5110): Connected to NUCLEO - Message: The server has accepted your connection!
+
+[INFO] 01:01:36:55 CPU/(5110:5110): Receiving stack size (number of pages for PID stack)
+
+[INFO] 01:01:36:55 CPU/(5110:5110): Tamanio de stack: 8
+
+[INFO] 01:01:45:303 CPU/(5110:5110): Bytes received from process 'NUCLEO': 24
+
+[INFO] 01:01:45:303 CPU/(5110:5110): Construyendo PCB para PID #1
+
+[INFO] 01:01:45:303 CPU/(5110:5110): Tamanio indice Codigo 52 - Cantidad de elementos indice de codigo 6 - Proceso 1 
+[INFO] 01:01:45:303 CPU/(5110:5110): Tamanio indice stack 0 - Proceso 1 
+
+[INFO] 01:01:45:303 CPU/(5110:5110): Tamanio indice de Etiquetas 0 - Proceso 1 
+
+[INFO] 01:01:45:303 CPU/(5110:5110): El PCB fue recibido correctamente
+
+[INFO] 01:04:16:4 CPU/(5225:5225): Connected to UMC - Message: The server has accepted your connection!
+
+[INFO] 01:04:16:4 CPU/(5225:5225): Receiving frame size
+
+[INFO] 01:04:16:4 CPU/(5225:5225): Tamanio de pagina: 64
+
+[INFO] 01:04:17:8 CPU/(5225:5225): Connected to NUCLEO - Message: The server has accepted your connection!
+
+[INFO] 01:04:17:8 CPU/(5225:5225): Receiving stack size (number of pages for PID stack)
+
+[INFO] 01:04:17:8 CPU/(5225:5225): Tamanio de stack: 8
+
+[INFO] 01:04:26:763 CPU/(5225:5225): Bytes received from process 'NUCLEO': 24
+
+[INFO] 01:04:26:763 CPU/(5225:5225): Construyendo PCB para PID #1
+
+[INFO] 01:04:26:763 CPU/(5225:5225): Tamanio indice Codigo 52 - Cantidad de elementos indice de codigo 6 - Proceso 1 
+[INFO] 01:04:26:763 CPU/(5225:5225): Tamanio indice stack 0 - Proceso 1 
+
+[INFO] 01:04:26:763 CPU/(5225:5225): Tamanio indice de Etiquetas 0 - Proceso 1 
+
+[INFO] 01:04:26:763 CPU/(5225:5225): El PCB fue recibido correctamente
+
+[INFO] 01:06:46:630 CPU/(5310:5310): Connected to UMC - Message: The server has accepted your connection!
+
+[INFO] 01:06:46:630 CPU/(5310:5310): Receiving frame size
+
+[INFO] 01:06:46:630 CPU/(5310:5310): Tamanio de pagina: 64
+
+[INFO] 01:06:46:633 CPU/(5310:5310): Connected to NUCLEO - Message: The server has accepted your connection!
+
+[INFO] 01:06:46:633 CPU/(5310:5310): Receiving stack size (number of pages for PID stack)
+
+[INFO] 01:06:46:633 CPU/(5310:5310): Tamanio de stack: 8
+
+[INFO] 01:06:54:935 CPU/(5310:5310): Bytes received from process 'NUCLEO': 24
+
+[INFO] 01:06:54:936 CPU/(5310:5310): Construyendo PCB para PID #1
+
+[INFO] 01:06:54:936 CPU/(5310:5310): Tamanio indice Codigo 52 - Cantidad de elementos indice de codigo 6 - Proceso 1 
+[INFO] 01:06:54:936 CPU/(5310:5310): Tamanio indice stack 0 - Proceso 1 
+
+[INFO] 01:06:54:936 CPU/(5310:5310): Tamanio indice de Etiquetas 0 - Proceso 1 
+
+[INFO] 01:06:54:936 CPU/(5310:5310): El PCB fue recibido correctamente
+
+[INFO] 01:21:13:391 CPU/(5724:5724): Connected to UMC - Message: The server has accepted your connection!
+
+[INFO] 01:21:13:391 CPU/(5724:5724): Receiving frame size
+
+[INFO] 01:21:13:391 CPU/(5724:5724): Tamanio de pagina: 64
+
+[INFO] 01:21:13:392 CPU/(5724:5724): Connected to NUCLEO - Message: The server has accepted your connection!
+
+[INFO] 01:21:13:392 CPU/(5724:5724): Receiving stack size (number of pages for PID stack)
+
+[INFO] 01:21:13:392 CPU/(5724:5724): Tamanio de stack: 8
+
+[INFO] 01:21:21:351 CPU/(5724:5724): Bytes received from process 'NUCLEO': 24
+
+[INFO] 01:21:21:351 CPU/(5724:5724): Construyendo PCB para PID #1
+
+[INFO] 01:21:21:351 CPU/(5724:5724): Tamanio indice Codigo 52 - Cantidad de elementos indice de codigo 6 - Proceso 1 
+[INFO] 01:21:21:352 CPU/(5724:5724): Tamanio indice stack 0 - Proceso 1 
+
+[INFO] 01:21:21:352 CPU/(5724:5724): Tamanio indice de Etiquetas 0 - Proceso 1 
+
+[INFO] 01:21:21:352 CPU/(5724:5724): El PCB fue recibido correctamente
+
+[INFO] 01:38:39:828 CPU/(2697:2697): Connected to UMC - Message: The server has accepted your connection!
+
+[INFO] 01:38:39:847 CPU/(2697:2697): Receiving frame size
+
+[INFO] 01:38:39:847 CPU/(2697:2697): Tamanio de pagina: 64
+
+[INFO] 01:38:39:848 CPU/(2697:2697): Connected to NUCLEO - Message: The server has accepted your connection!
+
+[INFO] 01:38:39:848 CPU/(2697:2697): Receiving stack size (number of pages for PID stack)
+
+[INFO] 01:38:39:848 CPU/(2697:2697): Tamanio de stack: 8
+
+[INFO] 01:39:09:513 CPU/(2697:2697): Bytes received from process 'NUCLEO': 24
+
+[INFO] 01:39:09:513 CPU/(2697:2697): Construyendo PCB para PID #1
+
+[INFO] 01:39:09:515 CPU/(2697:2697): Tamanio indice Codigo 44 - Cantidad de elementos indice de codigo 5 - Proceso 1 
+[INFO] 01:39:09:516 CPU/(2697:2697): Tamanio indice stack 0 - Proceso 1 
+
+[INFO] 01:39:09:516 CPU/(2697:2697): Tamanio indice de Etiquetas 0 - Proceso 1 
+
+[INFO] 01:39:09:516 CPU/(2697:2697): El PCB fue recibido correctamente
+
+[INFO] 03:07:49:623 CPU/(3636:3636): Connected to UMC - Message: The server has accepted your connection!
+
+[INFO] 03:07:49:623 CPU/(3636:3636): Receiving frame size
+
+[INFO] 03:07:49:623 CPU/(3636:3636): Tamanio de pagina: 64
+
+[INFO] 03:07:49:625 CPU/(3636:3636): Connected to NUCLEO - Message: The server has accepted your connection!
+
+[INFO] 03:07:49:625 CPU/(3636:3636): Receiving stack size (number of pages for PID stack)
+
+[INFO] 03:07:49:625 CPU/(3636:3636): Tamanio de stack: 8
+
+[INFO] 03:08:54:502 CPU/(3666:3666): Connected to UMC - Message: The server has accepted your connection!
+
+[INFO] 03:08:54:502 CPU/(3666:3666): Receiving frame size
+
+[INFO] 03:08:54:502 CPU/(3666:3666): Tamanio de pagina: 64
+
+[INFO] 03:08:54:505 CPU/(3666:3666): Connected to NUCLEO - Message: The server has accepted your connection!
+
+[INFO] 03:08:54:505 CPU/(3666:3666): Receiving stack size (number of pages for PID stack)
+
+[INFO] 03:08:54:505 CPU/(3666:3666): Tamanio de stack: 8
+
+[INFO] 03:10:01:304 CPU/(4022:4022): Connected to UMC - Message: The server has accepted your connection!
+
+[INFO] 03:10:01:304 CPU/(4022:4022): Receiving frame size
+
+[INFO] 03:10:01:304 CPU/(4022:4022): Tamanio de pagina: 64
+
+[INFO] 03:10:01:305 CPU/(4022:4022): Connected to NUCLEO - Message: The server has accepted your connection!
+
+[INFO] 03:10:01:305 CPU/(4022:4022): Receiving stack size (number of pages for PID stack)
+
+[INFO] 03:10:01:305 CPU/(4022:4022): Tamanio de stack: 8
+
+[INFO] 03:10:11:337 CPU/(4022:4022): Bytes received from process 'NUCLEO': 24
+
+[INFO] 03:10:11:337 CPU/(4022:4022): Construyendo PCB para PID #1
+
+[INFO] 03:10:11:337 CPU/(4022:4022): Tamanio indice Codigo 44 - Cantidad de elementos indice de codigo 5 - Proceso 1 
+[INFO] 03:10:11:337 CPU/(4022:4022): Tamanio indice stack 0 - Proceso 1 
+
+[INFO] 03:10:11:337 CPU/(4022:4022): Tamanio indice de Etiquetas 0 - Proceso 1 
+
+[INFO] 03:10:11:338 CPU/(4022:4022): El PCB fue recibido correctamente
+
+[INFO] 03:35:39:692 CPU/(4649:4649): Connected to UMC - Message: The server has accepted your connection!
+
+[INFO] 03:35:39:692 CPU/(4649:4649): Receiving frame size
+
+[INFO] 03:35:39:692 CPU/(4649:4649): Tamanio de pagina: 64
+
+[INFO] 03:35:39:696 CPU/(4649:4649): Connected to NUCLEO - Message: The server has accepted your connection!
+
+[INFO] 03:35:39:696 CPU/(4649:4649): Receiving stack size (number of pages for PID stack)
+
+[INFO] 03:35:39:696 CPU/(4649:4649): Tamanio de stack: 8
+
+[INFO] 03:35:48:85 CPU/(4649:4649): Bytes received from process 'NUCLEO': 24
+
+[INFO] 03:35:48:85 CPU/(4649:4649): Construyendo PCB para PID #1
+
+[INFO] 03:35:48:85 CPU/(4649:4649): Tamanio indice Codigo 44 - Cantidad de elementos indice de codigo 5 - Proceso 1 
+[INFO] 03:35:48:85 CPU/(4649:4649): Tamanio indice stack 0 - Proceso 1 
+
+[INFO] 03:35:48:85 CPU/(4649:4649): Tamanio indice de Etiquetas 0 - Proceso 1 
+
+[INFO] 03:35:48:85 CPU/(4649:4649): El PCB fue recibido correctamente
+

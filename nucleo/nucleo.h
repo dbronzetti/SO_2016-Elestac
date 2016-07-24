@@ -169,7 +169,7 @@ void startServerCPU();
 void newClients(void *parameter);
 void handShake(void *parameter);
 void processMessageReceived(void *parameter);
-void processCPUMessages(char* messageRcv,int messageSize,int socketLibre);
+void processCPUMessages(int messageSize,int socketLibre);
 
 int connectTo(enum_processes processToConnect, int *socketClient);
 void startNucleoConsole();
