@@ -129,11 +129,11 @@ void* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
 		printf("Error al abrir el archivo.\n");
 	} else {
 		size_t count = 1;
-		fread(textoDeArchivo,*tamanioDeArchivo,count,archivo);
+		count = fread(textoDeArchivo,*tamanioDeArchivo,count,archivo);
+		memset(textoDeArchivo + *tamanioDeArchivo,'\0',1);
 		//log_info(logConsola,"Tamanio adentro de la funcion: %i\n",*tamanioDeArchivo);
 
 	}
-	int strlenProgram = (int) strlen(textoDeArchivo);
 	fclose(archivo);
 	return textoDeArchivo;
 }
