@@ -1463,10 +1463,10 @@ void iniciarPrograma(int PID, char *codeScript) {
 	sendMessage(&socketUMC, buffer, bufferSize);
 
 	//2) Despues de enviar la info, Enviar el tamanio del prgrama
-	sendMessage(&socketUMC, (void*) contentLen, sizeof(contentLen));
+	sendMessage(&socketUMC, &contentLen, sizeof(contentLen));
 
 	//3) Enviar programa
-	sendMessage(&socketUMC, (void*) codeScript, contentLen);
+	sendMessage(&socketUMC, codeScript, contentLen);
 	log_info(logNucleo,"Se realiza correctamente el envio del programa %s de tamanio %d al proceso UMC", codeScript, contentLen);
 
 	free(message);
