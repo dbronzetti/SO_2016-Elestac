@@ -173,7 +173,7 @@ int main(int argc, char *argv[]){
 
 							//Enviar PCB (indiceStack actualizado) solamente
 							char* bufferIndiceStack =  malloc(sizeof(PCBRecibido->indiceDeStack->elements_count));
-							serializarListaStack(PCBRecibido->indiceDeStack, bufferIndiceStack);
+							serializarListaStack(PCBRecibido->indiceDeStack, &bufferIndiceStack);
 
 							//send tamaño de lista indice stack
 							int indiceStackSize = strlen(bufferIndiceStack);
@@ -193,7 +193,7 @@ int main(int argc, char *argv[]){
 
 							//Enviar PCB (indiceStack actualizado) solamente al nucleo si el proceso se bloqueo por wait
 							char* bufferIndiceStack =  malloc(sizeof(PCBRecibido->indiceDeStack->elements_count));
-							serializarListaStack(PCBRecibido->indiceDeStack, bufferIndiceStack);
+							serializarListaStack(PCBRecibido->indiceDeStack, &bufferIndiceStack);
 
 							//send tamaño de lista indice stack
 							int indiceStackSize = strlen(bufferIndiceStack);
