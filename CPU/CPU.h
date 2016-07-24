@@ -100,7 +100,7 @@ int ejecutarPrograma();
 int connectTo(enum_processes processToConnect, int *socketClient);
 void crearArchivoDeConfiguracion(char *configFile);
 void sighandler(int signum);
-void waitRequestFromNucleo(int *socketClient, char * messageRcv);
+void waitRequestFromNucleo(int *socketClient, char **messageRcv);
 void deserializarListaIndiceDeEtiquetas(char* charEtiquetas, int listaSize);
 void destruirRegistroIndiceEtiquetas(t_registroIndiceEtiqueta* registroEtiqueta);
 void destroyIndiceEtiquetas();
