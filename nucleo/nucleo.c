@@ -1453,11 +1453,11 @@ void iniciarPrograma(int PID, char *codeScript) {
 	//3) Enviar programa
 	string_append(&codeScript, "\0");	//ALWAYS put \0 for finishing the string
 	sendMessage(&socketUMC, (void*) codeScript, contentLen);
+	log_info(logNucleo,"Se realiza correctamente el envio del programa %s de tamanio %d al proceso UMC", codeScript, contentLen);
 
 	free(message);
 	free(buffer);
 	//TODO free(codeScript);
-	log_info(logNucleo,"Se realiza correctamente el envio del programa al proceso UMC");
 
 }
 
