@@ -1471,7 +1471,6 @@ void iniciarPrograma(int PID, char *codeScript) {
 
 	free(message);
 	free(buffer);
-	//TODO free(codeScript);
 
 }
 
