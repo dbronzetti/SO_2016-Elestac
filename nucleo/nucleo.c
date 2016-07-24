@@ -272,7 +272,7 @@ void processMessageReceived (void *parameter){
 
 		//Get Payload size
 		memcpy(&messageSize, messageRcv, sizeof(messageSize));
-		log_info(logNucleo, "Tamanio messageSize recibido: %d \n", messageSize);
+		log_info(logNucleo, "message size received: %d \n", messageSize);
 
 		//Receive process from which the message is going to be interpreted
 		enum_processes fromProcess;
@@ -355,14 +355,14 @@ void runScript(char* codeScript){
 
 	//Armo Indice de codigo, etiquetas y stack
 	t_metadata_program *miMetaData = metadata_desde_literal(codeScript);
-
+	log_info(logNucleo,"etiquetas size directo de la metadata: %d", (int) miMetaData->etiquetas_size);
 	pthread_mutex_lock(&globalMutex);
 	PCB->PID = idProcesos;
 	idProcesos++;
 	pthread_mutex_unlock(&globalMutex);
 
 	PCB->ProgramCounter = miMetaData->instruccion_inicio;
-	int contentLen = strlen(codeScript) + 1;	//+1 debido al '\0'
+	int contentLen = strlen(codeScript);
 	PCB->cantidadDePaginas = (int) ceil((double) contentLen/ (double) frameSize);
 	PCB->StackPointer = 0;
 	PCB->estado = 1;
@@ -397,12 +397,12 @@ void runScript(char* codeScript){
 	}
 
 	PCB->finDePrograma = index;
-	log_info(logNucleo,"se asigna el index: %d al PCB que indica el fin del Programa",index);
+	log_info(logNucleo,"Se asigna el index: %d al PCB que indica el fin del Programa",index);
 
 	pthread_mutex_lock(&listadoProcesos);
 	list_add(listaProcesos,(void*)PCB);
 	pthread_mutex_unlock(&listadoProcesos);
-	log_info(logNucleo, "myProcess %d - Iniciado  Script: \n %s \n",PCB->PID, codeScript);
+	log_info(logNucleo, "Proceso %d - Iniciado  Script \n",PCB->PID);
 
 	//Agrego a la Cola de Listos
 	datosProceso->ProgramCounter = PCB->ProgramCounter;
@@ -560,10 +560,13 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 
 		}
 
+		log_info(logNucleo,"Se completa el envio de todos los mensajes al proceso CPU \n");
+
 		//Saco el primer elemento de la cola, porque ya lo planifique.
 		pthread_mutex_lock(&cListos);
 		t_proceso* proceso = queue_pop(colaListos);
 		pthread_mutex_unlock(&cListos);
+		log_info(logNucleo,"Remuevo el elemento %d de la cola de Listos porque ya ha sido planificado \n",proceso->PID);
 
 		//Cambio Estado del Proceso
 		int estado = 2;
@@ -932,7 +935,7 @@ void finalizaProceso(int socket, int PID, int estado) {
 	sendMessage(&socketConsola, &operacion, sizeof(int));
 	// Envia el tamanio del texto y luego el texto al proceso Consola
 	char texto[] = "Se finaliza el proceso por peticion de la Consola";
-	int textoLen = strlen(texto)+1;
+	int textoLen = strlen(texto);
 	sendMessage(&socketConsola, &textoLen, sizeof(textoLen));
 
 	log_info(logNucleo, "Enviar texto: '%s', con tamanio: '%d' a PID #%d\n", texto, textoLen, PID);
@@ -1375,10 +1378,9 @@ void armarIndiceDeEtiquetas(t_PCB *unBloqueControl,t_metadata_program* miMetaDat
 	if (unBloqueControl->indiceDeEtiquetasTamanio > 0 ){
 		unBloqueControl->indiceDeEtiquetas = malloc(unBloqueControl->indiceDeEtiquetasTamanio);
 		memcpy(unBloqueControl->indiceDeEtiquetas, miMetaData->etiquetas, unBloqueControl->indiceDeEtiquetasTamanio);
-		log_info(logNucleo,"'sizeindiceDeEtiquetas' : %d\n 'indiceDeEtiquetas' : %s\n", unBloqueControl->indiceDeEtiquetasTamanio, unBloqueControl->indiceDeEtiquetas);
 	}
+	log_info(logNucleo,"'sizeindiceDeEtiquetas' : %d 'indiceDeEtiquetas' : %s\n", unBloqueControl->indiceDeEtiquetasTamanio, unBloqueControl->indiceDeEtiquetas);
 
-	log_info(logNucleo,"'sizeindiceDeEtiquetas' : %d\n", unBloqueControl->indiceDeEtiquetasTamanio);
 }
 
 void finalizarPid(int pid){
@@ -1428,7 +1430,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 	log_info(logNucleo,"Para el processID: %d, aviso al proceso UMC el inicio  el programa: \n %s \n", PID, codeScript);
 	int bufferSize = 0;
 	int payloadSize = 0;
-	int contentLen = strlen(codeScript) + 1;	//+1 because of '\0'
+	int contentLen = strlen(codeScript);	//+1 because of '\0'
 	int cantPages = (int) ceil((double) contentLen /(double) frameSize);
 
 	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
