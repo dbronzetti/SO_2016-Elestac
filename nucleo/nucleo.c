@@ -163,6 +163,8 @@ void newClients (void *parameter){
 		close(serverData->socketClient);
 		free(serverData);
 	}else{
+
+		log_info(logNucleo,"The was received a connection in socket: %d.",serverData->socketClient);
 		//Create thread attribute detached
 		pthread_attr_t handShakeThreadAttr;
 		pthread_attr_init(&handShakeThreadAttr);

@@ -66,7 +66,8 @@ int acceptClientConnection(int *socketServer, int *socketClient){
 	*socketClient = accept(*socketServer, (void*) &clientConnection, &addressSize);
 
 	if (*socketClient != -1){
-		printf("The was received a connection in socket: %d.\n", *socketClient);
+		//printf("The was received a connection in socket: %d.\n", *socketClient); --> adding logs in programs
+		exitcode = EXIT_SUCCESS;
 	}else{
 		perror("Failed to get a new connection"); //TODO => Agregar logs con librerias
 		exitcode = EXIT_FAILURE;

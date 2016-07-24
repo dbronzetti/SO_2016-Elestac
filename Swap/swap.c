@@ -443,7 +443,7 @@ void newClients (void *parameter){
 		log_warning(logSwap,"There was detected an attempt of wrong connection\n");
 		close(serverData->socketClient);
 	}else{
-
+		log_info(logSwap,"The was received a connection in socket: %d.",serverData->socketClient);
 		handShake(parameter);
 
 	}// END handshakes

@@ -51,7 +51,7 @@ int main(int argc, char *argv[]){
 	exitCode = connectTo(SWAP,&socketSwap);
 
 	if(exitCode == EXIT_SUCCESS){
-		log_info(UMCLog, "UMC connected to SWAP successfully\n");
+		log_info(UMCLog, "UMC connected to SWAP successfully");
 
 		//Initializing mutex
 		pthread_mutex_init(&memoryAccessMutex, NULL);
@@ -75,16 +75,16 @@ void startServer(){
 	int socketServer;
 
 	exitCode = openServerConnection(configuration.port, &socketServer);
-	log_info(UMCLog, "SocketServer: %d\n", socketServer);
+	log_info(UMCLog, "SocketServer: %d", socketServer);
 
 	//If exitCode == 0 the server connection is opened and listening
 	if (exitCode == 0) {
-		log_info(UMCLog, "The server is opened.\n");
+		log_info(UMCLog, "The UMC server is opened.");
 
 		exitCode = listen(socketServer, SOMAXCONN);
 
 		if (exitCode < 0 ){
-			log_error(UMCLog,"Failed to listen server Port.\n");
+			log_error(UMCLog,"Failed to listen server Port.");
 			return;
 		}
 
@@ -120,11 +120,11 @@ void newClients (void *parameter){
 	exitCode = acceptClientConnection(&serverData->socketServer, &serverData->socketClient);
 
 	if (exitCode == EXIT_FAILURE){
-		log_warning(UMCLog,"There was detected an attempt of wrong connection\n");
+		log_warning(UMCLog,"There was detected an attempt of wrong connection.");
 		close(serverData->socketClient);
 		free(serverData);
 	}else{
-
+		log_info(UMCLog,"The was received a connection in socket: %d.",serverData->socketClient);
 		//Create thread attribute detached
 		pthread_attr_t handShakeThreadAttr;
 		pthread_attr_init(&handShakeThreadAttr);
@@ -162,13 +162,13 @@ void handShake (void *parameter){
 
 	//Now it's checked that the client is not down
 	if ( receivedBytes == 0 ){
-		log_error(UMCLog,"The client went down while handshaking! - Please check the client '%d' is down!\n", serverData->socketClient);
+		log_error(UMCLog,"The client went down while handshaking! - Please check the client '%d' is down!", serverData->socketClient);
 		close(serverData->socketClient);
 		free(serverData);
 	}else{
 		switch ((int) message->process){
 			case CPU:{
-				log_info(UMCLog,"Message from '%s': %s\n", getProcessString(message->process), message->message);
+				log_info(UMCLog,"Message from '%s': %s", getProcessString(message->process), message->message);
 
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
@@ -193,7 +193,7 @@ void handShake (void *parameter){
 				break;
 			}
 			case NUCLEO:{
-				log_info(UMCLog,"Message from '%s': %s\n", getProcessString(message->process), message->message);
+				log_info(UMCLog,"Message from '%s': %s", getProcessString(message->process), message->message);
 
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
@@ -220,7 +220,7 @@ void handShake (void *parameter){
 				break;
 			}
 			default:{
-				log_error(UMCLog,"Process not allowed to connect - Invalid process '%s' tried to connect to UMC\n", getProcessString(message->process));
+				log_error(UMCLog,"Process not allowed to connect - Invalid process '%s' tried to connect to UMC", getProcessString(message->process));
 				close(serverData->socketClient);
 				free(serverData);
 				break;
@@ -243,35 +243,33 @@ void processMessageReceived (void *parameter){
 
 		//Get Payload size
 		int receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
-		log_info(UMCLog, "message size received: %d \n", messageSize);
 
 		if ( receivedBytes > 0 ){
 
-			printf("socket cliente: %d\n", serverData->socketClient);
 
 			//Receive process from which the message is going to be interpreted
 			enum_processes fromProcess;
 			receivedBytes = receiveMessage(&serverData->socketClient, &fromProcess, sizeof(fromProcess));
 
-			log_info(UMCLog,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
+			log_info(UMCLog, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), serverData->socketClient, messageSize);
 
 			switch (fromProcess){
 			case CPU:{
-				log_info(UMCLog, "Processing CPU message received\n");
+				log_info(UMCLog, "Processing CPU message received");
 				pthread_mutex_lock(&activeProcessMutex);
 				procesCPUMessages(messageSize, serverData);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
 			case NUCLEO:{
-				log_info(UMCLog, "Processing NUCLEO message received\n");
+				log_info(UMCLog, "Processing NUCLEO message received");
 				pthread_mutex_lock(&activeProcessMutex);
 				procesNucleoMessages(messageSize, serverData);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
 			default:{
-				log_error(UMCLog,"Process not allowed to connect - Invalid process '%s' send a message to UMC\n", getProcessString(fromProcess));
+				log_error(UMCLog,"Process not allowed to connect - Invalid process '%s' send a message to UMC", getProcessString(fromProcess));
 				close(serverData->socketClient);
 				free(serverData);
 				break;
@@ -280,12 +278,12 @@ void processMessageReceived (void *parameter){
 
 		}else if (receivedBytes == 0 ){
 			//The client is down when bytes received are 0
-			log_error(UMCLog,"The client went down while receiving! - Please check the client '%d' is down!\n", serverData->socketClient);
+			log_error(UMCLog,"The client went down while receiving! - Please check the client '%d' is down!", serverData->socketClient);
 			close(serverData->socketClient);
 			free(serverData);
 			break;
 		}else{
-			log_error(UMCLog, "Error - No able to received - Error receiving from socket '%d', with error: %d\n",serverData->socketClient,errno);
+			log_error(UMCLog, "Error - No able to received - Error receiving from socket '%d', with error: %d",serverData->socketClient,errno);
 			close(serverData->socketClient);
 			free(serverData);
 			break;
@@ -360,7 +358,7 @@ void procesCPUMessages(int messageSize, t_serverData* serverData){
 			break;
 		}
 		default:{
-			log_error(UMCLog,"Process not allowed to connect - Invalid operation for CPU messages '%d' requested to UMC \n",(int) message->operation);
+			log_error(UMCLog,"Process not allowed to connect - Invalid operation for CPU messages '%d' requested to UMC",(int) message->operation);
 			break;
 		}
 	}
@@ -388,12 +386,12 @@ void procesNucleoMessages(int messageSize, t_serverData* serverData){
 			receivedBytes = 0;//reseting receivedBytes to get the content size
 
 			receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
-			log_info(UMCLog, "message size received: %d \n", messageSize);
+			log_info(UMCLog, "Program size received: %d", messageSize);
 
 			//Receive content using the size read before
 			void *content = malloc(messageSize);
 			receivedBytes = receiveMessage(&serverData->socketClient, content, messageSize);
-			log_info(UMCLog, "message received: %s \n", content);
+			log_info(UMCLog, "Program received:\n%s\n", content);
 
 			initializeProgram(message->PID, message->cantPages, content);
 
@@ -407,7 +405,7 @@ void procesNucleoMessages(int messageSize, t_serverData* serverData){
 			break;
 		}
 		default:{
-			log_error(UMCLog, "Process not allowed to connect - Invalid operation for CPU messages '%d' requested to UMC \n",(int) message->operation);
+			log_error(UMCLog, "Process not allowed to connect - Invalid operation for CPU messages '%d' requested to UMC",(int) message->operation);
 			close(serverData->socketClient);
 			free(serverData);
 			break;
@@ -427,7 +425,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 			break;
 		}
 		default:{
-			log_info(UMCLog,"Process '%s' NOT VALID to be connected by UMC.\n", getProcessString(processToConnect));
+			log_info(UMCLog,"Process '%s' NOT VALID to be connected by UMC.", getProcessString(processToConnect));
 			break;
 		}
 	}
@@ -464,11 +462,11 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 					case ACCEPTED:{
 						switch(processToConnect){
 							case SWAP:{
-								log_info(UMCLog, "Connected to SWAP - Message: %s\n",message->message);
+								log_info(UMCLog, "Connected to SWAP - Message: %s",message->message);
 								break;
 							}
 							default:{
-								log_error(UMCLog, "Handshake not accepted when tried to connect your '%s' with '%s'\n",getProcessString(processToConnect),getProcessString(message->process));
+								log_error(UMCLog, "Handshake not accepted when tried to connect your '%s' with '%s",getProcessString(processToConnect),getProcessString(message->process));
 								close(*socketClient);
 								exitcode = EXIT_FAILURE;
 								break;
@@ -478,7 +476,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 						break;
 					}
 					default:{
-						log_error(UMCLog, "Process couldn't connect to SERVER - Not able to connect to server %s. Please check if it's down.\n",ip);
+						log_error(UMCLog, "Process couldn't connect to SERVER - Not able to connect to server %s. Please check if it's down.",ip);
 						close(*socketClient);
 						break;
 						break;
@@ -487,16 +485,16 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 
 			}else if (receivedBytes == 0 ){
 				//The client is down when bytes received are 0
-				log_error(UMCLog,"The client went down while receiving! - Please check the client '%d' is down!\n", *socketClient);
+				log_error(UMCLog,"The client went down while receiving! - Please check the client '%d' is down!", *socketClient);
 				close(*socketClient);
 			}else{
-				log_error(UMCLog, "Error - No able to received - Error receiving from socket '%d', with error: %d\n",*socketClient,errno);
+				log_error(UMCLog, "Error - No able to received - Error receiving from socket '%d', with error: %d",*socketClient,errno);
 				close(*socketClient);
 			}
 		}
 
 	}else{
-		log_error(UMCLog, "I'm not able to connect to the server! - My socket is: '%d'\n", *socketClient);
+		log_error(UMCLog, "I'm not able to connect to the server! - My socket is: '%d'", *socketClient);
 		close(*socketClient);
 	}
 
@@ -543,7 +541,7 @@ void startUMCConsole(){
 			configuration.delay = atoi(option);
 			pthread_mutex_unlock(&delayMutex);
 			printf("The delay UMC was successfully changed to: %d\n", configuration.delay);
-			log_info(UMCLog, "The delay UMC was successfully changed to: %d\n", configuration.delay);
+			log_info(UMCLog, "The delay UMC was successfully changed to: %d", configuration.delay);
 
 		}else if (strcmp(command,"dump") == 0 ){
 			int neededPID = 0; //DEFAULT value
@@ -601,10 +599,10 @@ void startUMCConsole(){
 				//Closing file
 				fclose(dumpf);
 				printf("A copy of this dump was saved in: '%s'.\n", dumpFile);
-				log_info(UMCLog, "A copy of this dump was saved in: '%s'.\n", dumpFile);
+				log_info(UMCLog, "A copy of this dump was saved in: '%s'.", dumpFile);
 			}else{
 				printf("Sorry! There is not information to show you now =(\n");
-				log_info(UMCLog, "COMMAND: '%s %s %s' - Sorry! There is not information to show you now =(\n", command, option, value);
+				log_info(UMCLog, "COMMAND: '%s %s %s' - Sorry! There is not information to show you now =(", command, option, value);
 			}
 
 		}else if (strcmp(command,"flush") == 0 ){
@@ -619,11 +617,11 @@ void startUMCConsole(){
 					pthread_mutex_unlock(&memoryAccessMutex);
 
 					printf("The '%s' flush was completed successfully\n", option);
-					log_info(UMCLog, "The '%s' flush was completed successfully\n", option);
+					log_info(UMCLog, "The '%s' flush was completed successfully", option);
 
 				}else{
 					printf("Sorry! There is not information in TLB for flushing =(\n");
-					log_info(UMCLog, "COMMAND: '%s %s' - Sorry! There is not information in TLB for flushing =(\n", command, option);
+					log_info(UMCLog, "COMMAND: '%s %s' - Sorry! There is not information in TLB for flushing =(", command, option);
 				}
 
 			}else if (strcmp(option, "memory") == 0){
@@ -635,11 +633,11 @@ void startUMCConsole(){
 					pthread_mutex_unlock(&memoryAccessMutex);
 
 					printf("The '%s' flush was completed successfully\n", option);
-					log_info(UMCLog, "The '%s' flush was completed successfully\n", option);
+					log_info(UMCLog, "The '%s' flush was completed successfully", option);
 
 				}else{
 					printf("Sorry! There is not information in MEMORY for flushing =(\n");
-					log_info(UMCLog, "COMMAND: '%s %s' - Sorry! There is not information in MEMORY for flushing =(\n", command, option);
+					log_info(UMCLog, "COMMAND: '%s %s' - Sorry! There is not information in MEMORY for flushing =(", command, option);
 				}
 			}
 
@@ -727,16 +725,16 @@ void createAdminStructs(){
 		list_add(freeFramesList, (void*)frameNro);
 	}
 
-	log_info(UMCLog, "'%d' frames created and ready for use.\n", list_size(freeFramesList));
+	log_info(UMCLog, "'%d' frames created and ready for use.", list_size(freeFramesList));
 
 	// Checking if TLB is enable
 	if (configuration.TLB_entries != 0){
 		//TLB enable
 		createTLB();
 		TLBActivated = true;
-		log_info(UMCLog, "TLB enable. Size '%d'\n", list_size(TLBList));
+		log_info(UMCLog, "TLB enable. Size '%d'", list_size(TLBList));
 	}else{
-		log_info(UMCLog, "TLB disable!.\n");
+		log_info(UMCLog, "TLB disable!.");
 	}
 
 	//Creating page table list for Main Memory administration
@@ -965,14 +963,14 @@ void deleteContentFromMemory(t_memoryAdmin *memoryElement){
 	int memOffset = memoryElement->frameNumber * configuration.frames_size + memoryElement->virtualAddress->offset;
 	memset(memBlock + memOffset,'\0', memoryElement->virtualAddress->size);
 
-	log_info(UMCLog, "From PID '%d' - Content in page '#%d' DELETED from memory\n",memoryElement->PID, memoryElement->virtualAddress->pag);
+	log_info(UMCLog, "From PID '%d' - Content in page '#%d' DELETED from memory",memoryElement->PID, memoryElement->virtualAddress->pag);
 
 	//adding frame again to free frames list
 	int *frameNro = malloc(sizeof(int));
 	*frameNro = memoryElement->frameNumber;
 	list_add(freeFramesList, (void*)frameNro);
 
-	log_info(UMCLog, "NEW free frame '%d' available\n", memoryElement->frameNumber);
+	log_info(UMCLog, "NEW free frame '%d' available", memoryElement->frameNumber);
 
 }
 
@@ -1008,7 +1006,7 @@ void checkPageModification(t_memoryAdmin *memoryElement){
 		memcpy(content, memoryBlockOffset, memoryElement->virtualAddress->size);
 		sendMessage(&socketSwap, content, memoryElement->virtualAddress->size); //OJO asegurarse que el CPU siempre envie pagesize
 
-		log_info(UMCLog, "From PID '%d' - Content in page '#%d' swapped OUT\n",memoryElement->PID, memoryElement->virtualAddress->pag);
+		log_info(UMCLog, "From PID '%d' - Content in page '#%d' swapped OUT",memoryElement->PID, memoryElement->virtualAddress->pag);
 
 		free(message->virtualAddress);
 		free(message);
@@ -1046,7 +1044,7 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID){
 	memoryContent = malloc(virtualAddress->size);
 	memcpy(memoryContent, messageRcv, virtualAddress->size);
 
-	log_info(UMCLog, "From PID '%d' - Content in page '#%d' swapped IN\n",PID, virtualAddress->pag);
+	log_info(UMCLog, "From PID '%d' - Content in page '#%d' swapped IN",PID, virtualAddress->pag);
 
 	free(message->virtualAddress);
 	free(message);
@@ -1206,7 +1204,7 @@ t_memoryAdmin *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memor
 			break;
 		}
 		default:{
-			log_error(UMCLog, "Error Device Location not recognized for searching: '%d'\n",deviceLocation);
+			log_error(UMCLog, "Error Device Location not recognized for searching: '%d'",deviceLocation);
 		}
 	}
 
@@ -1240,7 +1238,7 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 
 	if (memoryElement != NULL){//PAGE HIT in Main Memory
 
-		log_info(UMCLog, "PID '%d': PAGE HIT in Main Memory - Page #%d\n", pageTablexProc->PID, virtualAddress->pag);
+		log_info(UMCLog, "PID '%d': PAGE HIT in Main Memory - Page #%d", pageTablexProc->PID, virtualAddress->pag);
 
 		if(TLBActivated){//TLB is enable
 			t_memoryAdmin *TLBElem = NULL;
@@ -1265,12 +1263,12 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 		}
 	}else{//PAGE Fault in Main Memory
 
-		log_info(UMCLog, "PID '%d': PAGE Fault in Main Memory - Page #%d\n", pageTablexProc->PID, virtualAddress->pag);
+		log_info(UMCLog, "PID '%d': PAGE Fault in Main Memory - Page #%d", pageTablexProc->PID, virtualAddress->pag);
 
 		if (list_size(freeFramesList) > 0){
 
 			//The main memory still has free frames available
-			log_info(UMCLog, "The main memory still has free frames to assign to process '%d'\n", activePID);
+			log_info(UMCLog, "The main memory still has free frames to assign to process '%d'", activePID);
 
 			//Request memory content to Swap
 			void *memoryContent = requestPageToSwap(virtualAddress, pageTablexProc->PID);
@@ -1296,7 +1294,7 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 			if (pageTablexProc->assignedFrames < configuration.frames_max_proc){
 
 				//The active process has free frames available
-				log_info(UMCLog, "The process '%d' still has free frames to assigned\n", activePID);
+				log_info(UMCLog, "The process '%d' still has free frames to assigned", activePID);
 
 				void *memoryBlockOffset = NULL;
 				memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + virtualAddress->offset;
@@ -1307,7 +1305,7 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 
 			}else{
 				//The active process hasn't free frames available, replacement algorithm has to be executed
-				log_info(UMCLog, "The process '%d' hasn't more free frames available \n", activePID);
+				log_info(UMCLog, "The process '%d' hasn't more free frames available", activePID);
 
 				//  ejecuto algoritmo reemplazo segun deviceLocation ( TLB=> LRU, MAIN_MEMORY=> Clock/mejorado)
 
@@ -1322,7 +1320,7 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 			}
 		}else{
 			//The main memory still hasn't any free frames
-			log_warning(UMCLog, "The main memory is FULL!\n");
+			log_warning(UMCLog, "The main memory is FULL!");
 			//inform this to upstream process
 			memoryElement = NULL;
 			//exit function immediately
@@ -1341,7 +1339,7 @@ void executeLRUAlgorithm(t_memoryAdmin *newElement, t_memoryLocation *virtualAdd
 
 	//Replacement algorithm LRU
 	LRUCandidate = getLRUCandidate();
-	log_info(UMCLog, "PID: '%d' - New page needed '%d' -> LRU candidate page #%d\n", newElement->PID, newElement->virtualAddress->pag, LRUCandidate->virtualAddress->pag);
+	log_info(UMCLog, "PID: '%d' - New page needed '%d' -> LRU candidate page #%d", newElement->PID, newElement->virtualAddress->pag, LRUCandidate->virtualAddress->pag);
 	//check page status before replacing
 	checkPageModification(LRUCandidate);
 
@@ -1379,7 +1377,7 @@ void executeMainMemoryAlgorithm(t_pageTablesxProc *pageTablexProc, t_memoryAdmin
 			clockCandidate = (t_memoryAdmin*) list_find(pageTablexProc->ptrPageTable, (void*) isPageNOTPresent);
 		}
 
-		log_info(UMCLog, "PID: '%d' - New page needed '%d' -> CLOCK candidate page #%d\n", pageTablexProc->PID, newElement->virtualAddress->pag, clockCandidate->virtualAddress->pag);
+		log_info(UMCLog, "PID: '%d' - New page needed '%d' -> CLOCK candidate page #%d", pageTablexProc->PID, newElement->virtualAddress->pag, clockCandidate->virtualAddress->pag);
 
 		//Candidate found
 		newElement->frameNumber = clockCandidate->frameNumber;
@@ -1398,7 +1396,7 @@ void executeMainMemoryAlgorithm(t_pageTablesxProc *pageTablexProc, t_memoryAdmin
 			}
 		}
 
-		log_info(UMCLog, "PID: '%d' - New page needed '%d' -> ENCAHNCED CLOCK candidate page #%d\n", pageTablexProc->PID, newElement->virtualAddress->pag, clockCandidate->virtualAddress->pag);
+		log_info(UMCLog, "PID: '%d' - New page needed '%d' -> ENCAHNCED CLOCK candidate page #%d", pageTablexProc->PID, newElement->virtualAddress->pag, clockCandidate->virtualAddress->pag);
 
 		//Candidate found
 		newElement->frameNumber = clockCandidate->frameNumber;
@@ -1441,6 +1439,6 @@ void changeActiveProcess(int PID){
 	}
 
 	//after flushing entries from old process change active process to the one needed
-	log_info(UMCLog, "Changing to active PID: '#%d'\n", PID);
+	log_info(UMCLog, "Changing to active PID: '#%d'", PID);
 	activePID = PID;
 }
