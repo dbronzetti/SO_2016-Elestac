@@ -83,10 +83,14 @@ void processingMessages(int socketClient){
 		receivedBytes = receiveMessage(&socketClient, &fromProcess, sizeof(fromProcess));
 		log_info(logSwap,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
 
+		t_list* listaFiltrada = list_filter(listaSwap,(void*)elementosVacios);
+
 		//Receive message using the size read before
 		char *messageRcv = malloc(messageSize);
 		int receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
 		log_info(logSwap, "message received: %s \n", messageRcv);
+
+		t_list* listaFiltrada1 = list_filter(listaSwap,(void*)elementosVacios);
 
 		//int receivedBytes = receiveMessage(&socketClient,structUmcSwap,sizeof(operacionARealizar));
 

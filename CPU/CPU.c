@@ -176,9 +176,10 @@ int main(int argc, char *argv[]){
 							serializarListaStack(PCBRecibido->indiceDeStack, bufferIndiceStack);
 
 							//send tamaño de lista indice stack
-							sendMessage(&socketNucleo, (void*) strlen(bufferIndiceStack), sizeof(int));
+							int indiceStackSize = strlen(bufferIndiceStack);
+							sendMessage(&socketNucleo, &indiceStackSize, sizeof(int));
 							//send lista indice stack
-							sendMessage(&socketNucleo, bufferIndiceStack, strlen(bufferIndiceStack));
+							sendMessage(&socketNucleo, bufferIndiceStack, indiceStackSize);
 
 							free(corteQuantum);
 							free(bufferIndiceStack);
@@ -195,9 +196,10 @@ int main(int argc, char *argv[]){
 							serializarListaStack(PCBRecibido->indiceDeStack, bufferIndiceStack);
 
 							//send tamaño de lista indice stack
-							sendMessage(&socketNucleo, (void*) strlen(bufferIndiceStack), sizeof(int));
+							int indiceStackSize = strlen(bufferIndiceStack);
+							sendMessage(&socketNucleo, &indiceStackSize, sizeof(int));
 							//send lista indice stack
-							sendMessage(&socketNucleo, bufferIndiceStack, strlen(bufferIndiceStack));
+							sendMessage(&socketNucleo, bufferIndiceStack, indiceStackSize);
 							free(bufferIndiceStack);
 						}
 
@@ -873,7 +875,8 @@ void asignar(t_puntero direccion_variable, t_valor_variable valor){
 	sendMessage(&socketUMC, buffer, bufferSize);
 
 	//1) First send with size of the message
-	sendMessage(&socketUMC, (void*) sizeof(t_valor_variable), sizeof(t_valor_variable));
+	int messageSize = sizeof(t_valor_variable);
+	sendMessage(&socketUMC, &messageSize , sizeof(t_valor_variable));
 	//2) Second send with value with previous size sent
 	sendMessage(&socketUMC,&valor,sizeof(t_valor_variable));
 
