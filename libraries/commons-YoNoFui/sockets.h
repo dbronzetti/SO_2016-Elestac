@@ -101,7 +101,7 @@ void deserializeListasArgs(t_list* listaArgs,char* listaSerializada, int *offset
 void serializarIndiceDeCodigo(t_registroIndiceCodigo* registroEnviar, char* registroSerializado);
 void deserializarIndiceDeCodigo(t_registroIndiceCodigo* registroARecibir, char* registroSerializado);
 
-void serializarListaIndiceDeCodigo(t_list* listaASerializar, char* listaSerializada);
+int serializarListaIndiceDeCodigo(t_list* listaASerializar, char* listaSerializada);
 void deserializarListaIndiceDeCodigo(t_list* listaARecibir, char* listaSerializada);
 
 char *getProcessString (enum_processes process);

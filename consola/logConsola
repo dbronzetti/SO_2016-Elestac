@@ -2,3 +2,39 @@
 
 [ERROR] 13:47:59:774 NUCLEO/(3827:3827): No server available - shutting down proces!!
 
+[INFO] 14:13:28:995 NUCLEO/(4211:4211): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 14:13:28:995 NUCLEO/(4211:4211): CONSOLA connected to NUCLEO successfully
+
+[INFO] 14:14:18:971 NUCLEO/(4219:4219): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 14:14:18:971 NUCLEO/(4219:4219): CONSOLA connected to NUCLEO successfully
+
+[INFO] 14:17:58:44 NUCLEO/(4230:4230): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 14:17:58:44 NUCLEO/(4230:4230): CONSOLA connected to NUCLEO successfully
+
+[ERROR] 14:19:00:271 NUCLEO/(4230:4230): No se pudo recibir ninguna operacion valida
+[INFO] 14:30:22:156 NUCLEO/(4260:4260): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 14:30:22:156 NUCLEO/(4260:4260): CONSOLA connected to NUCLEO successfully
+
+[ERROR] 14:30:35:837 NUCLEO/(4260:4260): No se pudo recibir ninguna operacion valida
+[INFO] 14:35:28:29 NUCLEO/(4351:4351): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 14:35:28:29 NUCLEO/(4351:4351): CONSOLA connected to NUCLEO successfully
+
+[ERROR] 14:35:36:912 NUCLEO/(4351:4351): No se pudo recibir ninguna operacion valida
+[INFO] 14:36:13:502 NUCLEO/(4389:4389): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 14:36:13:502 NUCLEO/(4389:4389): CONSOLA connected to NUCLEO successfully
+
+[ERROR] 14:36:23:499 NUCLEO/(4389:4389): No se pudo recibir ninguna operacion valida
+[WARNING] 14:39:14:146 NUCLEO/(4389:4389): Comando invalido, inténtelo nuevamente.
+
+[ERROR] 14:39:14:146 NUCLEO/(4389:4389): No se pudo recibir ninguna operacion valida
+[INFO] 14:39:17:998 NUCLEO/(4452:4452): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 14:39:17:998 NUCLEO/(4452:4452): CONSOLA connected to NUCLEO successfully
+
+[ERROR] 14:39:31:161 NUCLEO/(4452:4452): No se pudo recibir ninguna operacion valida

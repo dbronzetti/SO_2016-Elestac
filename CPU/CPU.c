@@ -43,6 +43,7 @@ int main(int argc, char *argv[]){
 
 	exitCode = connectTo(NUCLEO,&socketNucleo);
 
+	PCBRecibido = malloc(sizeof(t_PCB));
 	while ((exitCode == EXIT_SUCCESS) && !(SignalActivated)){//No wait for more messages if signal was activated during processing
 
 		if(exitCode == EXIT_SUCCESS){
@@ -84,19 +85,25 @@ int main(int argc, char *argv[]){
 			//deserializar estructuras del indice de codigo
 			deserializarListaIndiceDeCodigo(PCBRecibido->indiceDeCodigo, messageRcv);
 
+			log_info(logCPU,"Tamanio indice Codigo %d - Proceso %d ", messageSize, PCBRecibido->PID);
+
 			//receive tamaño de lista indice stack
 			messageRcv = realloc(messageRcv, sizeof(messageSize));
 			messageSize = -1;//Reseting message size before receiving the new one
 			receivedBytes = receiveMessage(&socketNucleo, &messageSize, sizeof(messageSize));
 
-			//receive lista indice stack
-			messageRcv = realloc(messageRcv, messageSize);
-			receivedBytes = receiveMessage(&socketNucleo, messageRcv, messageSize);
+			if (messageSize > 0 ){
+				//receive lista indice stack
+				messageRcv = realloc(messageRcv, messageSize);
+				receivedBytes = receiveMessage(&socketNucleo, messageRcv, messageSize);
 
-			//deserializar estructuras del stack
-			deserializarListaStack(PCBRecibido->indiceDeStack, messageRcv);
+				//deserializar estructuras del stack
+				deserializarListaStack(PCBRecibido->indiceDeStack, messageRcv);
+			}
 
-			//receive tamaño de lista indice stack
+			log_info(logCPU,"Tamanio indice stack %d - Proceso %d ", messageSize, PCBRecibido->PID);
+
+			//receive tamaño de lista indice etiquetas
 			messageRcv = realloc(messageRcv, sizeof(messageSize));
 			messageSize = -1;//Reseting message size before receiving the new one
 			receivedBytes = receiveMessage(&socketNucleo, &messageSize, sizeof(messageSize));
@@ -115,7 +122,9 @@ int main(int argc, char *argv[]){
 				deserializarListaIndiceDeEtiquetas(PCBRecibido->indiceDeEtiquetas, PCBRecibido->indiceDeEtiquetasTamanio);
 			}
 
-			printf("El PCB fue recibido correctamente\n");
+			log_info(logCPU,"Tamanio indice de Etiquetas %d - Proceso %d ", messageSize, PCBRecibido->PID);
+
+			log_info(logCPU,"El PCB fue recibido correctamente\n");
 
 			int j = 0;
 			while (j < QUANTUM){
@@ -205,7 +214,7 @@ int main(int argc, char *argv[]){
 		}
 
 	}//llave agregada, faltaba para cerrar el main
-
+	free(PCBRecibido);
 	return EXIT_SUCCESS;
 }
 
@@ -587,33 +596,9 @@ void finalizar(void){
 	}else{
 		//RETORNAR A PUNTO PREVIO DE PROGRAM COUNTER Y ELIMINAR REGISTRO DE STACK CORRESPONDIENTE A LA FUNCION (BUSCAR EL REGISTRO MAS RECIENTE QUE TENGA RETPOS)
 
-		t_registroStack* registroARegresar;
+		t_registroStack* registroARegresar = NULL;
 
-		bool getStackForReturning(t_registroStack* unRegistro){
-			//look for the registers to be
-			return (unRegistro->retVar != NULL);
-		}
-
-		bool orderLatestStackForReturning(t_registroStack *unRegistro, t_registroStack *siguienteRegistro) {
-			return unRegistro->pos > siguienteRegistro->pos;
-		}
-
-		//Creating a new list with all stack registers that have retVar values
-		t_list * returningList = list_create();
-		returningList = list_filter(PCBRecibido->indiceDeStack,(void*)getStackForReturning);
-
-		//Sort the list created from last to first
-		//This is for having the nearest stack element for returning to the current executing stack register, this prevents wrong returning if a function calls another function inside
-		list_sort(returningList,(void*)orderLatestStackForReturning);
-
-		//get the first element after sorting the list from last to first
-		registroARegresar = list_get(returningList, 0);
-
-		//Returning to program counter from function call
-		ultimoPosicionPC = registroARegresar->retPos;
-
-		//destroy the list created without erasing the elements from the stack
-		list_destroy(returningList);
+		getReturnStackRegister(registroARegresar);
 
 		int i;
 		int elementsToRemove = PCBRecibido->indiceDeStack->elements_count - registroARegresar->pos; //Calculating how many elements need to be deleted
@@ -628,6 +613,37 @@ void finalizar(void){
 
 	}
 
+}
+
+
+void getReturnStackRegister(t_registroStack* registroARegresar){
+
+	bool getStackForReturning(t_registroStack* unRegistro){
+		//look for the registers to be
+		return (unRegistro->retVar != NULL);
+	}
+
+	bool orderLatestStackForReturning(t_registroStack *unRegistro, t_registroStack *siguienteRegistro) {
+		return unRegistro->pos > siguienteRegistro->pos;
+	}
+
+	//Creating a new list with all stack registers that have retVar values
+	t_list * returningList = list_create();
+	returningList = list_filter(PCBRecibido->indiceDeStack,(void*)getStackForReturning);
+
+	//Sort the list created from last to first
+	//This is for having the nearest stack element for returning to the current executing stack register, this prevents wrong returning if a function calls another function inside
+	list_sort(returningList,(void*)orderLatestStackForReturning);
+
+	//get the first element after sorting the list from last to first
+	registroARegresar = list_get(returningList, 0);
+
+	//Returning to program counter from function call
+	ultimoPosicionPC = registroARegresar->retPos;
+	PCBRecibido->StackPointer = registroARegresar->pos;
+
+	//destroy the list created without erasing the elements from the stack
+	list_destroy(returningList);
 }
 
 t_puntero definirVariable(t_nombre_variable identificador){
@@ -696,6 +712,8 @@ t_puntero definirVariable(t_nombre_variable identificador){
 		posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
 
 	}
+
+	PCBRecibido->StackPointer = PCBRecibido->indiceDeStack->elements_count -1;
 
 	return posicionDeLaVariable;
 }
@@ -766,13 +784,17 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
 		return (unaVariable->identificador==identificador_variable);
 	}
 	int i;
-	t_registroStack* registroBuscado=malloc(sizeof(t_registroStack));
-	t_vars* posicionBuscada=malloc(sizeof(t_memoryLocation));
+	t_registroStack* registroBuscado;
+	t_vars* posicionBuscada;
 	t_puntero posicionEncontrada;
 	for(i=0; i < PCBRecibido->indiceDeStack->elements_count; i++){
 		registroBuscado = list_get(PCBRecibido->indiceDeStack,i);
 		posicionBuscada = list_find(registroBuscado->vars,(void*)condicionVariable);
 	}
+
+	//TODO ver que no se use en ningun otro lado en el parser la funcion obtenerPosicionVariable
+	PCBRecibido->StackPointer = registroBuscado->pos;
+
 	posicionEncontrada =(int) &posicionBuscada->direccionValorDeVariable;
 
 	return posicionEncontrada;
@@ -972,6 +994,8 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 
 	list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
+	PCBRecibido->StackPointer = PCBRecibido->indiceDeStack->elements_count -1;
+
 	//Cambiar de program counter segun etiqueta --> Se llama directamente a llamarSinRetorno ya que realiza el cambio de etiqueta
 	llamarSinRetorno(etiqueta);
 
@@ -979,28 +1003,19 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 
 void retornar(t_valor_variable retorno){
 
-	t_registroStack* registroARegresar;
-	t_registroStack* registroActual;
-	registroActual=list_get(PCBRecibido->indiceDeStack,PCBRecibido->StackPointer);
-	t_MessageCPU_UMC* mensajeUMC;
-	char* mensajeSerializado=malloc(sizeof(t_MessageCPU_UMC));
-	t_valor_variable valorRecibido;
-	mensajeUMC->PID=PCBRecibido->PID;
-	mensajeUMC->virtualAddress->pag=registroActual->retVar->pag;
-	mensajeUMC->virtualAddress->offset=registroActual->retVar->offset;
-	mensajeUMC->virtualAddress->size=registroActual->retVar->size;
-	serializeCPU_UMC(mensajeUMC,mensajeSerializado,sizeof(t_MessageCPU_UMC));
-	sendMessage(socketUMC,mensajeSerializado,sizeof(t_MessageCPU_UMC));
-	sendMessage(socketUMC,retorno,sizeof(int));
-	//TODO Leo: lo que esta aca abajo tambien esta to-do mal porque esta funcion NO RETORNA el program counter, esta primitiva ejecuta las lineas del tipo "return f"... lo que esta hecho es un error conceptual de la primitiva
-	//Lo que deberia hacer es:
-	/*	1) buscar ultimo registro del IndiceDeStack
-	 * 	2) buscar la variable del return
-	 * 	3) pedir a UMC el contenido de esa variable (lectura con la serializacion adecuada)
-	 * 	4) Buscar registro del stack en donde me diga donde tengo que regresar (para esto podes guiarte con lo que hize en finalizar() )
-	 * 	5) copiar el contenido de la variable pedida a la UMC dentro de retVar del registro que se obtuvo en 4)
-	 * 	6) enviar a la UMC que pise el contenido de la posicion de memoria retVar (escritura con la serializacion adecuada)
+	/*	1) buscar ultimo registro del IndiceDeStack --> DONE IN obtenerPosicionVariable
+	 * 	2) buscar la variable del return --> DONE IN obtenerPosicionVariable
+	 * 	3) pedir a UMC el contenido de esa variable (lectura con la serializacion adecuada) --> DONE IN dereferenciar
+	 * 	4) Buscar registro del stack en donde me diga donde tengo que regresar (para esto podes guiarte con lo que hize en finalizar() ) --> DONE in getReturnStackRegister()
+	 * 	5) copiar el contenido de la variable pedida a la UMC dentro de retVar del registro que se obtuvo en 4) -->DONE in primitiva asignar()
+	 * 	6) enviar a la UMC que pise el contenido de la posicion de memoria retVar (escritura con la serializacion adecuada) --> DONE in primitiva asignar()
 	 */
+
+	t_registroStack* registroARegresar = NULL;
+
+	getReturnStackRegister(registroARegresar);
+
+	asignar((int) &registroARegresar->retVar, retorno);
 }
 
 void imprimir(t_valor_variable valor_mostrar){
