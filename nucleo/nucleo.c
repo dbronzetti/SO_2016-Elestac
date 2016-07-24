@@ -87,16 +87,16 @@ int main(int argc, char *argv[]) {
 
 void startServerProg(){
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
-	t_serverData serverData;
+	int socketServer;
 
-	exitCode = openServerConnection(configNucleo.puerto_prog, &serverData.socketServer);
-	log_info(logNucleo, "SocketServer: %d\n",serverData.socketServer);
+	exitCode = openServerConnection(configNucleo.puerto_prog, &socketServer);
+	log_info(logNucleo, "SocketServer: %d\n",socketServer);
 
 	//If exitCode == 0 the server connection is opened and listening
 	if (exitCode == 0) {
 		log_info(logNucleo, "the server is opened\n");
 
-		exitCode = listen(serverData.socketServer, SOMAXCONN);
+		exitCode = listen(socketServer, SOMAXCONN);
 
 		if (exitCode < 0 ){
 			log_error(logNucleo,"Failed to listen server Port.\n");
@@ -104,7 +104,7 @@ void startServerProg(){
 		}
 
 		while (1){
-			newClients((void*) &serverData);
+			newClients((void*) &socketServer);
 		}
 	}
 
@@ -112,16 +112,16 @@ void startServerProg(){
 
 void startServerCPU(){
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
-	t_serverData serverData;
+	int socketServer;
 
-exitCode = openServerConnection(configNucleo.puerto_cpu, &serverData.socketServer);
-	log_info(logNucleo, "SocketServer: %d\n",serverData.socketServer);
+	exitCode = openServerConnection(configNucleo.puerto_cpu, &socketServer);
+	log_info(logNucleo, "SocketServer: %d\n",socketServer);
 
 	//If exitCode == 0 the server connection is opened and listening
 	if (exitCode == 0) {
 		log_info(logNucleo, "the server is opened\n");
 
-		exitCode = listen(serverData.socketServer, SOMAXCONN);
+		exitCode = listen(socketServer, SOMAXCONN);
 
 		if (exitCode < 0 ){
 			log_error(logNucleo,"Failed to listen server Port.\n");
@@ -129,7 +129,7 @@ exitCode = openServerConnection(configNucleo.puerto_cpu, &serverData.socketServe
 		}
 
 		while (1){
-			newClients((void*) &serverData);
+			newClients((void*) &socketServer);
 		}
 	}
 
@@ -138,7 +138,8 @@ exitCode = openServerConnection(configNucleo.puerto_cpu, &serverData.socketServe
 void newClients (void *parameter){
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
 
-	t_serverData *serverData = (t_serverData*) parameter;
+	t_serverData *serverData = malloc(sizeof(t_serverData));
+	memcpy(&serverData->socketServer, parameter, sizeof(serverData->socketServer));
 
 	// disparar un thread para acceptar cada cliente nuevo (debido a que el accept es bloqueante) y para hacer el handshake
 	/**************************************/
@@ -160,6 +161,7 @@ void newClients (void *parameter){
 	if (exitCode == EXIT_FAILURE){
 		log_warning(logNucleo,"There was detected an attempt of wrong connection\n");
 		close(serverData->socketClient);
+		free(serverData);
 	}else{
 		//Create thread attribute detached
 		pthread_attr_t handShakeThreadAttr;
@@ -168,7 +170,7 @@ void newClients (void *parameter){
 
 		//Create thread for checking new connections in server socket
 		pthread_t handShakeThread;
-		pthread_create(&handShakeThread, &handShakeThreadAttr, (void*) handShake, parameter);
+		pthread_create(&handShakeThread, &handShakeThreadAttr, (void*) handShake, serverData);
 
 		//Destroy thread attribute
 		pthread_attr_destroy(&handShakeThreadAttr);
@@ -202,6 +204,7 @@ void handShake (void *parameter){
 				"The client went down while handshaking! - Please check the client '%d' is down!\n",
 				serverData->socketClient);
 		close(serverData->socketClient);
+		free(serverData);
 	}else{
 		switch ((int) message->process){
 			case CPU:{
@@ -249,6 +252,7 @@ void handShake (void *parameter){
 					"Process not allowed to connect - Invalid process '%s' tried to connect to NUCLEO\n",
 					getProcessString(message->process));
 				close(serverData->socketClient);
+				free(serverData);
 				break;
 			}
 		}
@@ -265,12 +269,13 @@ void processMessageReceived (void *parameter){
 
 	//Receive message size
 	int messageSize = 0;
+
 	//Get Payload size
 	int receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
 
 	if ( receivedBytes > 0 ){
 
-		char *messageRcv = malloc(sizeof(messageSize));
+		log_info(logNucleo,"Tamanio del codigo del programa: %d del socket: %d \n",messageSize, serverData->socketClient);
 		//log_info(logNucleo, "message size received: %d \n", messageSize);
 
 		//Receive process from which the message is going to be interpreted
@@ -302,20 +307,21 @@ void processMessageReceived (void *parameter){
 				}
 
 				//Recibo el codigo del programa (messageRcv) usando el tamanio leido antes
-				memset(messageRcv, '\0',messageSize);//adding this for testing
-				receiveMessage(&serverData->socketClient, messageRcv, messageSize);
+				char *messageRcv = malloc(sizeof(messageSize));
+				receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
-				log_info(logNucleo,"Tamanio del codigo del programa:\n %d del socket: %d \n",messageSize, serverData->socketClient);
-				log_info(logNucleo, "STRLEN DEL CODIGO DEL PROGRAMA APENAS SE RECIBE: %d \n", strlen(messageRcv));
+				log_info(logNucleo,"Bytes received for code: %d\n",receivedBytes);
+				//log_info(logNucleo, "STRLEN DEL CODIGO DEL PROGRAMA APENAS SE RECIBE: %d \n", strlen(messageRcv));
 				socketConsola = serverData->socketClient;
 				runScript(messageRcv);
+				free(messageRcv);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
 			case CPU:{
 				log_info(logNucleo, "Processing %s message received\n", getProcessString(fromProcess));
 				pthread_mutex_lock(&activeProcessMutex);
-				processCPUMessages(messageRcv, messageSize, serverData->socketClient);
+				processCPUMessages(messageSize, serverData->socketClient);
 				//free(parameter);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
@@ -325,6 +331,7 @@ void processMessageReceived (void *parameter){
 					"Process not allowed to connect - Invalid process '%s' send a message to NUCLEO \n",
 					getProcessString(fromProcess));
 			close(serverData->socketClient);
+			free(serverData);
 				break;
 			}
 		}
@@ -335,14 +342,15 @@ void processMessageReceived (void *parameter){
 				"The client went down while receiving! - Please check the client '%d' is down!\n",
 				serverData->socketClient);
 		close(serverData->socketClient);
+		free(serverData);
 	}else{
 		log_error(logNucleo,
 				"Error - No able to received - Error receiving from socket '%d', with error: %d\n",
 				serverData->socketClient, errno);
 		close(serverData->socketClient);
+		free(serverData);
 	}
 
-	//free(messageRcv);
 }
 
 void runScript(char* codeScript){
@@ -582,13 +590,13 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 
 }
 
-void processCPUMessages(char* messageRcv,int messageSize,int socketCPULibre){
+void processCPUMessages(int messageSize,int socketCPULibre){
 	log_info(logNucleo, "Processing CPU message \n");
 
 	t_MessageCPU_Nucleo *message=malloc(sizeof(t_MessageCPU_Nucleo));
 
 	//Receive message using the size read before
-	messageRcv = realloc(messageRcv, messageSize);
+	char *messageRcv = malloc(sizeof(messageSize));
 	receiveMessage(&socketCPULibre, messageRcv, messageSize);
 
 	//Deserializo messageRcv
@@ -824,6 +832,7 @@ void processCPUMessages(char* messageRcv,int messageSize,int socketCPULibre){
 		//abort();
 	}
 
+	free(messageRcv);
 	free(message);
 }
 
