@@ -900,30 +900,19 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 	//1) Envia el tamanio de la variable al proceso NUCLEO
 	string_append(&variable,"\0");
 	int variableLen = strlen(variable) + 1;
-	sendMessage(&socketNucleo, &variableLen, sizeof(variableLen));
+	int valorDeErrorLen = sendMessage(&socketNucleo, &variableLen, sizeof(variableLen));
 
 	//2) Envia variable al proceso NUCLEO
-	sendMessage(&socketNucleo, variable, variableLen);
+	int valorDeErrorVar = sendMessage(&socketNucleo, variable, variableLen);
+	t_valor_variable* valorVariable = malloc(sizeof(t_valor_variable));
 
-	t_valor_variable valorVariableDeserializado;
-
-	int valorDeError;
-
-	valorDeError = sendMessage(&socketNucleo, variable, variableLen);
-
-	if(valorDeError!=-1){
-		printf("Los datos se enviaron correctamente");
-		char* valorVariableSerializado = malloc(sizeof(t_valor_variable));
-		if( receiveMessage(&socketNucleo,valorVariableSerializado,sizeof(t_valor_variable)) != -1){
-			memcpy(&valorVariableDeserializado, valorVariableSerializado, sizeof(t_valor_variable));
-		}
-		free(valorVariableSerializado);
-	}else{
-		printf("Los datos no pudieron ser enviados");
-
+	if ((valorDeErrorLen != -1) && (valorDeErrorVar != -1)) {
+		log_info(logCPU, "Los datos se enviaron correctamente al proceso NUCLEO");
+		receiveMessage(&socketNucleo, valorVariable, sizeof(t_valor_variable));
+	} else {
+		log_info(logCPU, "Los datos no pudieron ser enviados al proceso NUCLEO");
 	}
-	return valorVariableDeserializado;
-
+	return *valorVariable;
 }
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
@@ -942,7 +931,7 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_va
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
 	//1) Envia mensaje con el valor
-	sendMessage(&socketNucleo, &valor, sizeof(valor));
+	sendMessage(&socketNucleo, &valor, sizeof(t_valor_variable));
 
 	//2) Envia el tamanio de la variable al proceso NUCLEO
 	string_append(&variable,"\0");

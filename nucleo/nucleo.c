@@ -315,8 +315,8 @@ void processMessageReceived (void *parameter){
 
 				runScript(messageRcv, serverData->socketClient);
 				log_info(logNucleo,"Bytes received for code: %d\n",receivedBytes);
-				//log_info(logNucleo, "STRLEN DEL CODIGO DEL PROGRAMA APENAS SE RECIBE: %d \n", strlen(messageRcv));
-				free(messageRcv);
+				log_info(logNucleo, "STRLEN DEL CODIGO DEL PROGRAMA APENAS SE RECIBE: %d \n", strlen(messageRcv));
+				//free(messageRcv);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
@@ -446,7 +446,7 @@ void planificarProceso() {
 	int libreCPU = buscarCPULibre();
 
 	if (libreCPU == -1) {
-		log_error(logNucleo,"No hay CPU libre \n");
+		//log_error(logNucleo,"No hay CPU libre \n");
 		return;
 	}
 	t_serverData *serverData = malloc(sizeof(t_serverData));
@@ -454,7 +454,7 @@ void planificarProceso() {
 
 	//Le envio la informacion a la CPU
 	t_PCB* datosPCB;
-	t_MessageNucleo_CPU* contextoProceso = malloc(sizeof(t_MessageNucleo_CPU));
+	t_MessageNucleo_CPU* contextoProceso = NULL;
 	t_proceso* datosProceso;
 
 	pthread_mutex_lock(&cListos);
@@ -474,7 +474,7 @@ void planificarProceso() {
 		log_info(logNucleo,"Nucleo se prepara para enviar informacion del processID: %d al proceso CPU \n",datosProceso->PID);
 
 		enviarMsjCPU(datosPCB, contextoProceso, serverData);
-		free(contextoProceso);
+		//free(contextoProceso);
 	} else {
 		log_info(logNucleo,"Proceso no encontrado\n");
 	}
@@ -648,23 +648,24 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 	case 6:{	//Obtener valor y enviarlo al CPU
 
 		// 1) Recibir tamanio de la variable
-		int* variableLen = malloc(sizeof(int));
-		receiveMessage(&socketCPULibre, variableLen, sizeof(int));
+		int variableLen = -1;
+		receiveMessage(&socketCPULibre, &variableLen, sizeof(int));
 
+		if (variableLen == -1){
+			log_error(logNucleo, "No fue posible recibir el tamanio de la variable \n");
+			break;
+		}
 		// 2) Recibir la variable
-		t_nombre_compartida variable = malloc(*variableLen);
-		receiveMessage(&socketCPULibre, variable, *variableLen);
+		t_nombre_compartida variable = malloc(variableLen);
+		receiveMessage(&socketCPULibre, variable, variableLen);
 
 		t_valor_variable* valorVariable = obtenerValor(variable);
 
 		if (valorVariable == NULL){
-			log_error(logNucleo, "No se encontro la variable: %s id, con el tamanio: %d  \n",variable, *variableLen);
+			log_error(logNucleo, "No se encontro la variable: %s id, con el tamanio: %d  \n",variable, variableLen);
 			break;
 		}
-
 		sendMessage(&socketCPULibre, valorVariable, sizeof(t_valor_variable));
-		free(variableLen);
-		free(valorVariable);
 		break;
 	}
 	case 7:{	//Grabar valor
@@ -674,35 +675,40 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 		receiveMessage(&socketCPULibre, valor, sizeof(t_valor_variable));
 
 		// 2) Recibir tamanio de la variable
-		int* variableLen = malloc(sizeof(int));
-		receiveMessage(&socketCPULibre, variableLen, sizeof(int));
+		int variableLen = -1;
+		receiveMessage(&socketCPULibre, &variableLen, sizeof(int));
 
 		// 3) Recibir la variable
-		t_nombre_compartida variable = malloc(*variableLen);
-		receiveMessage(&socketCPULibre, variable, *variableLen);
+		if (variableLen == -1){
+			log_error(logNucleo, "No fue posible recibir el tamanio de la variable \n");
+			break;
+		}
+		t_nombre_compartida variable = malloc(variableLen);
+		receiveMessage(&socketCPULibre, variable, variableLen);
 
 		grabarValor(variable, valor);
-		log_info(logNucleo, "Se graba el valor: %d en la variable: %s id, con el tamanio: %d  \n",valor, variable, *variableLen);
-
-		free(variableLen);
+		log_info(logNucleo, "Se graba el valor: %d en la variable: %s id, con el tamanio: %d  \n",*valor, variable, variableLen);
 		free(variable);
 		free(valor);
-
 		break;
 	}
 	case 8:{	// WAIT - Grabar semaforo y enviar al CPU
 		//Recibo el tamanio del wait
-		int* tamanio = malloc(sizeof(int));
-		receiveMessage(&socketCPULibre, tamanio, sizeof(int));
+		int tamanio = -1;
+		receiveMessage(&socketCPULibre, &tamanio, sizeof(int));
 
+		if (tamanio == -1){
+			log_error(logNucleo, "No fue posible recibir el tamanio del semaforo 'WAIT' \n");
+			break;
+		}
 		//Recibo el semaforo wait
-		t_nombre_semaforo semaforo = malloc(*tamanio);
-		receiveMessage(&socketCPULibre, semaforo, *tamanio);
+		t_nombre_semaforo semaforo = malloc(tamanio);
+		receiveMessage(&socketCPULibre, semaforo, tamanio);
 
-		log_info(logNucleo, "Se recibe el semaforo WAIT: %s, con el tamanio: %d  \n",semaforo, *tamanio);
+		log_info(logNucleo, "Se recibe el semaforo WAIT: %s, con el tamanio: %d  \n",semaforo, tamanio);
 
 		if (estaEjecutando(message->processID)==1){ // 1: Programa ejecutandose (no esta en ninguna cola)
-			int * valorSemaforo = pideSemaforo(semaforo);
+			int* valorSemaforo = pideSemaforo(semaforo);
 			int valorAEnviar;
 			if(*valorSemaforo<=0){
 
@@ -713,10 +719,13 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 				//TODO Verificar: recibir PCB del CPU para volver a planificarlo
 				//agregarlo a donde corresponda: (se hace en bloqueoSemaforo) para volver a enviarlo cuando se desbloquee el semaforo
 
-				int* tamanioStack = malloc(sizeof(int));
-				receiveMessage(&socketCPULibre, tamanioStack, sizeof(int));
-
-				char* listaStackSerializada = malloc(sizeof(*tamanioStack));
+				int tamanioStack = -1;
+				receiveMessage(&socketCPULibre, &tamanioStack, sizeof(int));
+				if (tamanio == -1){
+					log_error(logNucleo, "No fue posible recibir el tamanio del Stack \n");
+					break;
+				}
+				char* listaStackSerializada = malloc(tamanioStack);
 				receiveMessage(&socketCPULibre, listaStackSerializada, sizeof(int));
 
 				t_list* listaIndiceDeStack = list_create();
@@ -726,7 +735,6 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 
 				//Libero la CPU que ocupaba el proceso
 				liberarCPU(socketCPULibre);
-				free(tamanioStack);
 				free(listaStackSerializada);
 			}else{
 				grabarSemaforo(semaforo,*pideSemaforo(semaforo)-1);
@@ -734,23 +742,24 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 				sendMessage(&socketCPULibre, &valorAEnviar, sizeof(int));
 			}
 		}
-		free(tamanio);
 		free(semaforo);
 		break;
 	}
 	case 9:{	// SIGNAL	- 	Libera semaforo
 
 		//Recibo el tamanio del signal
-		int* tamanio = malloc(sizeof(int));
-		receiveMessage(&socketCPULibre, tamanio, sizeof(int));
-
+		int tamanio = -1;
+		receiveMessage(&socketCPULibre, &tamanio, sizeof(int));
+		if (tamanio == -1){
+			log_error(logNucleo, "No fue posible recibir el semaforo 'SIGNAL' \n");
+			break;
+		}
 		//Recibo el semaforo wait
-		t_nombre_semaforo semaforo = malloc(*tamanio);
-		receiveMessage(&socketCPULibre, semaforo, *tamanio);
+		t_nombre_semaforo semaforo = malloc(tamanio);
+		receiveMessage(&socketCPULibre, semaforo, tamanio);
 		log_info(logNucleo, "Proceso %d libera semaforo:%s \n", message->processID, semaforo);
 		liberaSemaforo(semaforo);
 
-		free(tamanio);
 		free(semaforo);
 		break;
 	}
@@ -783,29 +792,28 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 			break;
 		}
 
-		int* tamanio = malloc(sizeof(int));
-		char* texto = malloc(*tamanio);
+		int tamanio;
+		char* texto = malloc(tamanio);
 
 		//Recibo el tamanio del texto
-		receiveMessage(&socketCPULibre, tamanio,sizeof(int));
+		receiveMessage(&socketCPULibre, &tamanio,sizeof(int));
 
 		//Recibo el texto
-		receiveMessage(&socketCPULibre, texto, *tamanio);
+		receiveMessage(&socketCPULibre, texto, tamanio);
 
 		//Enviar operacion=1 para que la Consola sepa que es un un texto
 		int operacion = 1;
 		sendMessage(&socketConsola, &operacion, sizeof(int));
 
 		// Envia el tamanio del texto al proceso CONSOLA
-		log_info(logNucleo, "Enviar tamanio: '%d', a PID #%d\n", *tamanio, message->processID);
+		log_info(logNucleo, "Enviar tamanio: '%d', a PID #%d\n", tamanio, message->processID);
 		string_append(&texto,"\0");
-		sendMessage(&socketConsola, tamanio, sizeof(int));
+		sendMessage(&socketConsola, &tamanio, sizeof(int));
 
 		// Envia el texto al proceso CONSOLA
 		log_info(logNucleo, "Enviar texto: '%s', a PID #%d\n", texto, message->processID);
-		sendMessage(&socketConsola, texto, *tamanio);
+		sendMessage(&socketConsola, texto, tamanio);
 
-		free(tamanio);
 		free(texto);
 		break;
 	}
@@ -1208,7 +1216,7 @@ void cambiarEstadoProceso(int PID, int estado) {
 		t_PCB* datosProceso;
 		pthread_mutex_lock(&listadoProcesos);
 		datosProceso = (t_PCB*) list_get(listaProcesos, cambiar);
-		pthread_mutex_lock(&listadoProcesos);
+		pthread_mutex_unlock(&listadoProcesos);
 		datosProceso->estado = estado;
 	} else {
 		log_error(logNucleo,"Error al cambiar estado de proceso, proceso no encontrado en la lista.\n");
@@ -1452,9 +1460,6 @@ void iniciarPrograma(int PID, char *codeScript) {
 
 	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->cantPages);
 	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize;
-
-	log_info(logNucleo, "payloadSize a enviar a la UMC: %d", payloadSize);
-	log_info(logNucleo, "bufferSize a enviar a la UMC: %d", bufferSize);
 
 	char *buffer = malloc(bufferSize);
 
