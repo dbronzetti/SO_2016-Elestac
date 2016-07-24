@@ -33,11 +33,13 @@ int main(int argc, char *argv[]){
 
 	//Creo Archivo de Log
 	logCPU = log_create(logFile,"CPU",0,LOG_LEVEL_TRACE);
+/*
 
 	exitCode = connectTo(UMC,&socketUMC);
 	if(exitCode == EXIT_SUCCESS){
 		printf("CPU connected to UMC successfully\n");
 	}
+*/
 
 	exitCode = connectTo(NUCLEO,&socketNucleo);
 

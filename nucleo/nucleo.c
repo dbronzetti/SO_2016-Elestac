@@ -823,7 +823,8 @@ void atenderCorteQuantum(int socketCPU,int PID){
 		liberarCPU(socketCPU);
 	}else{
 		int pos = buscarCPU(socketCPU);
-		list_remove(listaCPU,pos);
+		t_datosCPU* datosCPU = list_remove(listaCPU,pos);
+		free(datosCPU);
 	}
 	//Cambio el PC del Proceso, le sumo el quantum al PC actual.
 	t_PCB* infoProceso;
@@ -1451,6 +1452,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 
 	free(message);
 	free(buffer);
+	//TODO free(codeScript);
 	log_info(logNucleo,"Se realiza correctamente el envio del programa al proceso UMC");
 
 }
