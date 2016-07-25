@@ -434,6 +434,8 @@ void planificarProceso() {
 	//Veo si hay CPU libre para asignarle
 	int libreCPU = buscarCPULibre();
 
+	log_info(logNucleo,"Se tomo el socket CPU '%d' para enviar un PCB", libreCPU);
+
 	if (libreCPU == -1) {
 		//log_error(logNucleo,"No hay CPU libre ");
 		return;
@@ -553,7 +555,7 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 
 		//1) Recibo mensajes del CPU
 		log_info(logNucleo,"El NUCLEO se queda esperando una respuesta del proceso CPU");
-		processMessageReceived(&serverData);
+		processMessageReceived(serverData);
 
 		//2) processCPUMessages se hace dentro de processMessageReceived (case CPU)
 
