@@ -276,7 +276,7 @@ int ejecutarPrograma(){
 		sendMessage(&socketUMC, buffer, bufferSize);
 
 		//First answer from UMC is the exit code from the operation
-		exitCode = receiveMessage(&socketUMC,&returnCode, sizeof(exitCode));
+		int receivedBytes = receiveMessage(&socketUMC,&returnCode, sizeof(exitCode));
 
 		if(returnCode == EXIT_FAILURE){
 
@@ -297,11 +297,11 @@ int ejecutarPrograma(){
 			free(bufferRespuesta);
 
 			exitCode = returnCode;
-		}else{
+		}else if ((returnCode == EXIT_SUCCESS) && (receivedBytes > 0)){
 
 			char *bufferCode = malloc(frameSize);
 			//Receiving information from UMC when the operation was successfully accomplished
-			exitCode = receiveMessage(&socketUMC, bufferCode, frameSize);
+			receivedBytes = receiveMessage(&socketUMC, bufferCode, frameSize);
 
 			if(remainingInstruccion >= frameSize){
 				//if the remaining size is greater than frame size then we can append the full buffer received from UMC
@@ -317,6 +317,12 @@ int ejecutarPrograma(){
 			free(bufferCode);
 
 			exitCode = EXIT_SUCCESS;
+		}else{
+			log_error(logCPU,"The UMC went down! - Please check the client '%d' is down!", socketUMC);
+			close(socketUMC);
+			exitCode = EXIT_FAILURE;
+			returnCode = EXIT_FAILURE;
+			break;
 		}
 
 		free(buffer);

@@ -751,6 +751,9 @@ void initializeProgram(int PID, int totalPagesRequired, char *programCode){
 	newPageTable->assignedFrames = 0;
 	newPageTable->ptrPageTable = list_create();
 
+	//Add new process to pageTablesListxProc
+	list_add(pageTablesListxProc, (void *) newPageTable);
+
 	// inform new program to swap and check if it could write it.
 	int bufferSize = 0;
 	int payloadSize = 0;
@@ -988,7 +991,9 @@ void checkPageModification(t_memoryAdmin *memoryElement){
 		message->operation = escritura_pagina;
 		message->PID = memoryElement->PID;
 		message->cantPages = -1; //DEFAULT value when the operation doesnt need it
-		memcpy(message->virtualAddress, memoryElement->virtualAddress,sizeof(memoryElement->virtualAddress));
+		message->virtualAddress->pag = memoryElement->virtualAddress->pag;
+		message->virtualAddress->offset = memoryElement->virtualAddress->offset;
+		message->virtualAddress->size = memoryElement->virtualAddress->size;
 
 		payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) + sizeof(message->cantPages);
 		bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
@@ -1019,7 +1024,6 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID){
 	void *memoryContent = NULL;
 	int bufferSize = 0;
 	int payloadSize = 0;
-	char *buffer = malloc(bufferSize);
 	char *messageRcv = malloc(sizeof(virtualAddress->size));
 
 	// request page content to swap
@@ -1028,12 +1032,15 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID){
 	message->operation = lectura_pagina;
 	message->PID = PID;
 	message->cantPages = -1; //DEFAULT value when the operation doesnt need it
-	memcpy(message->virtualAddress, virtualAddress, sizeof(virtualAddress));
+	message->virtualAddress->pag = virtualAddress->pag;
+	message->virtualAddress->offset = virtualAddress->offset;
+	message->virtualAddress->size = virtualAddress->size;
 
 	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) + sizeof(message->cantPages);
 	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
 	//Serialize messageRcv
+	char *buffer = malloc(bufferSize);
 	serializeUMC_Swap(message, buffer, payloadSize);
 
 	//Send message serialized with virtualAddress information
@@ -1195,7 +1202,7 @@ t_memoryAdmin *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memor
 			pthread_mutex_unlock(&memoryAccessMutex);
 
 			//By default in program initialization ptrPageTable is going to be NULL
-			pageTableList = pageTablexProc->ptrPageTable;
+			pageTableList = pageTablexProc->ptrPageTable;//TODO check first element
 
 			//Locking memory access for reading
 			pthread_mutex_lock(&memoryAccessMutex);
