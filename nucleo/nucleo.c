@@ -232,7 +232,7 @@ void handShake (void *parameter){
 
 					//Create thread for checking new connections in server socket
 					pthread_t processMessageThread;
-					pthread_create(&processMessageThread, &processMessageThreadAttr, (void*) processMessageReceived, parameter);
+					pthread_create(&processMessageThread, &processMessageThreadAttr, (void*) processMessageReceivedConsola, parameter);
 
 					//Destroy thread attribute
 					pthread_attr_destroy(&processMessageThreadAttr);
@@ -256,15 +256,14 @@ void handShake (void *parameter){
 	free(message->message);
 }
 
-void processMessageReceived (void *parameter){
+void processMessageReceivedConsola (void *parameter){
 
 	t_serverData *serverData = (t_serverData*) parameter;
 	log_info(logNucleo, "Socket client connected to NUCLEO: %d",serverData->socketClient);
 
+  while(1){
 	//Receive message size
 	int messageSize = 0;
-
-	//Get Payload size
 	int receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
 	log_info(logNucleo, "message size received: %d ", messageSize);
 
@@ -289,7 +288,7 @@ void processMessageReceived (void *parameter){
 				if (opFinalizar == -1) { 	//Finaliza Proceso
 					int PID = buscarPIDConsola(serverData->socketClient);
 					if (PID==-1){
-						log_error(logNucleo,"No se encontro Consola para el socket: %d ",serverData->socketClient);
+						log_error(logNucleo,"No se encontro Consola para el socket: %d \n",serverData->socketClient);
 						pthread_mutex_unlock(&activeProcessMutex);
 						break;
 					}
@@ -299,7 +298,6 @@ void processMessageReceived (void *parameter){
 					pthread_mutex_unlock(&activeProcessMutex);
 					break;
 				}
-
 				//Recibo el codigo del programa (messageRcv) usando el tamanio leido antes
 				char *messageRcv = malloc(messageSize);
 				receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
@@ -310,6 +308,52 @@ void processMessageReceived (void *parameter){
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
+			default:{
+			log_error(logNucleo,
+					"Process not allowed to connect - Invalid process '%s' send a message to NUCLEO ",
+					getProcessString(fromProcess));
+			close(serverData->socketClient);
+			free(serverData);
+				break;
+			}
+		}
+	}else if (receivedBytes == 0 ){
+		//The client is down when bytes received are 0
+		log_error(logNucleo,
+				"The client went down while receiving! - Please check the client '%d' is down!",
+				serverData->socketClient);
+		close(serverData->socketClient);
+		free(serverData);
+	}else{
+		log_error(logNucleo,
+				"Error - No able to received - Error receiving from socket '%d', with error: %d",
+				serverData->socketClient, errno);
+		close(serverData->socketClient);
+		free(serverData);
+	}
+  }
+}
+
+void processMessageReceivedCPU (void *parameter){
+	t_serverData *serverData = (t_serverData*) parameter;
+	log_info(logNucleo, "Socket client connected to NUCLEO: %d",serverData->socketClient);
+
+	//Get Payload size
+	int messageSize = 0;
+	int receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
+	log_info(logNucleo, "message size received: %d ", messageSize);
+
+	if ( receivedBytes > 0 ){
+
+		log_info(logNucleo,"Tamanio del codigo del programa: %d del socket: %d ",messageSize, serverData->socketClient);
+
+		//Receive process from which the message is going to be interpreted
+		enum_processes fromProcess;
+		receivedBytes = receiveMessage(&serverData->socketClient, &fromProcess, sizeof(fromProcess));
+
+		log_info(logNucleo,"Bytes received from process '%s': %d",getProcessString(fromProcess),receivedBytes);
+
+		switch (fromProcess){
 			case CPU:{
 				log_info(logNucleo, "Processing %s message received", getProcessString(fromProcess));
 				pthread_mutex_lock(&activeProcessMutex);
@@ -327,7 +371,6 @@ void processMessageReceived (void *parameter){
 				break;
 			}
 		}
-
 	}else if (receivedBytes == 0 ){
 		//The client is down when bytes received are 0
 		log_error(logNucleo,
@@ -343,7 +386,6 @@ void processMessageReceived (void *parameter){
 		free(serverData);
 	}
 }
-
 void runScript(char* codeScript, int socketConsola){
 	//Creo el PCB del proceso.
 	t_PCB* PCB = malloc(sizeof(t_PCB));
@@ -437,7 +479,7 @@ void planificarProceso() {
 	log_info(logNucleo,"Se tomo el socket CPU '%d' para enviar un PCB", libreCPU);
 
 	if (libreCPU == -1) {
-		//log_error(logNucleo,"No hay CPU libre ");
+		log_error(logNucleo,"No hay CPU libre \n");
 		return;
 	}
 	t_serverData *serverData = malloc(sizeof(t_serverData));
@@ -555,10 +597,9 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 
 		//1) Recibo mensajes del CPU
 		log_info(logNucleo,"El NUCLEO se queda esperando una respuesta del proceso CPU");
-		processMessageReceived(serverData);
+		processMessageReceivedCPU(serverData);
 
 		//2) processCPUMessages se hace dentro de processMessageReceived (case CPU)
-
 }
 
 void processCPUMessages(int messageSize,int socketCPULibre){
@@ -1474,6 +1515,7 @@ void finalizarPrograma(int PID){
 	sendMessage(&socketUMC, buffer, bufferSize);
 
 	free(message);
+	log_info(logNucleo,"Se envia correctamente la informacion al proceso UMC para finalizar programa. ");
 }
 
 void deserializarES(t_es* datos, char* bufferReceived) {
