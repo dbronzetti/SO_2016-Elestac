@@ -265,11 +265,9 @@ void processMessageReceivedConsola (void *parameter){
 	//Receive message size
 	int messageSize = 0;
 	int receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
-	log_info(logNucleo, "message size received: %d ", messageSize);
 
 	if ( receivedBytes > 0 ){
-
-		log_info(logNucleo,"Tamanio del codigo del programa: %d del socket: %d ",messageSize, serverData->socketClient);
+		log_info(logNucleo,"Message size received: %d of socket: %d ",messageSize, serverData->socketClient);
 
 		//Receive process from which the message is going to be interpreted
 		enum_processes fromProcess;
@@ -281,8 +279,6 @@ void processMessageReceivedConsola (void *parameter){
 			case CONSOLA:{
 				log_info(logNucleo, "Processing %s message received", getProcessString(fromProcess));
 				pthread_mutex_lock(&activeProcessMutex);
-				/*int* tamanio = malloc(sizeof(int));
-				receiveMessage(&serverData->socketClient, tamanio, sizeof(int));*/
 
 				int opFinalizar = messageSize;
 				if (opFinalizar == -1) { 	//Finaliza Proceso
@@ -325,11 +321,8 @@ void processMessageReceivedConsola (void *parameter){
 		close(serverData->socketClient);
 		free(serverData);
 	}else{
-		log_error(logNucleo,
-				"Error - No able to received - Error receiving from socket '%d', with error: %d",
-				serverData->socketClient, errno);
 		close(serverData->socketClient);
-		free(serverData);
+		//free(serverData);
 	}
   }
 }
@@ -405,14 +398,13 @@ void runScript(char* codeScript, int socketConsola){
 	PCB->StackPointer = 0;
 	PCB->estado = 1;
 	PCB->finalizar = 0;
-	log_info(logNucleo,"se inicializan los campos que no son listas");
 	log_info(logNucleo,"Cantidad de paginas que ocupa el codigo: %d",PCB->cantidadDePaginas);
 
 	PCB->indiceDeCodigo = list_create();
 	armarIndiceDeCodigo(PCB, miMetaData);
 	armarIndiceDeEtiquetas(PCB, miMetaData);
 	PCB->indiceDeStack = list_create();
-	log_info(logNucleo,"se arman las listas");
+	log_info(logNucleo,"se arman las listas y los campos del PCB");
 
 	//Get last program line from main
 	int index = miMetaData->instruccion_inicio ;
@@ -435,7 +427,6 @@ void runScript(char* codeScript, int socketConsola){
 	}
 
 	PCB->finDePrograma = index;
-	log_info(logNucleo,"Se asigna el index: %d al PCB que indica el fin del Programa",index);
 
 	pthread_mutex_lock(&listadoProcesos);
 	list_add(listaProcesos,(void*)PCB);
@@ -490,25 +481,53 @@ void planificarProceso() {
 	t_MessageNucleo_CPU* contextoProceso = malloc(sizeof(t_MessageNucleo_CPU));
 	t_proceso* datosProceso;
 
-	pthread_mutex_lock(&cListos);
-	datosProceso = (t_proceso*) queue_peek(colaListos);
-	pthread_mutex_unlock(&cListos);
+	if (queue_is_empty(colaFinalizar)) {
 
-	int posicion = buscarPCB(datosProceso->PID);
-	if (posicion != -1) {
-		pthread_mutex_lock(&listadoProcesos);
-		datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
-		pthread_mutex_unlock(&listadoProcesos);
+		pthread_mutex_lock(&cListos);
+		datosProceso = (t_proceso*) queue_peek(colaListos);
+		pthread_mutex_unlock(&cListos);
 
-		pthread_mutex_lock(&mutex_config);
-		contextoProceso->quantum = configNucleo.quantum;
-		contextoProceso->quantum_sleep=configNucleo.quantum_sleep;
-		pthread_mutex_unlock(&mutex_config);
-		log_info(logNucleo,"Nucleo se prepara para enviar informacion del processID: %d al proceso CPU",datosProceso->PID);
+		int posicion = buscarPCB(datosProceso->PID);
+		if (posicion != -1) {
+			pthread_mutex_lock(&listadoProcesos);
+			datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
+			pthread_mutex_unlock(&listadoProcesos);
 
-		enviarMsjCPU(datosPCB, contextoProceso, serverData);
+			//Saco el primer elemento de la cola, porque ya lo planifique.
+			pthread_mutex_lock(&cListos);
+			t_proceso* proceso = queue_pop(colaListos);
+			pthread_mutex_unlock(&cListos);
+			free(proceso);
+
+			pthread_mutex_lock(&mutex_config);
+			contextoProceso->quantum = configNucleo.quantum;
+			contextoProceso->quantum_sleep=configNucleo.quantum_sleep;
+			pthread_mutex_unlock(&mutex_config);
+
+			enviarMsjCPU(datosPCB, contextoProceso, serverData);
+		} else {
+			log_error(logNucleo,"Proceso '%d' no encontrado",datosProceso->PID);
+		}
 	} else {
-		log_error(logNucleo,"Proceso '%d' no encontrado",datosProceso->PID);
+		pthread_mutex_lock(&cFinalizar);
+		datosProceso = (t_proceso*) queue_peek(colaFinalizar);
+		pthread_mutex_unlock(&cFinalizar);
+		int posicion = buscarPCB(datosProceso->PID);
+		if (posicion != -1) {
+			pthread_mutex_lock(&listadoProcesos);
+			datosPCB = (t_PCB*) list_get(listaProcesos, posicion);
+			pthread_mutex_unlock(&listadoProcesos);
+
+			//Saco el primer elemento de la cola, porque ya lo planifique.
+			pthread_mutex_lock(&cFinalizar);
+			t_proceso* proceso = queue_pop(colaFinalizar);
+			pthread_mutex_unlock(&cFinalizar);
+			free(proceso);
+
+			enviarMsjCPU(datosPCB, contextoProceso, serverData);
+		} else {
+			log_error(logNucleo,"Proceso '%d' no encontrado",datosProceso->PID);
+		}
 	}
 
 	free(contextoProceso);
@@ -579,27 +598,17 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 			log_info(logNucleo,"se envia el indice de etiquetas al proceso CPU - Tamanio indice Etiquetas: %d", datosPCB->indiceDeEtiquetasTamanio);
 
 		}
-
-		log_info(logNucleo,"Se completa el envio de todos los mensajes al proceso CPU ");
-
-		//Saco el primer elemento de la cola, porque ya lo planifique.
-		pthread_mutex_lock(&cListos);
-		t_proceso* proceso = queue_pop(colaListos);
-		pthread_mutex_unlock(&cListos);
-		log_info(logNucleo,"Remuevo el elemento %d de la cola de Listos porque ya ha sido planificado ",proceso->PID);
+		free(bufferEnviar);
 
 		//Cambio Estado del Proceso
 		int estado = 2;
 		cambiarEstadoProceso(datosPCB->PID, estado);
 
-		free(bufferEnviar);
-		free(proceso);
-
 		//1) Recibo mensajes del CPU
-		log_info(logNucleo,"El NUCLEO se queda esperando una respuesta del proceso CPU");
+		log_info(logNucleo,"Se completa el envio de todos los mensajes al proceso CPU y se esperara una respuesta");
 		processMessageReceivedCPU(serverData);
 
-		//2) processCPUMessages se hace dentro de processMessageReceived (case CPU)
+		//2) processCPUMessages se hace dentro de processMessageReceivedCPU
 }
 
 void processCPUMessages(int messageSize,int socketCPULibre){

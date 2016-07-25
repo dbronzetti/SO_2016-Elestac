@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
 
 	exitCode = connectTo(NUCLEO, &socketNucleo);
 	if (exitCode == EXIT_SUCCESS) {
-		log_info(logConsola,"CONSOLA connected to NUCLEO successfully\n");
+		//log_info(logConsola,"CONSOLA connected to NUCLEO successfully\n");
 	}else{
 		log_error(logConsola,"No server available - shutting down proces!!\n");
 		return EXIT_FAILURE;
@@ -93,11 +93,9 @@ int main(int argc, char **argv) {
 			break;
 		}
 		default:
-			log_warning(logConsola,"Comando invalido, inténtelo nuevamente.\n");
+			printf("Comando invalido, inténtelo nuevamente.\n");
 			break;
 		}
-		fgets(inputTeclado, sizeof(inputTeclado), stdin);
-
 		exitCode = reconocerOperacion();
 	}
 	return exitCode;
@@ -249,7 +247,7 @@ int reconocerOperacion() {
 		exitCode = receiveMessage(&socketNucleo, &tamanio, sizeof(int));
 		char* textoImprimir = malloc(tamanio);
 		exitCode = receiveMessage(&socketNucleo, textoImprimir,sizeof(tamanio));
-		log_info(logConsola, "Texto: %s", textoImprimir);
+		printf( "Texto: %s", textoImprimir);
 		free(textoImprimir);
 		exit(0);	//EXIT_SUCCESS
 		break;
