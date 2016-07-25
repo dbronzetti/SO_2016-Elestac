@@ -1024,7 +1024,7 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID){
 	void *memoryContent = NULL;
 	int bufferSize = 0;
 	int payloadSize = 0;
-	char *messageRcv = malloc(sizeof(virtualAddress->size));
+	char *messageRcv = malloc(virtualAddress->size);//TODO se estaba haciendo malloc(sizeof(virtualAddress->size))
 
 	// request page content to swap
 	t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
@@ -1051,9 +1051,10 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID){
 	memoryContent = malloc(virtualAddress->size);
 	memcpy(memoryContent, messageRcv, virtualAddress->size);
 
-	log_info(UMCLog, "From PID '%d' - Content in page '#%d' swapped IN",PID, virtualAddress->pag);
+	//TODO tira error en el log y en el free
+	//log_info(UMCLog, "From PID '%d' - Content in page '#%d' swapped IN",PID, virtualAddress->pag);
+	//free(message->virtualAddress);
 
-	free(message->virtualAddress);
 	free(message);
 	free(buffer);
 	free(messageRcv);
@@ -1307,7 +1308,7 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 				memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + virtualAddress->offset;
 
 				pthread_mutex_lock(&memoryAccessMutex);//Locking mutex for writing memory
-				memcpy(memoryBlockOffset, memoryContent , virtualAddress->size);
+				//memcpy(memoryBlockOffset, memoryContent , virtualAddress->size);//TODO tira error aca, descomentar el memcpy
 				pthread_mutex_unlock(&memoryAccessMutex);//unlocking mutex for writing memory
 
 			}else{
