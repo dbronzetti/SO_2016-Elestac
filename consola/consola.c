@@ -84,6 +84,7 @@ int main(int argc, char **argv) {
 			//Envia el tamanio y el fromProcess solamente porque el programa no es necesario para finalizar
 			sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
 			sendMessage(&socketNucleo, &fromProcess, sizeof(fromProcess));
+			printf("Se envia peticion de finalizar al proceso NUCLEO.\n");
 			break;
 		}
 		case 3: {
@@ -95,6 +96,8 @@ int main(int argc, char **argv) {
 			log_warning(logConsola,"Comando invalido, inténtelo nuevamente.\n");
 			break;
 		}
+		fgets(inputTeclado, sizeof(inputTeclado), stdin);
+
 		exitCode = reconocerOperacion();
 	}
 	return exitCode;

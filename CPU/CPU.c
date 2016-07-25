@@ -1024,7 +1024,7 @@ void imprimir(t_valor_variable valor_mostrar){
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
 	//Envio mensaje con valor a imprimir - send to Nucleo valueChar to be printed on Consola
-	sendMessage(&socketNucleo, &valor_mostrar, sizeof(valor_mostrar));
+	sendMessage(&socketNucleo, &valor_mostrar, sizeof(t_valor_variable));
 
 }
 

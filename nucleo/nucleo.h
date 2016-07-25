@@ -168,7 +168,8 @@ void startServerProg();
 void startServerCPU();
 void newClients(void *parameter);
 void handShake(void *parameter);
-void processMessageReceived(void *parameter);
+void processMessageReceivedConsola(void *parameter);
+void processMessageReceivedCPU(void *parameter);
 void processCPUMessages(int messageSize,int socketLibre);
 
 int connectTo(enum_processes processToConnect, int *socketClient);
