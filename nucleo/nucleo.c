@@ -261,6 +261,8 @@ void processMessageReceived (void *parameter){
 	t_serverData *serverData = (t_serverData*) parameter;
 	log_info(logNucleo, "Socket client connected to NUCLEO: %d\n",serverData->socketClient);
 
+  while(1){
+
 	//Receive message size
 	int messageSize = 0;
 
@@ -270,8 +272,7 @@ void processMessageReceived (void *parameter){
 
 	if ( receivedBytes > 0 ){
 
-		log_info(logNucleo,"Tamanio del codigo del programa: %d del socket: %d \n",messageSize, serverData->socketClient);
-
+		log_info(logNucleo,"Tamanio del codigo del programa: %d del socket: %d ",messageSize, serverData->socketClient);
 		//Receive process from which the message is going to be interpreted
 		enum_processes fromProcess;
 		receivedBytes = receiveMessage(&serverData->socketClient, &fromProcess, sizeof(fromProcess));
@@ -289,17 +290,17 @@ void processMessageReceived (void *parameter){
 				if (opFinalizar == -1) { 	//Finaliza Proceso
 					int PID = buscarPIDConsola(serverData->socketClient);
 					if (PID==-1){
-						log_error(logNucleo,"No se encontro Consola para el socket: %d ",serverData->socketClient);
+						log_error(logNucleo,"No se encontro Consola para el socket: %d \n",serverData->socketClient);
 						pthread_mutex_unlock(&activeProcessMutex);
 						break;
 					}
 					log_info(logNucleo,"Solicitando finalizar el programa:%d para el socket: %d ",PID, serverData->socketClient);
 					finalizarPid(PID);
+					finalizarPrograma(PID);
 					//OJO con los DEADLOCKS - Si se retorna sin desbloquear puede bloquear el proceso.
 					pthread_mutex_unlock(&activeProcessMutex);
 					break;
 				}
-
 				//Recibo el codigo del programa (messageRcv) usando el tamanio leido antes
 				char *messageRcv = malloc(messageSize);
 				receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
@@ -342,6 +343,9 @@ void processMessageReceived (void *parameter){
 		close(serverData->socketClient);
 		//free(serverData);
 	}
+
+  }
+
 }
 
 void runScript(char* codeScript, int socketConsola){
@@ -435,7 +439,7 @@ void planificarProceso() {
 	int libreCPU = buscarCPULibre();
 
 	if (libreCPU == -1) {
-		//log_error(logNucleo,"No hay CPU libre \n");
+		log_error(logNucleo,"No hay CPU libre \n");
 		return;
 	}
 	t_serverData *serverData = malloc(sizeof(t_serverData));
@@ -444,7 +448,6 @@ void planificarProceso() {
 	//Le envio la informacion a la CPU
 	t_PCB* datosPCB;
 	t_MessageNucleo_CPU* contextoProceso = malloc(sizeof(t_MessageNucleo_CPU));
-	//t_MessageNucleo_CPU* contextoProceso = NULL;
 	t_proceso* datosProceso;
 
 	pthread_mutex_lock(&cListos);
@@ -478,7 +481,7 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		contextoProceso->stackPointer = datosPCB->StackPointer;
 		contextoProceso->cantidadDePaginas = datosPCB->cantidadDePaginas;
 
-		log_info(logNucleo,"se realiza el traspaso de datosPCB para en enviarle al proceso CPU\n");
+		log_info(logNucleo,"se realiza el traspaso de datosPCB para en enviarle al proceso CPU");
 
 		int payloadSize = sizeof(contextoProceso->programCounter) + sizeof(contextoProceso->processID)
 			+ sizeof(contextoProceso->stackPointer)+ sizeof(contextoProceso->cantidadDePaginas)
@@ -491,7 +494,7 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 
 		//Hacer send al CPU de lo que se serializo arriba
 		sendMessage(&serverData->socketClient, bufferEnviar, bufferSize);
-		log_info(logNucleo,"Se envia el mensaje basico del PCB al proceso CPU de bufferSize: %d\n", bufferSize);
+		log_info(logNucleo,"Se envia el mensaje basico del PCB al proceso CPU de bufferSize: %d", bufferSize);
 
 		//serializar estructuras del indice de codigo
 		char* bufferIndiceCodigo = malloc(sizeof(datosPCB->indiceDeCodigo->elements_count));
@@ -503,12 +506,12 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		sendMessage(&serverData->socketClient, bufferIndiceCodigo, tamanioIndiceCodigo);
 
 		free(bufferIndiceCodigo);
-		log_info(logNucleo,"se envia la lista de indice de codigo de %d elementos al proceso CPU - Tamanio indice Codigo: %d\n",datosPCB->indiceDeCodigo->elements_count, tamanioIndiceCodigo);
+		log_info(logNucleo,"se envia la lista de indice de codigo de %d elementos al proceso CPU - Tamanio indice Codigo: %d",datosPCB->indiceDeCodigo->elements_count, tamanioIndiceCodigo);
 
 		//serializar estructuras del stack
 		char* bufferIndiceStack =  malloc(sizeof(datosPCB->indiceDeStack->elements_count));
 		int tamanioIndiceStack = serializarListaStack(datosPCB->indiceDeStack, &bufferIndiceStack);
-		log_info(logNucleo,"serializo la lista indice de stack para preparar su envio al proceso CPU\n");
+		log_info(logNucleo,"serializo la lista indice de stack para preparar su envio al proceso CPU");
 
 		if (tamanioIndiceStack == sizeof(datosPCB->indiceDeStack->elements_count)){//if tamanio equal to 4 bytes then element_count is 0
 			tamanioIndiceStack = 0;
@@ -516,12 +519,12 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 
 		//send tamaño de lista indice stack
 		sendMessage(&serverData->socketClient, &tamanioIndiceStack, sizeof(int));
-		log_info(logNucleo,"Se envia el tamanio %d (strlen) del buffer indice de Stack al proceso CPU\n",tamanioIndiceStack);
+		log_info(logNucleo,"Se envia el tamanio %d (strlen) del buffer indice de Stack al proceso CPU",tamanioIndiceStack);
 
 		if (datosPCB->indiceDeStack->elements_count > 0 ){
 			//send lista indice stack
 			sendMessage(&serverData->socketClient, bufferIndiceStack, tamanioIndiceStack);
-			log_info(logNucleo,"se envia la lista de indice de stack de %d elementos al proceso CPU - Tamanio indice Stack: %d\n", datosPCB->indiceDeStack->elements_count ,tamanioIndiceStack);
+			log_info(logNucleo,"se envia la lista de indice de stack de %d elementos al proceso CPU - Tamanio indice Stack: %d", datosPCB->indiceDeStack->elements_count ,tamanioIndiceStack);
 		}
 
 		free(bufferIndiceStack);
@@ -532,17 +535,17 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		if (datosPCB->indiceDeEtiquetasTamanio > 0 ){
 			//send indice de etiquetas if > 0
 			sendMessage(&serverData->socketClient, datosPCB->indiceDeEtiquetas, datosPCB->indiceDeEtiquetasTamanio);
-			log_info(logNucleo,"se envia el indice de etiquetas al proceso CPU - Tamanio indice Etiquetas: %d\n", datosPCB->indiceDeEtiquetasTamanio);
+			log_info(logNucleo,"se envia el indice de etiquetas al proceso CPU - Tamanio indice Etiquetas: %d", datosPCB->indiceDeEtiquetasTamanio);
 
 		}
 
-		log_info(logNucleo,"Se completa el envio de todos los mensajes al proceso CPU \n");
+		log_info(logNucleo,"Se completa el envio de todos los mensajes al proceso CPU ");
 
 		//Saco el primer elemento de la cola, porque ya lo planifique.
 		pthread_mutex_lock(&cListos);
 		t_proceso* proceso = queue_pop(colaListos);
 		pthread_mutex_unlock(&cListos);
-		log_info(logNucleo,"Remuevo el elemento %d de la cola de Listos porque ya ha sido planificado \n",proceso->PID);
+		log_info(logNucleo,"Remuevo el elemento %d de la cola de Listos porque ya ha sido planificado ",proceso->PID);
 
 		//Cambio Estado del Proceso
 		int estado = 2;
@@ -552,11 +555,10 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 		free(proceso);
 
 		//1) Recibo mensajes del CPU
-		log_info(logNucleo,"El NUCLEO se queda esperando una respuesta del proceso CPU\n");
-		processMessageReceived(&serverData);
+		log_info(logNucleo,"El NUCLEO se queda esperando una respuesta del proceso CPU");
+		processMessageReceived(serverData);
 
 		//2) processCPUMessages se hace dentro de processMessageReceived (case CPU)
-
 }
 
 void processCPUMessages(int messageSize,int socketCPULibre){
@@ -1450,7 +1452,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 }
 
 void finalizarPrograma(int PID){
-	log_info(logNucleo,"Aviso al proceso UMC que se finalice el programa cuyo processID asignado es: %d \n", PID);
+	log_info(logNucleo,"Aviso al proceso UMC que se finalice el programa cuyo processID asignado es: %d ", PID);
 	int bufferSize = 0;
 	int payloadSize = 0;
 
@@ -1472,6 +1474,7 @@ void finalizarPrograma(int PID){
 	sendMessage(&socketUMC, buffer, bufferSize);
 
 	free(message);
+	log_info(logNucleo,"Se envia correctamente la informacion al proceso UMC para finalizar programa. ");
 }
 
 void deserializarES(t_es* datos, char* bufferReceived) {
