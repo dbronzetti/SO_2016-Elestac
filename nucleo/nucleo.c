@@ -63,9 +63,9 @@ int main(int argc, char *argv[]) {
 
 	exitCode = connectTo(UMC,&socketUMC);
 	if (exitCode == EXIT_SUCCESS) {
-		log_info(logNucleo, "NUCLEO connected to UMC successfully\n");
+		log_info(logNucleo, "NUCLEO connected to UMC successfully");
 	}else{
-		log_error(logNucleo, "No server available - shutting down proces!!\n");
+		log_error(logNucleo, "No server available - shutting down proces!!");
 		return EXIT_FAILURE;
 	}
 
@@ -81,16 +81,16 @@ void startServerProg(){
 	int socketServer;
 
 	exitCode = openServerConnection(configNucleo.puerto_prog, &socketServer);
-	log_info(logNucleo, "SocketServer: %d\n",socketServer);
+	log_info(logNucleo, "SocketServer: %d",socketServer);
 
 	//If exitCode == 0 the server connection is opened and listening
 	if (exitCode == 0) {
-		log_info(logNucleo, "the server is opened\n");
+		log_info(logNucleo, "the server is opened");
 
 		exitCode = listen(socketServer, SOMAXCONN);
 
 		if (exitCode < 0 ){
-			log_error(logNucleo,"Failed to listen server Port.\n");
+			log_error(logNucleo,"Failed to listen server Port.");
 			return;
 		}
 
@@ -106,16 +106,16 @@ void startServerCPU(){
 	int socketServer;
 
 	exitCode = openServerConnection(configNucleo.puerto_cpu, &socketServer);
-	log_info(logNucleo, "SocketServer: %d\n",socketServer);
+	log_info(logNucleo, "SocketServer: %d",socketServer);
 
 	//If exitCode == 0 the server connection is opened and listening
 	if (exitCode == 0) {
-		log_info(logNucleo, "the server is opened\n");
+		log_info(logNucleo, "the server is opened");
 
 		exitCode = listen(socketServer, SOMAXCONN);
 
 		if (exitCode < 0 ){
-			log_error(logNucleo,"Failed to listen server Port.\n");
+			log_error(logNucleo,"Failed to listen server Port.");
 			return;
 		}
 
@@ -150,7 +150,7 @@ void newClients (void *parameter){
 	exitCode = acceptClientConnection(&serverData->socketServer, &serverData->socketClient);
 
 	if (exitCode == EXIT_FAILURE){
-		log_warning(logNucleo,"There was detected an attempt of wrong connection\n");
+		log_warning(logNucleo,"There was detected an attempt of wrong connection");
 		close(serverData->socketClient);
 		free(serverData);
 	}else{
@@ -194,14 +194,14 @@ void handShake (void *parameter){
 	//Now it's checked that the client is not down
 	if ( receivedBytes == 0 ){
 		log_error(logNucleo,
-				"The client went down while handshaking! - Please check the client '%d' is down!\n",
+				"The client went down while handshaking! - Please check the client '%d' is down!",
 				serverData->socketClient);
 		close(serverData->socketClient);
 		free(serverData);
 	}else{
 		switch ((int) message->process){
 			case CPU:{
-				log_info(logNucleo,"Message from '%s': %s\n", getProcessString(message->process), message->message);
+				log_info(logNucleo,"Message from '%s': %s", getProcessString(message->process), message->message);
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){// Si uso connectTo => debo considerar este bloque
@@ -214,13 +214,13 @@ void handShake (void *parameter){
 					pthread_mutex_lock(&listadoCPU);
 					list_add(listaCPU, (void*)datosCPU);
 					pthread_mutex_unlock(&listadoCPU);
-					log_info(logNucleo, "se agrego CPU: %d a la listaCPU cuyo size es: %d\n",datosCPU->numSocket, list_size(listaCPU));
+					log_info(logNucleo, "se agrego CPU: %d a la listaCPU cuyo size es: %d",datosCPU->numSocket, list_size(listaCPU));
 				}
 
 				break;
 			}
 			case CONSOLA:{
-				log_info(logNucleo, "Message from '%s': %s\n", getProcessString(message->process), message->message);
+				log_info(logNucleo, "Message from '%s': %s", getProcessString(message->process), message->message);
 				exitCode = sendClientAcceptation(&serverData->socketClient);
 
 				if (exitCode == EXIT_SUCCESS){
@@ -242,7 +242,7 @@ void handShake (void *parameter){
 			}
 			default:{
 			log_error(logNucleo,
-					"Process not allowed to connect - Invalid process '%s' tried to connect to NUCLEO\n",
+					"Process not allowed to connect - Invalid process '%s' tried to connect to NUCLEO",
 					getProcessString(message->process));
 				close(serverData->socketClient);
 				free(serverData);
@@ -259,7 +259,7 @@ void handShake (void *parameter){
 void processMessageReceived (void *parameter){
 
 	t_serverData *serverData = (t_serverData*) parameter;
-	log_info(logNucleo, "Socket client connected to NUCLEO: %d\n",serverData->socketClient);
+	log_info(logNucleo, "Socket client connected to NUCLEO: %d",serverData->socketClient);
 
   while(1){
 
@@ -268,20 +268,21 @@ void processMessageReceived (void *parameter){
 
 	//Get Payload size
 	int receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
-	log_info(logNucleo, "message size received: %d \n", messageSize);
+	log_info(logNucleo, "message size received: %d ", messageSize);
 
 	if ( receivedBytes > 0 ){
 
 		log_info(logNucleo,"Tamanio del codigo del programa: %d del socket: %d ",messageSize, serverData->socketClient);
+
 		//Receive process from which the message is going to be interpreted
 		enum_processes fromProcess;
 		receivedBytes = receiveMessage(&serverData->socketClient, &fromProcess, sizeof(fromProcess));
 
-		log_info(logNucleo,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
+		log_info(logNucleo,"Bytes received from process '%s': %d",getProcessString(fromProcess),receivedBytes);
 
 		switch (fromProcess){
 			case CONSOLA:{
-				log_info(logNucleo, "Processing %s message received\n", getProcessString(fromProcess));
+				log_info(logNucleo, "Processing %s message received", getProcessString(fromProcess));
 				pthread_mutex_lock(&activeProcessMutex);
 				/*int* tamanio = malloc(sizeof(int));
 				receiveMessage(&serverData->socketClient, tamanio, sizeof(int));*/
@@ -306,25 +307,25 @@ void processMessageReceived (void *parameter){
 				receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
 				runScript(messageRcv, serverData->socketClient);
-				log_info(logNucleo,"Bytes received for code: %d\n",receivedBytes);
+				log_info(logNucleo,"Bytes received for code: %d",receivedBytes);
 				free(messageRcv);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
 			case CPU:{
-				log_info(logNucleo, "Processing %s message received\n", getProcessString(fromProcess));
+				log_info(logNucleo, "Processing %s message received", getProcessString(fromProcess));
 				pthread_mutex_lock(&activeProcessMutex);
 				processCPUMessages(messageSize, serverData->socketClient); //el free del messageRcv se hace adentro
-				free(parameter);
+				//free(parameter);//TODO
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
 			default:{
 			log_error(logNucleo,
-					"Process not allowed to connect - Invalid process '%s' send a message to NUCLEO \n",
+					"Process not allowed to connect - Invalid process '%s' send a message to NUCLEO ",
 					getProcessString(fromProcess));
 			close(serverData->socketClient);
-			//free(serverData);
+			free(serverData);
 				break;
 			}
 		}
@@ -332,16 +333,16 @@ void processMessageReceived (void *parameter){
 	}else if (receivedBytes == 0 ){
 		//The client is down when bytes received are 0
 		log_error(logNucleo,
-				"The client went down while receiving! - Please check the client '%d' is down!\n",
+				"The client went down while receiving! - Please check the client '%d' is down!",
 				serverData->socketClient);
 		close(serverData->socketClient);
-		//free(serverData);
+		free(serverData);
 	}else{
 		log_error(logNucleo,
-				"Error - No able to received - Error receiving from socket '%d', with error: %d\n",
+				"Error - No able to received - Error receiving from socket '%d', with error: %d",
 				serverData->socketClient, errno);
 		close(serverData->socketClient);
-		//free(serverData);
+		free(serverData);
 	}
 
   }
@@ -351,7 +352,7 @@ void processMessageReceived (void *parameter){
 void runScript(char* codeScript, int socketConsola){
 	//Creo el PCB del proceso.
 	t_PCB* PCB = malloc(sizeof(t_PCB));
-	log_info(logNucleo,"creo el PCB del proceso\n");
+	log_info(logNucleo,"creo el PCB del proceso");
 
 	//Armo Indice de codigo, etiquetas y stack
 	t_metadata_program *miMetaData = metadata_desde_literal(codeScript);
@@ -402,7 +403,7 @@ void runScript(char* codeScript, int socketConsola){
 	pthread_mutex_lock(&listadoProcesos);
 	list_add(listaProcesos,(void*)PCB);
 	pthread_mutex_unlock(&listadoProcesos);
-	log_info(logNucleo, "Proceso %d - Iniciado  Script\n",PCB->PID);
+	log_info(logNucleo, "Proceso %d - Iniciado  Script",PCB->PID);
 
 	//Agrego a la Cola de Listos
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
@@ -438,6 +439,8 @@ void planificarProceso() {
 	//Veo si hay CPU libre para asignarle
 	int libreCPU = buscarCPULibre();
 
+	log_info(logNucleo,"Se tomo el socket CPU '%d' para enviar un PCB", libreCPU);
+
 	if (libreCPU == -1) {
 		log_error(logNucleo,"No hay CPU libre \n");
 		return;
@@ -470,6 +473,7 @@ void planificarProceso() {
 	} else {
 		log_error(logNucleo,"Proceso '%d' no encontrado",datosProceso->PID);
 	}
+
 	free(contextoProceso);
 
 }
@@ -562,7 +566,7 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 }
 
 void processCPUMessages(int messageSize,int socketCPULibre){
-	log_info(logNucleo, "Processing CPU message \n");
+	log_info(logNucleo, "Processing CPU message ");
 
 	t_MessageCPU_Nucleo *message=malloc(sizeof(t_MessageCPU_Nucleo));
 
@@ -622,7 +626,7 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 		receiveMessage(&socketCPULibre, &variableLen, sizeof(int));
 
 		if (variableLen == -1){
-			log_error(logNucleo, "No fue posible recibir el tamanio de la variable \n");
+			log_error(logNucleo, "No fue posible recibir el tamanio de la variable ");
 			break;
 		}
 		// 2) Recibir la variable
@@ -632,7 +636,7 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 		t_valor_variable* valorVariable = obtenerValor(variable);
 
 		if (valorVariable == NULL){
-			log_error(logNucleo, "No se encontro la variable: %s id, con el tamanio: %d  \n",variable, variableLen);
+			log_error(logNucleo, "No se encontro la variable: %s id, con el tamanio: %d  ",variable, variableLen);
 			break;
 		}
 		sendMessage(&socketCPULibre, valorVariable, sizeof(t_valor_variable));
@@ -650,14 +654,14 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 
 		// 3) Recibir la variable
 		if (variableLen == -1){
-			log_error(logNucleo, "No fue posible recibir el tamanio de la variable \n");
+			log_error(logNucleo, "No fue posible recibir el tamanio de la variable ");
 			break;
 		}
 		t_nombre_compartida variable = malloc(variableLen);
 		receiveMessage(&socketCPULibre, variable, variableLen);
 
 		grabarValor(variable, valor);
-		log_info(logNucleo, "Se graba el valor: %d en la variable: %s id, con el tamanio: %d  \n",*valor, variable, variableLen);
+		log_info(logNucleo, "Se graba el valor: %d en la variable: %s id, con el tamanio: %d  ",*valor, variable, variableLen);
 		free(variable);
 		free(valor);
 		break;
@@ -668,14 +672,14 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 		receiveMessage(&socketCPULibre, &tamanio, sizeof(int));
 
 		if (tamanio == -1){
-			log_error(logNucleo, "No fue posible recibir el tamanio del semaforo 'WAIT' \n");
+			log_error(logNucleo, "No fue posible recibir el tamanio del semaforo 'WAIT' ");
 			break;
 		}
 		//Recibo el semaforo wait
 		t_nombre_semaforo semaforo = malloc(tamanio);
 		receiveMessage(&socketCPULibre, semaforo, tamanio);
 
-		log_info(logNucleo, "Se recibe el semaforo WAIT: %s, con el tamanio: %d  \n",semaforo, tamanio);
+		log_info(logNucleo, "Se recibe el semaforo WAIT: %s, con el tamanio: %d  ",semaforo, tamanio);
 
 		if (estaEjecutando(message->processID)==1){ // 1: Programa ejecutandose (no esta en ninguna cola)
 			int* valorSemaforo = pideSemaforo(semaforo);
@@ -683,7 +687,7 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 			if(*valorSemaforo<=0){
 
 				valorAEnviar = 1;
-				log_info(logNucleo, "Recibi proceso %d mando a bloquear por semaforo: %d \n", (message->processID)%6+1, semaforo);
+				log_info(logNucleo, "Recibi proceso %d mando a bloquear por semaforo: %d ", (message->processID)%6+1, semaforo);
 				sendMessage(&socketCPULibre, &valorAEnviar,sizeof(int));// 1 si se bloquea. 0 si no se bloquea
 
 				//TODO Verificar: recibir PCB del CPU para volver a planificarlo
@@ -692,7 +696,7 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 				int tamanioStack = -1;
 				receiveMessage(&socketCPULibre, &tamanioStack, sizeof(int));
 				if (tamanio == -1){
-					log_error(logNucleo, "No fue posible recibir el tamanio del Stack \n");
+					log_error(logNucleo, "No fue posible recibir el tamanio del Stack ");
 					break;
 				}
 				char* listaStackSerializada = malloc(tamanioStack);
@@ -721,13 +725,13 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 		int tamanio = -1;
 		receiveMessage(&socketCPULibre, &tamanio, sizeof(int));
 		if (tamanio == -1){
-			log_error(logNucleo, "No fue posible recibir el semaforo 'SIGNAL' \n");
+			log_error(logNucleo, "No fue posible recibir el semaforo 'SIGNAL' ");
 			break;
 		}
 		//Recibo el semaforo wait
 		t_nombre_semaforo semaforo = malloc(tamanio);
 		receiveMessage(&socketCPULibre, semaforo, tamanio);
-		log_info(logNucleo, "Proceso %d libera semaforo:%s \n", message->processID, semaforo);
+		log_info(logNucleo, "Proceso %d libera semaforo:%s ", message->processID, semaforo);
 		liberaSemaforo(semaforo);
 
 		free(semaforo);
@@ -737,7 +741,7 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 		int socketConsola = buscarSocketConsola(message->processID);
 
 		if (socketConsola==-1){
-			log_error(logNucleo, "No se encontro Consola para el PID: %d \n",message->processID);
+			log_error(logNucleo, "No se encontro Consola para el PID: %d ",message->processID);
 			break;
 		}
 
@@ -749,7 +753,7 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 		int operacion = 2;
 		sendMessage(&socketConsola, &operacion, sizeof(int));
 
-		log_info(logNucleo, "Enviar valor '%s' a PID #%d\n", valor, message->processID);
+		log_info(logNucleo, "Enviar valor '%s' a PID #%d", valor, message->processID);
 		sendMessage(&socketConsola, valor, sizeof(t_valor_variable));
 
 		free(valor);
@@ -758,7 +762,7 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 	case 11:{	//Imprimir TEXTO por Consola
 		int socketConsola = buscarSocketConsola(message->processID);
 		if (socketConsola==-1){
-			log_error(logNucleo,"No se encontro Consola para el PID: %d \n",message->processID);
+			log_error(logNucleo,"No se encontro Consola para el PID: %d ",message->processID);
 			break;
 		}
 
@@ -776,12 +780,12 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 		sendMessage(&socketConsola, &operacion, sizeof(int));
 
 		// Envia el tamanio del texto al proceso CONSOLA
-		log_info(logNucleo, "Enviar tamanio: '%d', a PID #%d\n", tamanio, message->processID);
+		log_info(logNucleo, "Enviar tamanio: '%d', a PID #%d", tamanio, message->processID);
 		string_append(&texto,"\0");
 		sendMessage(&socketConsola, &tamanio, sizeof(int));
 
 		// Envia el texto al proceso CONSOLA
-		log_info(logNucleo, "Enviar texto: '%s', a PID #%d\n", texto, message->processID);
+		log_info(logNucleo, "Enviar texto: '%s', a PID #%d", texto, message->processID);
 		sendMessage(&socketConsola, texto, tamanio);
 
 		free(texto);
@@ -806,8 +810,8 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 		break;
 	}
 	default:
-		log_error(logNucleo, "Mensaje recibido invalido. \n");
-		//printf("CPU desconectado.\n");
+		log_error(logNucleo, "Mensaje recibido invalido. ");
+		//printf("CPU desconectado.");
 		//abort();
 	}
 
@@ -838,7 +842,7 @@ void atenderCorteQuantum(int socketCPU,int PID){
 	int pcnuevo = infoProceso->ProgramCounter + quantumUsed;
 	infoProceso->ProgramCounter = pcnuevo;
 
-	log_info(logNucleo, "Recibiendo PCB para el PID: %d modificado por el CPU de socket: %d \n",infoProceso->PID, socketCPU);
+	log_info(logNucleo, "Recibiendo PCB para el PID: %d modificado por el CPU de socket: %d ",infoProceso->PID, socketCPU);
 
 	//1) receive tamanioBuffer
 	int tamanioBuffer;
@@ -925,7 +929,7 @@ void finalizaProceso(int socket, int PID, int estado) {
 	int textoLen = strlen(texto);
 	sendMessage(&socketConsola, &textoLen, sizeof(textoLen));
 
-	log_info(logNucleo, "Enviar texto: '%s', con tamanio: '%d' a PID #%d\n", texto, textoLen, PID);
+	log_info(logNucleo, "Enviar texto: '%s', con tamanio: '%d' a PID #%d", texto, textoLen, PID);
 	sendMessage(&socketConsola, texto, textoLen);
 
 	destruirPCB(datosProceso);
@@ -942,7 +946,7 @@ int buscarCPULibre() {
 	int cantCPU, i = 0;
 	t_datosCPU* datosCPU;
 	cantCPU = list_size(listaCPU);
-	log_info(logNucleo, "size de listaCPU: %d\n",list_size(listaCPU));
+	log_info(logNucleo, "size de listaCPU: %d",list_size(listaCPU));
 	for (i = 0; i < cantCPU; i++) {
 		pthread_mutex_lock(&listadoCPU);
 		datosCPU = (t_datosCPU*) list_get(listaCPU, 0);
@@ -1068,7 +1072,7 @@ int estaEjecutando(int PID){
 void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 	int i = 0;
 	t_bloqueado* infoBloqueado = malloc(sizeof(t_bloqueado));
-	log_info(logNucleo,"Envio %s a bloquear por IO\n",dispositivo);
+	log_info(logNucleo,"Envio %s a bloquear por IO",dispositivo);
 	while (configNucleo.io_ids[i] != NULL){
 		if (strcmp(configNucleo.io_ids[i], dispositivo) == 0) {
 			infoBloqueado->PID = activePID;
@@ -1102,7 +1106,7 @@ void atenderIO(int sig, siginfo_t *si, void *uc) {
 			io = i;
 		}
 	}
-	//printf("deberia entrar una vez\n");
+	//printf("deberia entrar una vez");
 	t_bloqueado *proceso;
 	pthread_mutex_lock(&cBloqueados);
 	proceso = (t_bloqueado*) queue_pop(colas_IO[io]);
@@ -1110,7 +1114,7 @@ void atenderIO(int sig, siginfo_t *si, void *uc) {
 
 	//Cambio el proceso a estado ready y agrego a la cola de listos
 	log_info(logNucleo,
-			"Saco el proceso '%d' de cola IO %d y lo transfiero a cola de Listos \n",
+			"Saco el proceso '%d' de cola IO %d y lo transfiero a cola de Listos ",
 			proceso->PID, io);
 	int estado = 1;
 	cambiarEstadoProceso(proceso->PID, estado);
@@ -1133,7 +1137,7 @@ void atenderIO(int sig, siginfo_t *si, void *uc) {
 			pthread_mutex_unlock(&cFinalizar);
 		}
 	}else {
-		log_error(logNucleo,"Proceso no encontrado en la lista.\n");
+		log_error(logNucleo,"Proceso no encontrado en la lista.");
 	}
 
 	if (queue_size(colas_IO[io]) != 0) {
@@ -1176,7 +1180,7 @@ void liberarCPU(int socket) {
 		datosCPU->estadoCPU = 0;
 		//planificarProceso();
 	} else {
-		log_error(logNucleo, "Error al liberar CPU \n CPU de socket: %d no encontrado en la lista.\n", socket);
+		log_error(logNucleo, "Error al liberar CPU  CPU de socket: %d no encontrado en la lista.", socket);
 	}
 }
 
@@ -1189,7 +1193,7 @@ void cambiarEstadoProceso(int PID, int estado) {
 		pthread_mutex_unlock(&listadoProcesos);
 		datosProceso->estado = estado;
 	} else {
-		log_error(logNucleo,"Error al cambiar estado de proceso, proceso no encontrado en la lista.\n");
+		log_error(logNucleo,"Error al cambiar estado de proceso, proceso no encontrado en la lista.");
 	}
 }
 
@@ -1202,12 +1206,12 @@ void actualizarPC(int PID, int ProgramCounter) {
 		pthread_mutex_unlock(&listadoProcesos);
 		datosProceso->ProgramCounter = ProgramCounter;
 	} else {
-		log_error(logNucleo,"Error al cambiar el PC del proceso, proceso no encontrado en la lista.\n");
+		log_error(logNucleo,"Error al cambiar el PC del proceso, proceso no encontrado en la lista.");
 	}
 }
 
 t_valor_variable *obtenerValor(t_nombre_compartida variable) {
-	log_info(logNucleo, "Nucleo, obteniendo valor para la variable: %s\n", variable);
+	log_info(logNucleo, "Nucleo, obteniendo valor para la variable: %s", variable);
 	t_valor_variable *valorVariable = NULL;
 	int i = 0;
 
@@ -1225,7 +1229,7 @@ t_valor_variable *obtenerValor(t_nombre_compartida variable) {
 }
 
 void grabarValor(t_nombre_compartida variable, t_valor_variable* valor) {
-	log_info(logNucleo, "Nucleo, grabando valor: %d para la variable: %s\n", *valor, variable);
+	log_info(logNucleo, "Nucleo, grabando valor: %d para la variable: %s", *valor, variable);
 	int i = 0;
 	while (configNucleo.shared_vars[i] != NULL) {
 
@@ -1236,14 +1240,14 @@ void grabarValor(t_nombre_compartida variable, t_valor_variable* valor) {
 		}
 		i++;
 	}
-	log_error(logNucleo,"No se pudo grabar el valor: %d, en la variable: %s \n",valor, variable);
+	log_error(logNucleo,"No se pudo grabar el valor: %d, en la variable: %s ",valor, variable);
 }
 
 int *pideSemaforo(t_nombre_semaforo semaforo) {
 	int i = 0;
 	int *valorVariable = NULL;
 
-	log_info(logNucleo,"Nucleo, obteniendo semaforo:  %s\n", semaforo);
+	log_info(logNucleo,"Nucleo, obteniendo semaforo:  %s", semaforo);
 
 	while (configNucleo.sem_ids[i] != NULL) {
 		if (strcmp(configNucleo.sem_ids[i], semaforo) == 0) {
@@ -1254,7 +1258,7 @@ int *pideSemaforo(t_nombre_semaforo semaforo) {
 		}
 		i++;
 	}
-	log_error(logNucleo, "No se encontro el semaforo: %s \n", semaforo);
+	log_error(logNucleo, "No se encontro el semaforo: %s ", semaforo);
 	return valorVariable;
 }
 
@@ -1271,7 +1275,7 @@ void grabarSemaforo(t_nombre_semaforo semaforo, int valor){
 		}
 		i++;
 	}
-	log_error(logNucleo,"No se encontro el semaforo: %s \n", semaforo);
+	log_error(logNucleo,"No se encontro el semaforo: %s ", semaforo);
 }
 
 
@@ -1302,7 +1306,7 @@ void liberaSemaforo(t_nombre_semaforo semaforo) {
 /*
 		//Aca esta funcionando con el \n OJO
 			configNucleo.sem_ids_values[i]++;
-			printf("VALOR SEM: %d\n",configNucleo->sem_ids_values[i]);
+			printf("VALOR SEM: %d",configNucleo->sem_ids_values[i]);
 			if (proceso = queue_pop(colas_semaforos[i])) {
 				//config_nucleo->VALOR_SEM[i]--;
 				queue_push(cola_ready, proceso);
@@ -1312,12 +1316,12 @@ void liberaSemaforo(t_nombre_semaforo semaforo) {
 			*/
 		}
 	}
-	log_error(logNucleo,"No se encontro el semaforo: %s \n", semaforo);
+	log_error(logNucleo,"No se encontro el semaforo: %s ", semaforo);
 }
 
 void bloqueoSemaforo(int processID, t_nombre_semaforo semaforo){
 
-	log_info(logNucleo,"Procesando el bloqueo por el semaforo: %s, para el PID: %d \n", semaforo, processID);
+	log_info(logNucleo,"Procesando el bloqueo por el semaforo: %s, para el PID: %d ", semaforo, processID);
 	int i=0;
 	while (configNucleo.sem_ids[i] != NULL) {
 		if (strcmp(configNucleo.sem_ids[i], semaforo) == 0) {
@@ -1332,21 +1336,21 @@ void bloqueoSemaforo(int processID, t_nombre_semaforo semaforo){
 			proceso->PID = processID;
 			proceso->ProgramCounter = PCB->ProgramCounter;
 
-			//Aca esta funcionando con el \n  OJO
+			//Aca esta funcionando con el \n OJO
 			pthread_mutex_lock(&cSemaforos);
 			queue_push(colas_semaforos[i], proceso);
 			pthread_mutex_unlock(&cSemaforos);
-			log_info(logNucleo,"Se bloquea el PID: %d, por semaforo: %s \n",processID, semaforo);
+			log_info(logNucleo,"Se bloquea el PID: %d, por semaforo: %s ",processID, semaforo);
 			return;
 		}
 		i++;
 	}
-	log_error(logNucleo,"No se encontro el semaforo: %s \n", semaforo);
+	log_error(logNucleo,"No se encontro el semaforo: %s ", semaforo);
 }
 
 void armarIndiceDeCodigo(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
 	int i;
-	log_info(logNucleo,"instrucciones_size: %d\n",miMetaData->instrucciones_size);
+	log_info(logNucleo,"instrucciones_size: %d",miMetaData->instrucciones_size);
 
 	//First instruction
 	for (i=0; i < miMetaData->instrucciones_size ; i++){
@@ -1355,7 +1359,7 @@ void armarIndiceDeCodigo(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
 		registroAAgregar->longitudInstruccionEnBytes = miMetaData->instrucciones_serializado[i].offset;
 		list_add(unBloqueControl->indiceDeCodigo,(void*)registroAAgregar);
 	}
-	log_info(logNucleo,"size de la lista indice de codigo: %d\n",list_size(unBloqueControl->indiceDeCodigo));
+	log_info(logNucleo,"size de la lista indice de codigo: %d",list_size(unBloqueControl->indiceDeCodigo));
 }
 
 void armarIndiceDeEtiquetas(t_PCB *unBloqueControl,t_metadata_program* miMetaData){
@@ -1366,18 +1370,18 @@ void armarIndiceDeEtiquetas(t_PCB *unBloqueControl,t_metadata_program* miMetaDat
 		unBloqueControl->indiceDeEtiquetas = malloc(unBloqueControl->indiceDeEtiquetasTamanio);
 		memcpy(unBloqueControl->indiceDeEtiquetas, miMetaData->etiquetas, unBloqueControl->indiceDeEtiquetasTamanio);
 	}
-	log_info(logNucleo,"'sizeindiceDeEtiquetas' : %d 'indiceDeEtiquetas' : %s\n", unBloqueControl->indiceDeEtiquetasTamanio, unBloqueControl->indiceDeEtiquetas);
+	log_info(logNucleo,"'sizeindiceDeEtiquetas' : %d 'indiceDeEtiquetas' : %s", unBloqueControl->indiceDeEtiquetasTamanio, unBloqueControl->indiceDeEtiquetas);
 
 }
 
 void finalizarPid(int pid){
 	if((pid<0) || (pid >idProcesos)){
-		log_error(logNucleo, "Error, PID: %d inexistente.\n", pid);
+		log_error(logNucleo, "Error, PID: %d inexistente.", pid);
 		return;
 	}
 	int ret = buscarPCB(pid);
 	if (ret == -1){
-		log_error(logNucleo,"Error al buscar el proceso de PID: %d.\n", pid);
+		log_error(logNucleo,"Error al buscar el proceso de PID: %d.", pid);
 		return;
 	}
 	t_PCB* datosProceso;
@@ -1399,14 +1403,14 @@ void finalizarPid(int pid){
 		break;
 
 	case 4:
-		log_error(logNucleo, "Error, el proceso ya finalizo correctamente.\n");
+		log_error(logNucleo, "Error, el proceso ya finalizo correctamente.");
 		break;
 
 	case 5:
-		log_error(logNucleo,"Error, el proceso ya finalizo de forma incorrecta.\n");
+		log_error(logNucleo,"Error, el proceso ya finalizo de forma incorrecta.");
 		break;
 	default:
-		log_error(logNucleo,"Error, estado invalido.\n");
+		log_error(logNucleo,"Error, estado invalido.");
 		break;
 
 	}
@@ -1414,13 +1418,13 @@ void finalizarPid(int pid){
 
 //TODO la UMC esta recibiendo null del fromProcess. Verificar esta funcion:
 void iniciarPrograma(int PID, char *codeScript) {
-	log_info(logNucleo,"Para el processID: %d, aviso al proceso UMC el inicio  el programa \n", PID);
+	log_info(logNucleo,"Para el processID: %d, aviso al proceso UMC el inicio  el programa ", PID);
 	int bufferSize = 0;
 	int payloadSize = 0;
 	int contentLen = strlen(codeScript);
 	int cantPages = (int) ceil((double) contentLen /(double) frameSize);
 
-	log_info(logNucleo,"strlen del codigo del programa: %d \n", contentLen);
+	log_info(logNucleo,"strlen del codigo del programa: %d ", contentLen);
 
 	t_MessageNucleo_UMC *message = malloc(sizeof(t_MessageNucleo_UMC));
 
@@ -1514,7 +1518,7 @@ void inicializarMutex() {
 }
 
 void crearArchivoDeConfiguracion(char *configFile){
-	log_info (logNucleo, "Creando el archivo de configuracion: %s \n", configFile);
+	log_info (logNucleo, "Creando el archivo de configuracion: %s ", configFile);
 	t_config* configuration;
 
 	configuration = config_create(configFile);
@@ -1534,7 +1538,7 @@ void crearArchivoDeConfiguracion(char *configFile){
 	//imprimirArray(configNucleo.sem_init);
 	configNucleo.io_ids = config_get_array_value(configuration,"IO_IDS");
 	configNucleo.io_sleep = config_get_array_value(configuration,"IO_SLEEP");
-	printf("io_sleep = ");
+	printf("io_sleep = \n");
 	imprimirArray(configNucleo.io_sleep);
 	configNucleo.shared_vars = config_get_array_value(configuration,"SHARED_VARS");
 	//printf("shared_vars = ");
@@ -1562,7 +1566,7 @@ void crearArchivoDeConfiguracion(char *configFile){
 		colas_IO[i] = queue_create();
 		i++;
 	}
-	//printf("\n");
+	//printf("");
 
 	//initializing (0 default values) shared variables values (int*)
 	len  = (int) strlen((char*)configNucleo.shared_vars) / sizeof(char*);
@@ -1606,7 +1610,7 @@ void crearArchivoDeConfiguracion(char *configFile){
 		colas_semaforos[i] = queue_create();
 		i++;
 	}
-	log_info(logNucleo, "El archivo de configuracion: '%s' se creo correctamente \n", configFile);
+	log_info(logNucleo, "El archivo de configuracion: '%s' se creo correctamente ", configFile);
 }
 
 void *initialize(int tamanio){
@@ -1671,7 +1675,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 		break;
 	}
 	default:{
-		log_info(logNucleo,"Process '%s' NOT VALID to be connected by NUCLEO.\n", getProcessString(processToConnect));
+		log_info(logNucleo,"Process '%s' NOT VALID to be connected by NUCLEO.", getProcessString(processToConnect));
 		break;
 	}
 	}
@@ -1707,7 +1711,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 				case ACCEPTED: {
 					switch (processToConnect) {
 						case UMC: {
-							log_info(logNucleo, "Conectado a UMC - Message: %s\n",	message->message);
+							log_info(logNucleo, "Conectado a UMC - Message: %s",	message->message);
 							printf("Receiving frame size\n");
 							//After receiving ACCEPTATION has to be received the "Tamanio de pagina" information
 							receivedBytes = receiveMessage(socketClient, &frameSize,sizeof(messageSize));
@@ -1717,7 +1721,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 						}
 						default: {
 							log_error(logNucleo,
-									"Handshake not accepted when tried to connect your '%s' with '%s'\n",
+									"Handshake not accepted when tried to connect your '%s' with '%s'",
 									getProcessString(processToConnect),	getProcessString(message->process));
 							close(*socketClient);
 							exitcode = EXIT_FAILURE;
@@ -1728,22 +1732,22 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 					break;
 				}	//fin case ACCEPTED
 				default: {
-					log_error(logNucleo,"Process couldn't connect to SERVER - Not able to connect to server %s. Please check if it's down.\n",ip);
+					log_error(logNucleo,"Process couldn't connect to SERVER - Not able to connect to server %s. Please check if it's down.",ip);
 					close(*socketClient);
 					break;
 				}
 				}
 			}else if (receivedBytes == 0 ){
 				//The client is down when bytes received are 0
-				log_error(logNucleo, "The client went down while receiving! - Please check the client '%d' is down!\n",*socketClient);
+				log_error(logNucleo, "The client went down while receiving! - Please check the client '%d' is down!",*socketClient);
 				close(*socketClient);
 			}else{
-				log_error(logNucleo, "Error - No able to received - Error receiving from socket '%d', with error: %d\n",*socketClient, errno);
+				log_error(logNucleo, "Error - No able to received - Error receiving from socket '%d', with error: %d",*socketClient, errno);
 				close(*socketClient);
 			}
 		}
 	}else{
-		 log_error(logNucleo, "I'm not able to connect to the server! - My socket is: '%d'\n", *socketClient);
+		 log_error(logNucleo, "I'm not able to connect to the server! - My socket is: '%d'", *socketClient);
 		 close(*socketClient);
 	}
 
