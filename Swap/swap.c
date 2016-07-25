@@ -125,6 +125,8 @@ void processingMessages(int socketClient){
 			}else{
 				log_error(logSwap,"No hay espacio disponible para agregar el bloque. \n");
 				//TODO aca se debe enviar un error a la UMC
+				//int error=-1;
+				//sendMessage(&socketClient, &error,sizeof(int));
 			}
 
 			break;
@@ -177,6 +179,8 @@ void processingMessages(int socketClient){
 	}else{
 		log_error(logSwap,"No se recibio correctamente los datos. \n");
 	}
+	//TODO agregar:
+	//free(pedidoRecibidoYDeserializado);
 }
 
 void destructorBloqueSwap(bloqueSwap* self){
@@ -331,7 +335,7 @@ char* leerPagina(bloqueSwap* bloqueDeSwap){
 	if(archivoSwap==NULL){
 		log_error(logSwap,"No se abrio correctamente el archivo. \n");
 	}
-	char* paginaAEnviar=malloc(sizeof(tamanioDePagina));
+	char* paginaAEnviar=malloc(tamanioDePagina);
 	bloqueEncontrado=buscarProcesoAEliminar(bloqueDeSwap->PID);
 	fseek(archivoSwap,bloqueEncontrado->paginaInicial*tamanioDePagina+bloqueDeSwap->paginaInicial*tamanioDePagina,SEEK_SET);
 	fread(paginaAEnviar,tamanioDePagina,1,archivoSwap);
@@ -366,6 +370,8 @@ void* mapearArchivoEnMemoria(int offset,int tamanio){
 	lseek(descriptorSwap,0,SEEK_SET);
 	fsync(descriptorSwap);
 	archivoMapeado=mmap(0,tamanio,PROT_WRITE,MAP_SHARED,descriptorSwap,offset);
+	//TODO agregar:
+	//fclose(archivoSwap);
 	return archivoMapeado;
 
 }
@@ -553,5 +559,9 @@ int modificarArchivo(int marcoInicial,int cantDeMarcos,int nuevoMarcoInicial){
 	fwrite(textoRelleno,sizeof(textoRelleno),1,archivoSwap);
 	fseek(archivoSwap,nuevoMarcoInicial,SEEK_SET);
 	fwrite(lectura,tamanioDePagina,cantDeMarcos,archivoSwap);
+	//TODO agregar:
+	//free(textoRelleno);
+	//free(lectura);
+	//fclose(archivoSwap);
 	return 0;
 }
