@@ -233,7 +233,7 @@ int ejecutarPrograma(){
 
 	//For getting the correct page in which the current instruction has to be located we need the offset from all the previous lines executed
 	//NOTE: we follow the code line because doesn't matter if there was a function call (this is because after a function call all the variables in there are deleted from memory)
-	for(i = 0; i < instruccionActual->inicioDeInstruccion; i++){
+	for(i = 0; i < ultimoPosicionPC; i++){
 		instruccion = list_get(PCBRecibido->indiceDeCodigo, i);
 		offsetInstruccionesSize += instruccion->longitudInstruccionEnBytes;
 	}
@@ -255,7 +255,7 @@ int ejecutarPrograma(){
 
 		//overwrite page content in swap (swap out)
 		t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
-		message->virtualAddress = (t_memoryLocation*) malloc(sizeof(t_memoryLocation));
+		message->virtualAddress = malloc(sizeof(t_memoryLocation));
 		message->PID = PCBRecibido->PID;
 		message->operation = lectura_pagina;
 		message->virtualAddress->pag = (int) ceil(((double) offsetInstruccionesSize/ (double) frameSize));
