@@ -541,10 +541,10 @@ void startUMCConsole(){
 
 		if (strcmp(command,"retardo") == 0 ){
 			pthread_mutex_lock(&delayMutex);
-			configuration.delay = atoi(option);
+			configuration.delay = atoi(option)/1000;
 			pthread_mutex_unlock(&delayMutex);
-			printf("The delay UMC was successfully changed to: %d\n", configuration.delay);
-			log_info(UMCLog, "The delay UMC was successfully changed to: %d", configuration.delay);
+			printf("The delay UMC was successfully changed to '%d' millisecond\n", atoi(option));
+			log_info(UMCLog, "The delay UMC was successfully changed to '%d' millisecond", atoi(option));
 
 		}else if (strcmp(command,"dump") == 0 ){
 			int neededPID = 0; //DEFAULT value
