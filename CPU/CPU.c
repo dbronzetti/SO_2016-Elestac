@@ -67,6 +67,7 @@ int main(int argc, char *argv[]){
 			PCBRecibido->ProgramCounter = messageWithBasicPCB->programCounter;
 			PCBRecibido->StackPointer = messageWithBasicPCB->stackPointer;
 			PCBRecibido->cantidadDePaginas = messageWithBasicPCB->cantidadDePaginas;
+			PCBRecibido->finalizar = 0;
 			PCBRecibido->indiceDeCodigo = list_create();
 			PCBRecibido->indiceDeStack = list_create();
 			QUANTUM = messageWithBasicPCB->quantum;
@@ -239,13 +240,13 @@ int ejecutarPrograma(){
 
 	free(instruccion);
 
-	char* codigoRecibido = string_new(); //malloc(instruccionActual->longitudInstruccionEnBytes);
+	char* codigoRecibido = string_new();
 
 	log_info(logCPU,"Contexto de ejecucion recibido - Process ID : %d - PC : %d", PCBRecibido->PID, ultimoPosicionPC);
 
 	//ver de pedir varias veces hasta que cumpla la longitud de instrucciones en bytes e ir concatenando el contenido
 	int returnCode = EXIT_SUCCESS;//DEFAULT
-	int remainingInstruccion = instruccionActual->longitudInstruccionEnBytes;
+	int remainingInstruccion = instruccionActual->inicioDeInstruccion + instruccionActual->longitudInstruccionEnBytes;
 
 	while((returnCode == EXIT_SUCCESS) && (remainingInstruccion > 0)){
 		//serializar mensaje para UMC y solicitar codigo porcion de codigo
@@ -257,7 +258,7 @@ int ejecutarPrograma(){
 		message->virtualAddress = malloc(sizeof(t_memoryLocation));
 		message->PID = PCBRecibido->PID;
 		message->operation = lectura_pagina;
-		message->virtualAddress->pag = (int) ceil(((double) offsetInstruccionesSize/ (double) frameSize));
+		message->virtualAddress->pag = (int) floor(((double) offsetInstruccionesSize/ (double) frameSize));
 		message->virtualAddress->offset = 0; //Request ALWAYS the start of a page
 		message->virtualAddress->size = frameSize; //ALWAYS REQUEST TO UMC the size of a page and when it is received a memcpy with "instruccionActual->longitudInstruccionEnBytes" has to be done
 
@@ -302,14 +303,8 @@ int ejecutarPrograma(){
 			//Receiving information from UMC when the operation was successfully accomplished
 			receivedBytes = receiveMessage(&socketUMC, bufferCode, frameSize);
 
-			if(remainingInstruccion >= frameSize){
-				//if the remaining size is greater than frame size then we can append the full buffer received from UMC
-				string_append(&codigoRecibido, bufferCode);
-			}else{
-				//if the remaining size is lower than frame size then we have to append the remaining size from the buffer received from UMC
-				codigoRecibido = malloc(remainingInstruccion);
-				memcpy(codigoRecibido, bufferCode + instruccionActual->inicioDeInstruccion, remainingInstruccion );
-			}
+			//Append the code received from UMC to the code received previously (if is the case)
+			string_append(&codigoRecibido, bufferCode);
 
 			offsetInstruccionesSize += frameSize; //moving offset for next request
 			remainingInstruccion -= frameSize; //reducing the remaining size to be read on next request
@@ -329,7 +324,11 @@ int ejecutarPrograma(){
 	}
 
 	if(returnCode == EXIT_SUCCESS){
-		analizadorLinea(codigoRecibido, &funciones, &funciones_kernel);
+		//parsing the useful code from the whole code received
+		char *instruccionEjecutar = malloc(instruccionActual->longitudInstruccionEnBytes);
+		instruccionEjecutar = string_substring(codigoRecibido, instruccionActual->inicioDeInstruccion, instruccionActual->longitudInstruccionEnBytes);
+
+		analizadorLinea(instruccionEjecutar, &funciones, &funciones_kernel);
 
 		if(!waitSemActivated){//check if the process was blocked by a wait, in that case the program counter doesn't have to be increased
 			ultimoPosicionPC++;
@@ -340,6 +339,7 @@ int ejecutarPrograma(){
 		}
 	}
 
+	free(instruccion);
 	free(codigoRecibido);
 
 	return exitCode;
@@ -513,7 +513,9 @@ void destruirRegistroIndiceEtiquetas(t_registroIndiceEtiqueta* registroEtiqueta)
 }
 
 void destroyIndiceEtiquetas(){
-	list_destroy_and_destroy_elements(listaIndiceEtiquetas,(void*)destruirRegistroIndiceEtiquetas);
+	if(list_size(listaIndiceEtiquetas) > 0){
+		list_destroy_and_destroy_elements(listaIndiceEtiquetas,(void*)destruirRegistroIndiceEtiquetas);
+	}
 }
 
 void crearArchivoDeConfiguracion(char *configFile){
@@ -815,7 +817,7 @@ t_valor_variable dereferenciar(t_puntero direccion_variable){
 
 	//overwrite page content in swap (swap out)
 	t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
-	message->virtualAddress = (t_memoryLocation*) malloc(sizeof(t_memoryLocation));
+	message->virtualAddress = malloc(sizeof(t_memoryLocation));
 	message->PID = PCBRecibido->PID;
 	message->operation = lectura_pagina;
 	message->virtualAddress = (t_memoryLocation*) direccion_variable;
@@ -860,7 +862,7 @@ void asignar(t_puntero direccion_variable, t_valor_variable valor){
 
 	//overwrite page content in swap (swap out)
 	t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
-	message->virtualAddress = (t_memoryLocation*) malloc(sizeof(t_memoryLocation));
+	message->virtualAddress = malloc(sizeof(t_memoryLocation));
 	message->PID = PCBRecibido->PID;
 	message->operation = escritura_pagina;
 	message->virtualAddress = (t_memoryLocation*) direccion_variable;
@@ -882,7 +884,7 @@ void asignar(t_puntero direccion_variable, t_valor_variable valor){
 	//2) Second send with value with previous size sent
 	sendMessage(&socketUMC,&valor,sizeof(t_valor_variable));
 
-	free(message->virtualAddress);
+	free(message->virtualAddress);//TODO invalid pointer - check what happened
 	free(message);
 	free(buffer);
 }
