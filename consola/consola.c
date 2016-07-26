@@ -94,6 +94,8 @@ int main(int argc, char **argv) {
 		}
 		default:
 			printf("Comando invalido, inténtelo nuevamente.\n");
+			printf(PROMPT);
+			fgets(inputTeclado, sizeof(inputTeclado), stdin);
 			break;
 		}
 		exitCode = reconocerOperacion();

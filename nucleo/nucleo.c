@@ -349,10 +349,10 @@ void processMessageReceivedCPU (void *parameter){
 		switch (fromProcess){
 			case CPU:{
 				log_info(logNucleo, "Processing %s message received", getProcessString(fromProcess));
-				pthread_mutex_lock(&activeProcessMutex);
+				//pthread_mutex_lock(&activeProcessMutex);
 				processCPUMessages(messageSize, serverData->socketClient); //el free del messageRcv se hace adentro
 				//free(parameter);//TODO
-				pthread_mutex_unlock(&activeProcessMutex);
+				//pthread_mutex_unlock(&activeProcessMutex);
 				break;
 			}
 			default:{
@@ -431,7 +431,7 @@ void runScript(char* codeScript, int socketConsola){
 	pthread_mutex_lock(&listadoProcesos);
 	list_add(listaProcesos,(void*)PCB);
 	pthread_mutex_unlock(&listadoProcesos);
-	log_info(logNucleo, "Proceso %d - Iniciado  Script",PCB->PID);
+	log_info(logNucleo, "Proceso %d - Iniciado  Script: %s",PCB->PID, codeScript);
 
 	//Agrego a la Cola de Listos
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
@@ -679,20 +679,26 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 		t_nombre_compartida variable = malloc(variableLen);
 		receiveMessage(&socketCPULibre, variable, variableLen);
 
-		t_valor_variable* valorVariable = obtenerValor(variable);
+		t_valor_variable valorVariable = obtenerValor(variable);
 
-		if (valorVariable == NULL){
-			log_error(logNucleo, "No se encontro la variable: %s id, con el tamanio: %d  ",variable, variableLen);
-			break;
+		if (valorVariable == -1){
+			log_error(logNucleo, "No se encontro la variable: %s id, con el tamanio: %d ",variable, variableLen);
+		}else{
+			sendMessage(&socketCPULibre, &valorVariable, sizeof(t_valor_variable));
+			log_info(logNucleo, "Se envio correctamente el valor %d de la variable %s al proceso CPU",variable);
 		}
-		sendMessage(&socketCPULibre, valorVariable, sizeof(t_valor_variable));
+		free(variable);
 		break;
 	}
 	case 7:{	//Grabar valor
 
 		// 1) Recibir valor
-		t_valor_variable* valor = malloc(sizeof(t_valor_variable));
-		receiveMessage(&socketCPULibre, valor, sizeof(t_valor_variable));
+		t_valor_variable valor = -1;
+		receiveMessage(&socketCPULibre, &valor, sizeof(t_valor_variable));
+		if (valor == -1){
+			log_error(logNucleo, "No fue posible recibir el valor a asignar de la variable");
+			break;
+		}
 
 		// 2) Recibir tamanio de la variable
 		int variableLen = -1;
@@ -707,9 +713,8 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 		receiveMessage(&socketCPULibre, variable, variableLen);
 
 		grabarValor(variable, valor);
-		log_info(logNucleo, "Se graba el valor: %d en la variable: %s id, con el tamanio: %d  ",*valor, variable, variableLen);
+		log_info(logNucleo, "Se graba el valor: %d en la variable: %s id, con el tamanio: %d  ",valor, variable, variableLen);
 		free(variable);
-		free(valor);
 		break;
 	}
 	case 8:{	// WAIT - Grabar semaforo y enviar al CPU
@@ -1120,7 +1125,7 @@ void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 	t_bloqueado* infoBloqueado = malloc(sizeof(t_bloqueado));
 	log_info(logNucleo,"Envio %s a bloquear por IO",dispositivo);
 	while (configNucleo.io_ids[i] != NULL){
-		if (strcmp(configNucleo.io_ids[i], dispositivo) == 0) {
+		if (strcmp((char*)configNucleo.io_ids[i], dispositivo) == 0) {
 			infoBloqueado->PID = activePID;
 			infoBloqueado->dispositivo = dispositivo;
 			infoBloqueado->tiempo = tiempo;
@@ -1256,16 +1261,15 @@ void actualizarPC(int PID, int ProgramCounter) {
 	}
 }
 
-t_valor_variable *obtenerValor(t_nombre_compartida variable) {
+t_valor_variable obtenerValor(t_nombre_compartida variable) {
 	log_info(logNucleo, "Nucleo, obteniendo valor para la variable: %s", variable);
-	t_valor_variable *valorVariable = NULL;
+	t_valor_variable valorVariable = -1;
 	int i = 0;
 
 	while (configNucleo.shared_vars[i] != NULL){
-
-		if (strcmp(configNucleo.shared_vars[i], variable) == 0) {
+		if (strcmp((char*)configNucleo.shared_vars[i], variable) == 0) {
 			//return (int*)configNucleo.shared_vars[i];
-			*valorVariable = (t_valor_variable) &configNucleo.shared_vars_values[i];
+			valorVariable = (t_valor_variable) configNucleo.shared_vars_values[i];
 			break;
 		}
 		i++;
@@ -1274,14 +1278,13 @@ t_valor_variable *obtenerValor(t_nombre_compartida variable) {
 	return valorVariable;
 }
 
-void grabarValor(t_nombre_compartida variable, t_valor_variable* valor) {
-	log_info(logNucleo, "Nucleo, grabando valor: %d para la variable: %s", *valor, variable);
+void grabarValor(t_nombre_compartida variable, t_valor_variable valor) {
+	log_info(logNucleo, "Nucleo, grabando valor: %d para la variable: %s", valor, variable);
 	int i = 0;
 	while (configNucleo.shared_vars[i] != NULL) {
-
-		if (strcmp(configNucleo.shared_vars[i], variable) == 0) {
+		if (strcmp((char*)configNucleo.shared_vars[i], variable) == 0) {
 			//return (int*)configNucleo.shared_vars[i];
-			memcpy(&configNucleo.shared_vars_values[i], valor, sizeof(t_valor_variable));
+			memcpy(&configNucleo.shared_vars_values[i], &valor, sizeof(t_valor_variable));
 			return;
 		}
 		i++;
@@ -1296,7 +1299,7 @@ int *pideSemaforo(t_nombre_semaforo semaforo) {
 	log_info(logNucleo,"Nucleo, obteniendo semaforo:  %s", semaforo);
 
 	while (configNucleo.sem_ids[i] != NULL) {
-		if (strcmp(configNucleo.sem_ids[i], semaforo) == 0) {
+		if (strcmp((char*)configNucleo.sem_ids[i], semaforo) == 0) {
 
 			//if (configNucleo.sem_ids_values[i] == -1) {return &configNucleo.sem_ids_values[i];}
 			//configNucleo.sem_ids_values[i]--;
@@ -1313,7 +1316,7 @@ void grabarSemaforo(t_nombre_semaforo semaforo, int valor){
 
 	while (configNucleo.sem_ids[i] != NULL){
 
-		if (strcmp(configNucleo.sem_ids[i], semaforo) == 0) {
+		if (strcmp((char*)configNucleo.sem_ids[i], semaforo) == 0) {
 
 			//if (configNucleo.sem_ids_values[i] == -1) return &configNucleo.sem_ids_values[i];
 			configNucleo.sem_ids_values[i] = valor;
@@ -1330,7 +1333,7 @@ void liberaSemaforo(t_nombre_semaforo semaforo) {
 	t_proceso *proceso;
 
 	while (configNucleo.sem_ids[i] != NULL){
-		if (strcmp(configNucleo.sem_ids[i], semaforo) == 0) {
+		if (strcmp((char*)configNucleo.sem_ids[i], semaforo) == 0) {
 
 			if(list_size(colas_semaforos[i]->elements)){
 				pthread_mutex_lock(&cSemaforos);
@@ -1370,7 +1373,7 @@ void bloqueoSemaforo(int processID, t_nombre_semaforo semaforo){
 	log_info(logNucleo,"Procesando el bloqueo por el semaforo: %s, para el PID: %d ", semaforo, processID);
 	int i=0;
 	while (configNucleo.sem_ids[i] != NULL) {
-		if (strcmp(configNucleo.sem_ids[i], semaforo) == 0) {
+		if (strcmp((char*)configNucleo.sem_ids[i], semaforo) == 0) {
 			//look for PCB for getting program counter
 			t_PCB* PCB;
 			int buscar = buscarPCB(processID);
@@ -1584,11 +1587,11 @@ void crearArchivoDeConfiguracion(char *configFile){
 	//imprimirArray(configNucleo.sem_init);
 	configNucleo.io_ids = config_get_array_value(configuration,"IO_IDS");
 	configNucleo.io_sleep = config_get_array_value(configuration,"IO_SLEEP");
-	printf("io_sleep = \n");
-	imprimirArray(configNucleo.io_sleep);
+	//printf("io_sleep = \n");
+	//imprimirArray(configNucleo.io_sleep);
 	configNucleo.shared_vars = config_get_array_value(configuration,"SHARED_VARS");
-	//printf("shared_vars = ");
-	//imprimirArray(configNucleo.shared_vars);
+	printf("shared_vars = ");
+	imprimirArray(configNucleo.shared_vars);
 	configNucleo.stack_size = config_get_int_value(configuration,"STACK_SIZE");
 	printf("stack_size = %d \n", configNucleo.stack_size);
 
