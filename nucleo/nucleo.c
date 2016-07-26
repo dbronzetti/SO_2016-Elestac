@@ -501,7 +501,7 @@ void planificarProceso() {
 
 			pthread_mutex_lock(&mutex_config);
 			contextoProceso->quantum = configNucleo.quantum;
-			contextoProceso->quantum_sleep = configNucleo.quantum_sleep / 1000;
+			contextoProceso->quantum_sleep = configNucleo.quantum_sleep;
 			pthread_mutex_unlock(&mutex_config);
 
 			enviarMsjCPU(datosPCB, contextoProceso, serverData);
@@ -1577,7 +1577,8 @@ void crearArchivoDeConfiguracion(char *configFile){
 	configNucleo.puerto_umc = config_get_int_value(configuration,"PUERTO_UMC");
 	configNucleo.quantum = config_get_int_value(configuration,"QUANTUM");
 	printf("quantum = %d \n", configNucleo.quantum);
-	configNucleo.quantum_sleep = config_get_int_value(configuration,"QUANTUM_SLEEP");
+	int quantum_sleep = config_get_int_value(configuration,"QUANTUM_SLEEP");
+	configNucleo.quantum_sleep = quantum_sleep / 1000;
 	printf("quantum_sleep = %d \n", configNucleo.quantum_sleep);
 	configNucleo.sem_ids = config_get_array_value(configuration,"SEM_IDS");
 	//printf("sem_ids = ");
@@ -1836,11 +1837,12 @@ void startNucleoConsole(){
 			scanf("%s", option);
 
 			pthread_mutex_lock(&mutex_config);
-			configNucleo.quantum_sleep = atoi(option);
+			int quantumSleep = atoi(option);
+			configNucleo.quantum_sleep = quantumSleep / 1000;
 			pthread_mutex_unlock(&mutex_config);
-			printf("The quantum sleep in Nucleo was successfully changed to: %d\n", configNucleo.quantum_sleep);
+			printf("The quantum sleep in Nucleo was successfully changed to: %d milliseconds \n", quantumSleep);
 
-			log_info(logNucleo, "The quantum sleep in Nucleo was successfully changed to: %d\n", configNucleo.quantum_sleep);
+			log_info(logNucleo, "The quantum sleep in Nucleo was successfully changed to: %d milliseconds \n", quantumSleep);
 
 		}else{
 			printf("\nCommand entered NOT recognized: '%s %s'\n", command,option);
