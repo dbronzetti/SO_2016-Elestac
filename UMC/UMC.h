@@ -106,6 +106,7 @@ bool isThereEmptyEntry(t_memoryAdmin* listElement);
 bool isPageNOTPresent(t_memoryAdmin* listElement);
 bool isPageNOTPresentNOTModified(t_memoryAdmin* listElement);
 bool find_PIDEntry_PageTable(t_pageTablesxProc* listElement);
+bool find_PIDEntry_TLB(t_memoryAdmin *listElement);
 void iteratePageTablexProc(t_pageTablesxProc *pageTablexProc);
 void dumpPageTablexProc(t_pageTablesxProc *pageTablexProc);
 void showPageTableRows(t_memoryAdmin *pageTableElement);
