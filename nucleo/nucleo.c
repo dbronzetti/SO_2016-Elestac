@@ -501,7 +501,7 @@ void planificarProceso() {
 
 			pthread_mutex_lock(&mutex_config);
 			contextoProceso->quantum = configNucleo.quantum;
-			contextoProceso->quantum_sleep=configNucleo.quantum_sleep;
+			contextoProceso->quantum_sleep = configNucleo.quantum_sleep / 1000;
 			pthread_mutex_unlock(&mutex_config);
 
 			enviarMsjCPU(datosPCB, contextoProceso, serverData);
