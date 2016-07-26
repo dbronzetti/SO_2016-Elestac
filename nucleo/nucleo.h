@@ -134,7 +134,7 @@ int buscarCPU(int socket);
 int buscarConsola(int socket);
 int buscarPIDConsola(int socket);
 int buscarSocketConsola(int PID);
-int estaEjecutando(int PID);
+int estaEjecutando(int PID, int* index);
 void actualizarPC(int PID, int ProgramCounter);
 void inicializarMutex();
 void crearArchivoDeConfiguracion(char* configFile);

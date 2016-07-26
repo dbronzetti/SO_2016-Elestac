@@ -537,11 +537,11 @@ int eliminarProceso(int PID){
 	for(i=0;i<cantidadDeBytes;i++){
 		textoRelleno[i]='0';
 	}
-
 	fseek(archivoSwap,procesoAEliminar->paginaInicial*tamanioDePagina,SEEK_SET);
 	fwrite(textoRelleno,cantidadDeBytes,1,archivoSwap);
 	fclose(archivoSwap);
 	free(textoRelleno);
+	log_info(logSwap,"texto llenado de ceros correctamente. \n");
 	return 1;
 }
 

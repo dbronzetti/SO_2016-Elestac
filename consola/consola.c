@@ -84,7 +84,16 @@ int main(int argc, char **argv) {
 			//Envia el tamanio y el fromProcess solamente porque el programa no es necesario para finalizar
 			sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
 			sendMessage(&socketNucleo, &fromProcess, sizeof(fromProcess));
-			printf("Se envia pedido de finalizar al proceso NUCLEO.\n");
+			printf("Se envia solicitud para finalizar al proceso NUCLEO.\n");
+
+			//Recibo del Nucleo el tamanio y el texto a imprimir, y luego finalizo proceso.
+			int tamanio;
+			exitCode = receiveMessage(&socketNucleo, &tamanio, sizeof(int));
+			char* textoImprimir = malloc(tamanio);
+			exitCode = receiveMessage(&socketNucleo, textoImprimir, tamanio);
+			printf( "%s \n", textoImprimir);
+			free(textoImprimir);
+			exit(0);	//EXIT_SUCCESS
 			break;
 		}
 		case 3: {
@@ -226,36 +235,36 @@ int reconocerOperacion() {
 	int tamanio;
 	int operacion = -1;
 	int exitCode = EXIT_FAILURE;
-	exitCode = receiveMessage(&socketNucleo, &operacion, sizeof(int));
-	switch (operacion) {
-	case 1: {	//Recibo del Nucleo el tamanio y el texto a imprimir
-		exitCode = receiveMessage(&socketNucleo, &tamanio, sizeof(int));
-		char* textoImprimir = malloc(tamanio);
-		exitCode = receiveMessage(&socketNucleo, textoImprimir,sizeof(tamanio));
-		log_info(logConsola, "Texto: %s", textoImprimir);
-		free(textoImprimir);
-		break;
-	}
-	case 2: {	//Recibo del Nucleo el valor a mostrar
-		t_valor_variable* valor = malloc(sizeof(t_valor_variable));
-		exitCode = receiveMessage(&socketNucleo, valor,sizeof(t_valor_variable));
-		log_info(logConsola, "Valor Recibido:%i", valor);
-		free(valor);
-		break;
-	}
-	case 3: {//Recibo del Nucleo el tamanio y el texto a imprimir, y luego finalizo proceso.
-		exitCode = receiveMessage(&socketNucleo, &tamanio, sizeof(int));
-		char* textoImprimir = malloc(tamanio);
-		exitCode = receiveMessage(&socketNucleo, textoImprimir,sizeof(tamanio));
-		printf( "Texto: %s", textoImprimir);
-		free(textoImprimir);
-		exit(0);	//EXIT_SUCCESS
-		break;
-	}
-	default: {
-		log_error(logConsola, "No se pudo recibir ninguna operacion valida");
-		break;
-	}
+	int receivedBytes = receiveMessage(&socketNucleo, &operacion, sizeof(int));
+	if (receivedBytes>0){
+		switch (operacion) {
+		case 1: {	//Recibo del Nucleo el tamanio y el texto a imprimir
+			exitCode = receiveMessage(&socketNucleo, &tamanio, sizeof(int));
+			char* textoImprimir = malloc(tamanio);
+			exitCode = receiveMessage(&socketNucleo, textoImprimir,sizeof(tamanio));
+			log_info(logConsola, "Texto: %s", textoImprimir);
+			free(textoImprimir);
+			break;
+		}
+		case 2: {	//Recibo del Nucleo el valor a mostrar
+			t_valor_variable* valor = malloc(sizeof(t_valor_variable));
+			exitCode = receiveMessage(&socketNucleo, valor,sizeof(t_valor_variable));
+			log_info(logConsola, "Valor Recibido:%i", valor);
+			free(valor);
+			break;
+		}
+		default: {
+			log_error(logConsola, "No se pudo recibir ninguna operacion valida");
+			break;
+		}
+		}
+	}else if (receivedBytes == 0 ){
+		//The client is down when bytes received are 0
+		log_error(logConsola, "The client went down while receiving! - Please check the client '%d' is down!", socketNucleo);
+		close(socketNucleo);
+	}else{
+		log_error(logConsola, "Error - No able to received - Error receiving from socket '%d', with error: %d",socketNucleo, errno);
+		close(socketNucleo);
 	}
 	return exitCode;
 }

@@ -735,7 +735,7 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 
 		log_info(logNucleo, "Se recibe el semaforo WAIT: %s, con el tamanio: %d  ",semaforo, tamanio);
 
-		if (estaEjecutando(message->processID)==1){ // 1: Programa ejecutandose (no esta en ninguna cola)
+		if (estaEjecutando(message->processID,0) == 0){ // 0: Programa ejecutandose (no esta en ninguna cola)
 			int* valorSemaforo = pideSemaforo(semaforo);
 			int valorAEnviar;
 			if(*valorSemaforo<=0){
@@ -839,7 +839,7 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 		sendMessage(&socketConsola, &tamanio, sizeof(int));
 
 		// Envia el texto al proceso CONSOLA
-		log_info(logNucleo, "Enviar texto: '%s', a PID #%d", texto, message->processID);
+		log_info(logNucleo, "Enviar al proceso CONSOLA el texto : '%s', a PID #%d", texto, message->processID);
 		sendMessage(&socketConsola, texto, tamanio);
 
 		free(texto);
@@ -974,26 +974,52 @@ void finalizaProceso(int socket, int PID, int estado) {
 	//Aviso a la UMC para finalizar
 	finalizarPrograma(PID);
 
-	int socketConsola = buscarSocketConsola(PID);
-	//Enviar operacion=3 que imprime texto y exit(0);
-	int operacion = 3;
-	sendMessage(&socketConsola, &operacion, sizeof(int));
-	// Envia el tamanio del texto y luego el texto al proceso Consola
-	char texto[] = "Se finaliza el proceso por peticion de la Consola";
-	int textoLen = strlen(texto);
-	sendMessage(&socketConsola, &textoLen, sizeof(textoLen));
-
-	log_info(logNucleo, "Enviar texto: '%s', con tamanio: '%d' a PID #%d", texto, textoLen, PID);
-	sendMessage(&socketConsola, texto, textoLen);
-
 	destruirPCB(datosProceso);
-
-	int pos = buscarConsola(socketConsola);
-	list_remove(listaConsola,pos);
 
 	//Mando a revisar si hay alguno en la lista para ejecutar.
 	planificarProceso();
 
+}
+void procesarFinalizacion(int PID){
+	t_proceso* proceso;
+	int i =-1;
+	switch (estaEjecutando(PID,&i)){
+		case 1:{
+			pthread_mutex_lock(&cBloqueados);
+			proceso = list_remove(colas_IO[i]->elements, 0);
+			pthread_mutex_unlock(&cBloqueados);
+
+			pthread_mutex_lock(&cFinalizar);
+			queue_push(colaFinalizar, (void*) proceso);
+			pthread_mutex_unlock(&cFinalizar);
+
+			finalizarPrograma(PID);
+			break;
+		}
+		case 2:{
+			finalizarPrograma(PID);
+			break;
+		}
+		case 3:{
+			pthread_mutex_lock(&cListos);
+			proceso = list_remove(colaListos->elements, i);
+			pthread_mutex_unlock(&cListos);
+
+			pthread_mutex_lock(&cFinalizar);
+			queue_push(colaFinalizar, (void*) proceso);
+			pthread_mutex_unlock(&cFinalizar);
+
+			finalizarPrograma(PID);
+			break;
+		}
+		case -1: { //no esta en ninguna cola
+			log_warning(logNucleo,"El proceso %d se encuentra ejecutandose",PID);
+			break;
+		}
+		default:{
+			log_error(logNucleo,"No se pudo encontrar el proceso %d",PID);
+		}
+	}
 }
 
 int buscarCPULibre() {
@@ -1089,42 +1115,21 @@ int buscarConsola(int socket) {
 	return -1;
 }
 
-void procesarFinalizacion(int PID){
-	int i;
-	t_proceso* proceso;
-	int cantElemListos = queue_size(colaListos);
-
-	for (i = 0; i < cantElemListos; i++) {
-
-		pthread_mutex_lock(&cListos);
-		proceso = list_get(colaListos->elements, i);
-		pthread_mutex_unlock(&cListos);
-		if (proceso->PID == PID){
-			pthread_mutex_lock(&cListos);
-			t_proceso* proceso = list_remove(colaListos->elements, i);
-			pthread_mutex_unlock(&cListos);
-
-			pthread_mutex_lock(&cFinalizar);
-			queue_push(colaFinalizar, (void*) proceso);
-			pthread_mutex_unlock(&cFinalizar);
-			finalizarPrograma(PID);
-			return;
-		}
-	}
-	log_error(logNucleo,"No se pudo finalizar el proceso %d",PID);
-}
-
-int estaEjecutando(int PID){
+int estaEjecutando(int PID, int* index){
 	int i;
 	t_proceso* proceso;
 	int cantElemFin = queue_size(colaFinalizar);
 	int cantElemListos = queue_size(colaListos);
 	for (i = 0; i < strlen((char*)configNucleo.io_ids) / sizeof(char*); i++) {
+		if(queue_is_empty(colas_IO[i])){
+			break;
+		}
 		pthread_mutex_lock(&cBloqueados);
 		proceso = list_get(colas_IO[i]->elements,0);
 		pthread_mutex_unlock(&cBloqueados);
 		if(proceso->PID == PID){
-			return -1;
+			*index=i;
+			return 1;
 		}
 	}
 	for (i = 0; i < cantElemFin; i++) {
@@ -1133,7 +1138,8 @@ int estaEjecutando(int PID){
 		proceso = list_get(colaFinalizar->elements, i);
 		pthread_mutex_unlock(&cFinalizar);
 		if (proceso->PID == PID){
-			return -1;
+			*index=i;
+			return 2;
 		}
 	}
 	for (i = 0; i < cantElemListos; i++) {
@@ -1142,10 +1148,12 @@ int estaEjecutando(int PID){
 		proceso = list_get(colaListos->elements, i);
 		pthread_mutex_unlock(&cListos);
 		if (proceso->PID == PID){
-			return -1;
+			*index=i;
+			return 3;
 		}
 	}
-	return 1;
+	*index=-1;
+	return 0;
 }
 
 void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
@@ -1556,6 +1564,20 @@ void finalizarPrograma(int PID){
 
 	free(message);
 	log_info(logNucleo,"Se envia correctamente la informacion al proceso UMC para finalizar programa. ");
+
+	int socketConsola = buscarSocketConsola(PID);
+
+	// Envia el tamanio del texto y luego el texto al proceso Consola
+	char texto[] = "Pedido de finalizacion del programa ejecutado correctamente";
+	int textoLen = strlen(texto) + 1 ;
+	sendMessage(&socketConsola, &textoLen, sizeof(textoLen));
+
+	log_info(logNucleo, "Enviar texto: '%s', con tamanio: '%d' a PID #%d", texto, textoLen, PID);
+	sendMessage(&socketConsola, texto, textoLen);
+
+	int pos = buscarConsola(socketConsola);
+	list_remove(listaConsola,pos);
+
 }
 
 void deserializarES(t_es* datos, char* bufferReceived) {
