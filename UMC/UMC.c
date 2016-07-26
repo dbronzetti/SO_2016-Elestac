@@ -711,6 +711,9 @@ void resetTLBAllEntries(){
 		defaultTLBElement->PID = -1; //DEFAULT PID value in TLB
 		defaultTLBElement->virtualAddress->pag = -1;
 		defaultTLBElement->frameNumber = i;
+		defaultTLBElement->virtualAddress->pag = -1;//DEFAULT non-used page
+		defaultTLBElement->virtualAddress->offset = 0;//DEFAULT offset
+		defaultTLBElement->virtualAddress->size = configuration.frames_size;// DEFAULT size equal to frame size
 		list_add(TLBList, (void*) defaultTLBElement);
 	}
 }
@@ -1089,6 +1092,11 @@ bool find_PIDEntry_PageTable(t_pageTablesxProc* listElement){
 	return (listElement->PID == activePID);
 }
 
+//** Find function by PID**//
+bool find_PIDEntry_TLB(t_memoryAdmin *listElement){
+	return(listElement->PID == activePID);
+}
+
 //** Find function by Page**//
 bool isThereEmptyEntry(t_memoryAdmin* listElement){
 	return (listElement->virtualAddress->pag == -1);
@@ -1121,9 +1129,36 @@ bool isPageNOTPresentModified(t_memoryAdmin* listElement){
 t_memoryAdmin *getLRUCandidate(){
 	t_memoryAdmin *elementCandidate = NULL;
 
+	//** Find function by PID and page**//
+	bool is_PIDPagePresent(t_memoryAdmin* listElement){
+		return ((listElement->PID == elementCandidate->PID) && (listElement->virtualAddress->pag == elementCandidate->virtualAddress->pag));
+	}
+
 	pthread_mutex_lock(&memoryAccessMutex);
-	//Get memory element from last index position
-	elementCandidate = (t_memoryAdmin*) list_remove(TLBList, list_size(TLBList) - 1);
+	//Filter by empty entries
+	t_list *TLBfilteredByPID = list_filter(TLBList, (void*) isThereEmptyEntry);
+
+	//If not empty elements were found
+	if (TLBfilteredByPID->elements_count == 0){
+		//Filter TLB by PID
+		TLBfilteredByPID = list_filter(TLBList,(void*) find_PIDEntry_TLB);
+	}
+
+	//If any element was found in previous filters
+	if (TLBfilteredByPID->elements_count > 0){
+		//Get memory element from last index position from active PID
+		elementCandidate = (t_memoryAdmin*) list_remove(TLBfilteredByPID, TLBfilteredByPID->elements_count - 1);
+
+		//Remove element found from TLB
+		elementCandidate = (t_memoryAdmin*) list_remove_by_condition(TLBList, (void*) is_PIDPagePresent);
+
+	}else{
+		//Get memory element from last index position in TLB (NO MATTER WHICH PID IS) if active PID has no entries in TLB
+		elementCandidate = (t_memoryAdmin*) list_remove(TLBList, list_size(TLBList) - 1);
+	}
+
+	//Destroy temporary list created
+	list_destroy(TLBfilteredByPID);
 	pthread_mutex_unlock(&memoryAccessMutex);
 
 	return elementCandidate;
@@ -1137,7 +1172,7 @@ void updateTLBPositionsbyLRU(t_memoryAdmin *elementCandidate){
 }
 
 void resetTLBbyActivePID(t_memoryAdmin *listElement){
-
+	//TODO analizar bien cuando es necesario pisar los elementos ante un cambio de proceso
 	if(listElement->PID == activePID){
 		//adding frame again to free frames list
 		int *frameNro = malloc(sizeof(int));
@@ -1151,6 +1186,9 @@ void resetTLBbyActivePID(t_memoryAdmin *listElement){
 		listElement->frameNumber = -1;
 		free(listElement->virtualAddress);
 		listElement->virtualAddress = malloc(sizeof(listElement->virtualAddress));
+		listElement->virtualAddress->pag = -1;//DEFAULT non-used page
+		listElement->virtualAddress->offset = 0;//DEFAULT offset
+		listElement->virtualAddress->size = configuration.frames_size;// DEFAULT size equal to frame size
 	}
 }
 
@@ -1209,7 +1247,7 @@ t_memoryAdmin *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memor
 			pthread_mutex_unlock(&memoryAccessMutex);
 
 			//By default in program initialization ptrPageTable is going to be NULL
-			pageTableList = pageTablexProc->ptrPageTable;//TODO check first element
+			pageTableList = pageTablexProc->ptrPageTable;
 
 			//Locking memory access for reading
 			pthread_mutex_lock(&memoryAccessMutex);
@@ -1282,7 +1320,7 @@ t_memoryAdmin *updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memory
 
 	}else{//PAGE Fault in Main Memory
 
-		log_info(UMCLog, "PID '%d': PAGE Fault in Main Memory - Page #%d", pageTablexProc->PID, virtualAddress->pag);
+		log_info(UMCLog, "PID '%d': PAGE FAULT in Main Memory - Page #%d", pageTablexProc->PID, virtualAddress->pag);
 
 		if (list_size(freeFramesList) > 0){
 
@@ -1429,7 +1467,7 @@ void executeMainMemoryAlgorithm(t_pageTablesxProc *pageTablexProc, t_memoryAdmin
 	list_remove_and_destroy_by_condition(freeFramesList, (void*) find_freeFrameToRemove, (void*) free);
 
 	//Add new element to the end of the list
-	list_add_in_index(pageTablexProc->ptrPageTable, list_size(pageTablexProc->ptrPageTable) - 1, newElement);
+	list_add_in_index(pageTablexProc->ptrPageTable, pageTablexProc->ptrPageTable->elements_count - 1, newElement);
 
 	int memoryBlockOffset = (newElement->frameNumber * configuration.frames_size) + newElement->virtualAddress->offset;
 
