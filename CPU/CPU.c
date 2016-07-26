@@ -47,7 +47,7 @@ int main(int argc, char *argv[]){
 	while ((exitCode == EXIT_SUCCESS) && !(SignalActivated)){//No wait for more messages if signal was activated during processing
 
 		if(exitCode == EXIT_SUCCESS){
-			log_info(logCPU,"CPU connected to NUCLEO successfully");
+			//log_info(logCPU,"CPU connected to NUCLEO successfully");
 			messageRcv = malloc(sizeof(int));//for receiving message size
 			waitRequestFromNucleo(&socketNucleo, &messageRcv);
 		}
@@ -63,7 +63,6 @@ int main(int argc, char *argv[]){
 			deserializeCPU_Nucleo(messageWithBasicPCB, messageRcv);
 
 			log_info(logCPU,"Construyendo PCB para PID #%d",messageWithBasicPCB->processID);
-			//TODO verificar que se este recibiendo lo mismo que se envia desde el proceso NUCLEO
 			PCBRecibido->PID = messageWithBasicPCB->processID;
 			PCBRecibido->ProgramCounter = messageWithBasicPCB->programCounter;
 			PCBRecibido->StackPointer = messageWithBasicPCB->stackPointer;
@@ -213,10 +212,10 @@ int main(int argc, char *argv[]){
 			destruirPCB(PCBRecibido);
 
 			//Destruir listaIndiceEtiquetas
-			destroyIndiceEtiquetas();
+			destroyIndiceEtiquetas();//TODO si llega hasta aca falla
 		}
 
-	}//llave agregada, faltaba para cerrar el main
+	}//loop end
 	free(PCBRecibido);
 	return EXIT_SUCCESS;
 }
@@ -277,7 +276,7 @@ int ejecutarPrograma(){
 
 		//First answer from UMC is the exit code from the operation
 		int receivedBytes = receiveMessage(&socketUMC,&returnCode, sizeof(exitCode));
-
+		
 		if(returnCode == EXIT_FAILURE){
 
 			//Envia aviso que finaliza incorrectamente el proceso a NUCLEO
@@ -469,7 +468,7 @@ void waitRequestFromNucleo(int *socketClient, char **messageRcv){
 		receivedBytes = receiveMessage(socketClient, *messageRcv, messageSize);
 
 		//TODO ver que hace con messageRcv despues de recibirlo!!
-		log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), socketClient, messageSize);
+		log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), *socketClient, messageSize);
 
 	}else{
 		*messageRcv = NULL;
@@ -902,6 +901,8 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 	serializeCPU_Nucleo(respuesta, bufferRespuesta, payloadSize);
 
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+	free(respuesta);
+	free(bufferRespuesta);
 
 	//1) Envia el tamanio de la variable al proceso NUCLEO
 	string_append(&variable,"\0");
@@ -910,15 +911,17 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 
 	//2) Envia variable al proceso NUCLEO
 	int valorDeErrorVar = sendMessage(&socketNucleo, variable, variableLen);
-	t_valor_variable* valorVariable = malloc(sizeof(t_valor_variable));
+	t_valor_variable valorVariable = 0;
 
 	if ((valorDeErrorLen != -1) && (valorDeErrorVar != -1)) {
 		log_info(logCPU, "Los datos se enviaron correctamente al proceso NUCLEO");
-		receiveMessage(&socketNucleo, valorVariable, sizeof(t_valor_variable));
+		receiveMessage(&socketNucleo, &valorVariable, sizeof(t_valor_variable));
+		log_info(logCPU, "se recibio correctamente el valor '%d' de la variable compartida %s",valorVariable,variable);
 	} else {
 		log_info(logCPU, "Los datos no pudieron ser enviados al proceso NUCLEO");
 	}
-	return *valorVariable;
+
+	return valorVariable;
 }
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
@@ -935,6 +938,8 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_va
 	serializeCPU_Nucleo(respuesta, bufferRespuesta, payloadSize);
 
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+	free(respuesta);
+	free(bufferRespuesta);
 
 	//1) Envia mensaje con el valor
 	sendMessage(&socketNucleo, &valor, sizeof(t_valor_variable));
@@ -1032,6 +1037,8 @@ void imprimir(t_valor_variable valor_mostrar){
 	//Envio mensaje con valor a imprimir - send to Nucleo valueChar to be printed on Consola
 	sendMessage(&socketNucleo, &valor_mostrar, sizeof(t_valor_variable));
 
+	free(respuesta);
+	free(bufferRespuesta);
 }
 
 void imprimirTexto(char *texto){
@@ -1057,6 +1064,8 @@ void imprimirTexto(char *texto){
 	// Envia el texto al proceso NUCLEO
 	sendMessage(&socketNucleo, texto, textoLen);
 
+	free(respuesta);
+	free(bufferRespuesta);
 }
 
 void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo) {
