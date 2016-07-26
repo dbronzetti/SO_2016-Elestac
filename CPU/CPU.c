@@ -724,7 +724,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 	PCBRecibido->StackPointer = PCBRecibido->indiceDeStack->elements_count -1;
 
 	return posicionDeLaVariable;
-}
+}//TODO:rompe despues de esta llave apenas termina definir variable
 
 void cargarValoresNuevaPosicion(t_memoryLocation* ultimaPosicionOcupada, t_memoryLocation* variableAAgregar){
 
