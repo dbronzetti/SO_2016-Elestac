@@ -307,7 +307,8 @@ int ejecutarPrograma(){
 				string_append(&codigoRecibido, bufferCode);
 			}else{
 				//if the remaining size is lower than frame size then we have to append the remaining size from the buffer received from UMC
-				memcpy(codigoRecibido, bufferCode, remainingInstruccion );
+				codigoRecibido = malloc(remainingInstruccion);
+				memcpy(codigoRecibido, bufferCode + instruccionActual->inicioDeInstruccion, remainingInstruccion );
 			}
 
 			offsetInstruccionesSize += frameSize; //moving offset for next request
@@ -664,7 +665,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 		cargarValoresNuevaPosicion(ultimaPosicionOcupada, variableAAgregar->direccionValorDeVariable);
 
 		t_registroStack* ultimoRegistro;
-		ultimoRegistro = list_get(PCBRecibido->indiceDeStack, PCBRecibido->indiceDeStack->elements_count);
+		ultimoRegistro = list_get(PCBRecibido->indiceDeStack, PCBRecibido->indiceDeStack->elements_count - 1);
 
 		if(functionCall){
 
@@ -726,12 +727,11 @@ t_puntero definirVariable(t_nombre_variable identificador){
 void cargarValoresNuevaPosicion(t_memoryLocation* ultimaPosicionOcupada, t_memoryLocation* variableAAgregar){
 
 	if (ultimaPosicionOcupada == NULL){
-		ultimaPosicionOcupada = malloc(sizeof(ultimaPosicionOcupada));
 		//1) TENER EN CUENTA la pagina donde arranca el stack
 		int firstStackPage = PCBRecibido->cantidadDePaginas + 1;
-		ultimaPosicionOcupada->pag = firstStackPage; //DEFAULT value for first row
-		ultimaPosicionOcupada->offset = 0; //DEFAULT value for first row
-		ultimaPosicionOcupada->size = sizeof(int); //DEFAULT value for first row
+		variableAAgregar->pag = firstStackPage; //DEFAULT value for first row
+		variableAAgregar->offset = 0; //DEFAULT value for first row
+		variableAAgregar->size = sizeof(int); //DEFAULT value for first row
 
 	}else{
 

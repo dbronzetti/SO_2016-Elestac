@@ -399,7 +399,7 @@ bloqueSwap* existeElBloqueNecesitado(bloqueSwap* otroBloque){
 	bool condicionDeCompactacion(bloqueSwap* unBloque){// esta funcion debe retornar bool
 		return( unBloque->cantDePaginas >= otroBloque->cantDePaginas);
 	}
-	return (bloqueSwap*)list_find(listaSwap,(void*)condicionDeCompactacion);//TODO Sigue tirando segmentation fault aca
+	return (bloqueSwap*)list_find(listaSwap,(void*)condicionDeCompactacion);
 }
 
 void crearArchivoDeConfiguracion(char* configFile){
