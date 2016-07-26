@@ -1535,7 +1535,7 @@ void deserializarES(t_es* datos, char* bufferReceived) {
 	int offset = 0;
 
 	//1) Tiempo
-	memcpy(&datos->tiempo, bufferReceived + offset, sizeof(datos->tiempo));
+	memcpy(&datos->tiempo, bufferReceived , sizeof(datos->tiempo));
 	offset += sizeof(datos->tiempo);
 
 	//2) ProgramCounter

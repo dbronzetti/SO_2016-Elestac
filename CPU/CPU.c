@@ -329,6 +329,9 @@ int ejecutarPrograma(){
 	}
 
 	if(returnCode == EXIT_SUCCESS){
+		t_nombre_dispositivo dispositivo = string_new();
+		entradaSalida(dispositivo, 10);
+
 		analizadorLinea(codigoRecibido, &funciones, &funciones_kernel);
 
 		if(!waitSemActivated){//check if the process was blocked by a wait, in that case the program counter doesn't have to be increased
@@ -532,27 +535,27 @@ void sighandler(int signum){
 }
 
 
-void serializarES(t_es *value, t_nombre_dispositivo buffer, int valueSize){
+void serializarES(t_es *value, char* buffer, int valueSize){
 	int offset = 0;
 
-	//valueSize
+	//0) valueSize
 	memcpy(buffer, &valueSize, sizeof(valueSize));
 	offset += sizeof(valueSize);
 
-	//tiempo
-	memcpy(buffer + offset, (void*) value->tiempo, sizeof(int));
-	offset += sizeof(int);
+	//1) tiempo
+	memcpy(buffer + offset, &value->tiempo, sizeof(value->tiempo));
+	offset += sizeof(value->tiempo);
 
-	//ProgramCounter
-	memcpy(buffer + offset, (void*) value->ProgramCounter, sizeof(int));
-	offset += sizeof(int);
+	//2) ProgramCounter
+	memcpy(buffer + offset, &value->ProgramCounter, sizeof(value->ProgramCounter));
+	offset += sizeof(value->ProgramCounter);
 
-	//dispositivo length
+	//3) dispositivo length
 	int dispositivoLen = strlen(value->dispositivo) + 1;
 	memcpy(buffer + offset, &dispositivoLen, sizeof(dispositivoLen));
 	offset += sizeof(dispositivoLen);
 
-	//Dispositivo
+	//4) dispositivo
 	memcpy(buffer + offset, value->dispositivo, dispositivoLen);
 
 }
@@ -888,6 +891,7 @@ void asignar(t_puntero direccion_variable, t_valor_variable valor){
 }
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
+	log_info(logCPU," 'obtenerValorCompartida' ");
 
 	//Envia info al proceso a NUCLEO
 	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
@@ -905,11 +909,11 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 	free(bufferRespuesta);
 
 	//1) Envia el tamanio de la variable al proceso NUCLEO
-	string_append(&variable,"\0");
 	int variableLen = strlen(variable) + 1;
 	int valorDeErrorLen = sendMessage(&socketNucleo, &variableLen, sizeof(variableLen));
 
 	//2) Envia variable al proceso NUCLEO
+	string_append(&variable,"\0");
 	int valorDeErrorVar = sendMessage(&socketNucleo, variable, variableLen);
 	t_valor_variable valorVariable = 0;
 
@@ -925,6 +929,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 }
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
+	log_info(logCPU," 'asignarValorCompartida' ");
 
 	//Envia info al proceso a NUCLEO
 	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
@@ -945,11 +950,11 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_va
 	sendMessage(&socketNucleo, &valor, sizeof(t_valor_variable));
 
 	//2) Envia el tamanio de la variable al proceso NUCLEO
-	string_append(&variable,"\0");
 	int variableLen = strlen(variable) + 1;
 	sendMessage(&socketNucleo, &variableLen, sizeof(variableLen));
 
 	//3) Envia variable al proceso NUCLEO
+	string_append(&variable,"\0");
 	sendMessage(&socketNucleo, variable, variableLen);
 
 	return valor;
@@ -1020,6 +1025,7 @@ void retornar(t_valor_variable retorno){
 }
 
 void imprimir(t_valor_variable valor_mostrar){
+	log_info(logCPU," 'imprimir' ");
 
 	//Envia info al proceso a NUCLEO
 	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
@@ -1042,6 +1048,7 @@ void imprimir(t_valor_variable valor_mostrar){
 }
 
 void imprimirTexto(char *texto){
+	log_info(logCPU," 'imprimirTexto' ");
 
 	//Envia info al proceso a NUCLEO
 	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
@@ -1057,11 +1064,11 @@ void imprimirTexto(char *texto){
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
 	// Envia el tamanio del texto al proceso NUCLEO
-	string_append(&texto,"\0");
 	int textoLen = strlen(texto) + 1;
 	sendMessage(&socketNucleo, &textoLen, sizeof(textoLen));
 
 	// Envia el texto al proceso NUCLEO
+	string_append(&texto,"\0");
 	sendMessage(&socketNucleo, texto, textoLen);
 
 	free(respuesta);
@@ -1069,45 +1076,55 @@ void imprimirTexto(char *texto){
 }
 
 void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo) {
-	printf("ENTRADA SALIDA...\n");
+	log_info(logCPU," 'entradaSalida' ");
 
 	//Prepara estructuras para mandarle al NUCLEO
 	t_MessageCPU_Nucleo* entradaSalida = malloc(sizeof(t_MessageCPU_Nucleo));
 	entradaSalida->operacion = 1;
 	entradaSalida->processID = PCBRecibido->PID;
-	//*banderaFinQuantum = 1;//TODO esto se puede hacer afuera
+	//*banderaFinQuantum = 1;//esto se puede hacer afuera
 
 	int payloadSize = sizeof(entradaSalida->operacion) + sizeof(entradaSalida->processID);
 	int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
-	char* bufferRespuesta = malloc(bufferSize);
 	//Serializar y enviar al NUCLEO
+	char* bufferRespuesta = malloc(bufferSize);
 	serializeCPU_Nucleo(entradaSalida, bufferRespuesta, payloadSize);
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+
+	free(bufferRespuesta);
+	free(entradaSalida);
 
 	t_es* datosParaPlanifdeES = malloc(sizeof(t_es));
 	datosParaPlanifdeES->ProgramCounter = ultimoPosicionPC;
 	datosParaPlanifdeES->tiempo = tiempo;
+	string_append(&dispositivo, "HDD1");
+	string_append(&dispositivo, "\0");
+	datosParaPlanifdeES->dispositivo = dispositivo;
+	int dispositivoLen = strlen(datosParaPlanifdeES->dispositivo) + 1;
 
 	int payloadSizeES = sizeof(datosParaPlanifdeES->tiempo) + sizeof(datosParaPlanifdeES->ProgramCounter)
-			+ strlen(datosParaPlanifdeES->dispositivo)+1;
+			+ sizeof(dispositivoLen) + dispositivoLen;
 	int bufferSizeES = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
-	char* bufferDatosES = malloc(bufferSizeES);
 	//Entrada Salida: Serializar y enviar al NUCLEO
+	char* bufferDatosES = malloc(bufferSizeES);
 	serializarES(datosParaPlanifdeES, bufferDatosES,payloadSizeES);
 	sendMessage(&socketNucleo, bufferDatosES, bufferSizeES);
 
-	log_info(logCPU, "Proceso: '%d' en entrada-salida de tiempo: %d", PCBRecibido->PID,tiempo);
+	log_info(logCPU, "Proceso: '%d' en entradaSalida de %d unidades de tiempo ", PCBRecibido->PID,tiempo);
 
-	free(bufferRespuesta);
-	free(entradaSalida);
-	free(bufferDatosES);
-	free(datosParaPlanifdeES);
+	free(bufferDatosES);//TODO error:
+	//free(): invalid next size (fast): 0x08051610 ***
+
+	free(datosParaPlanifdeES);//TODO error:
+	//free(): invalid pointer: 0x08051628 ***
+
 
 }
 
 void waitPrimitive(t_nombre_semaforo identificador_semaforo){
+	log_info(logCPU," 'waitPrimitive' ");
 
 	//Envia info al proceso a NUCLEO
 	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
@@ -1126,9 +1143,6 @@ void waitPrimitive(t_nombre_semaforo identificador_semaforo){
 
 	//send to Nucleo to execute WAIT function for "identificador_semaforo"
 	int semaforoLen = strlen(identificador_semaforo) + 1;
-	int respuestaRecibida;
-	char* respuestaNucleo = malloc(sizeof(respuestaRecibida));
-
 
 	// envio al Nucleo el tamanio del semaforo
 	sendMessage(&socketNucleo, &semaforoLen , sizeof(semaforoLen));
@@ -1138,18 +1152,17 @@ void waitPrimitive(t_nombre_semaforo identificador_semaforo){
 	sendMessage(&socketNucleo, identificador_semaforo, semaforoLen);
 
 	// recibir respuesta del Nucleo
-	receiveMessage(&socketNucleo,respuestaNucleo,sizeof(respuestaRecibida));
-	memcpy(&respuestaRecibida,respuestaNucleo,sizeof(respuestaRecibida));
+	int respuestaNucleo = -1;
+	receiveMessage(&socketNucleo,&respuestaNucleo,sizeof(int));
 
-	free(respuestaNucleo);
-
-	if(respuestaRecibida==1){
+	if(respuestaNucleo==1){
 		waitSemActivated = true;
 	}
 
 }
 
 void signalPrimitive(t_nombre_semaforo identificador_semaforo){
+	log_info(logCPU," 'signalPrimitive' ");
 
 	//Envia info al proceso a NUCLEO
 	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
