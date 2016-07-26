@@ -46,11 +46,7 @@ int main(int argc, char *argv[]){
 	string_append(&nombreSwapFull,nombre_swap);
 
 	crearArchivoDeSwap();
-	//TODO sacar lo que esta aca abajo para que no tire error en las pruebas
-	/*FILE* archivoSwap;
-	archivoSwap=fopen(nombre_swap,"r+");
-	fseek(archivoSwap,0,SEEK_SET);
-	fwrite("1",tamanioDePagina,cantidadDePaginas,archivoSwap);*/
+
 	char* paginaAEnviar;
 	bloqueSwap* bloqueInicial=malloc(sizeof(bloqueSwap));
 	bloqueInicial->PID=0;
@@ -124,9 +120,8 @@ void processingMessages(int socketClient){
 				free(codeScript);//adding free memory
 			}else{
 				log_error(logSwap,"No hay espacio disponible para agregar el bloque. \n");
-				//TODO aca se debe enviar un error a la UMC
-				//int error=-1;
-				//sendMessage(&socketClient, &error,sizeof(int));
+				int error=-1;
+				sendMessage(&socketClient, &error,sizeof(int));
 			}
 
 			break;
@@ -156,9 +151,7 @@ void processingMessages(int socketClient){
 				log_info(logSwap,"Se enviaron correctamente los datos. \n");
 			}else{
 				log_error(logSwap,"No se enviaron correctamente los datos. \n");
-				/* TODO esto esta mal, si no pudo hacer el send a quien va a volver a hacer otro send con un mensaje de error????
-				sendMessage(&socketClient,mensajeDeError,string_length(mensajeDeError));
-				*/
+
 			}
 			free(paginaLeida);//Adding free because it was never being freed the memory requested in leerPagina()
 			break;
@@ -179,8 +172,8 @@ void processingMessages(int socketClient){
 	}else{
 		log_error(logSwap,"No se recibio correctamente los datos. \n");
 	}
-	//TODO agregar:
-	//free(pedidoRecibidoYDeserializado);
+
+	free(pedidoRecibidoYDeserializado);
 }
 
 void destructorBloqueSwap(bloqueSwap* self){
@@ -370,8 +363,8 @@ void* mapearArchivoEnMemoria(int offset,int tamanio){
 	lseek(descriptorSwap,0,SEEK_SET);
 	fsync(descriptorSwap);
 	archivoMapeado=mmap(0,tamanio,PROT_WRITE,MAP_SHARED,descriptorSwap,offset);
-	//TODO agregar:
-	//fclose(archivoSwap);
+
+	fclose(archivoSwap);
 	return archivoMapeado;
 
 }
@@ -536,6 +529,19 @@ int eliminarProceso(int PID){
 	bloqueSwap* procesoAEliminar=buscarProcesoAEliminar(PID);
 	procesoAEliminar->PID=0;
 	procesoAEliminar->ocupado=0;
+	FILE* archivoSwap;
+	archivoSwap=fopen(nombre_swap,"r+");
+	int cantidadDeBytes=procesoAEliminar->cantDePaginas*tamanioDePagina;
+	char* textoRelleno=malloc(cantidadDeBytes);
+	int i;
+	for(i=0;i<cantidadDeBytes;i++){
+		textoRelleno[i]='0';
+	}
+
+	fseek(archivoSwap,procesoAEliminar->paginaInicial*tamanioDePagina,SEEK_SET);
+	fwrite(textoRelleno,cantidadDeBytes,1,archivoSwap);
+	fclose(archivoSwap);
+	free(textoRelleno);
 	return 1;
 }
 
@@ -559,9 +565,8 @@ int modificarArchivo(int marcoInicial,int cantDeMarcos,int nuevoMarcoInicial){
 	fwrite(textoRelleno,sizeof(textoRelleno),1,archivoSwap);
 	fseek(archivoSwap,nuevoMarcoInicial,SEEK_SET);
 	fwrite(lectura,tamanioDePagina,cantDeMarcos,archivoSwap);
-	//TODO agregar:
-	//free(textoRelleno);
-	//free(lectura);
-	//fclose(archivoSwap);
+	free(textoRelleno);
+	free(lectura);
+	fclose(archivoSwap);
 	return 0;
 }
