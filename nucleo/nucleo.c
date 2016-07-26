@@ -625,25 +625,27 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 
 	switch (message->operacion) {
 	case 1:{ 	//Entrada Salida
-		t_es infoES;
+		log_info(logNucleo, "procesando EntradaSalida");
+		t_es* infoES = malloc(sizeof(t_es));
 		char *datosEntradaSalida = malloc(sizeof(t_es));
 		//change active PID
 		activePID = message->processID;
 
 		receiveMessage(&socketCPULibre, datosEntradaSalida, sizeof(t_es));
-		deserializarES(&infoES, datosEntradaSalida);
+		deserializarES(infoES, datosEntradaSalida);
 
 		//Libero la CPU que ocupaba el proceso
 		liberarCPU(socketCPULibre);
 
 		//Cambio el PC del Proceso
-		actualizarPC(message->processID, infoES.ProgramCounter);
+		actualizarPC(message->processID, infoES->ProgramCounter);
 
 		//Cambio el estado del proceso a bloqueado
 		int estado = 3;
 		cambiarEstadoProceso(message->processID, estado);
 
-		EntradaSalida(infoES.dispositivo, infoES.tiempo);
+		EntradaSalida(infoES->dispositivo, infoES->tiempo);
+		free(infoES);
 		free(datosEntradaSalida);
 		break;
 	}
