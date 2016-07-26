@@ -179,5 +179,6 @@ void consoleMessageNucleo();
 void iniciarPrograma(int PID, char* codeScript);
 void finalizarPrograma(int PID);
 void finalizarPid(int PID);
+void procesarFinalizacion(int PID);
 
 #endif /* NUCLEO_H_ */

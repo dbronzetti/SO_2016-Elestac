@@ -290,6 +290,7 @@ void processMessageReceivedConsola (void *parameter){
 					}
 					log_info(logNucleo,"Solicitando finalizar el programa:%d para el socket: %d ",PID, serverData->socketClient);
 					finalizarPid(PID);
+					procesarFinalizacion(PID);
 					//OJO con los DEADLOCKS - Si se retorna sin desbloquear puede bloquear el proceso.
 					pthread_mutex_unlock(&activeProcessMutex);
 					break;
@@ -1088,6 +1089,31 @@ int buscarConsola(int socket) {
 	return -1;
 }
 
+void procesarFinalizacion(int PID){
+	int i;
+	t_proceso* proceso;
+	int cantElemListos = queue_size(colaListos);
+
+	for (i = 0; i < cantElemListos; i++) {
+
+		pthread_mutex_lock(&cListos);
+		proceso = list_get(colaListos->elements, i);
+		pthread_mutex_unlock(&cListos);
+		if (proceso->PID == PID){
+			pthread_mutex_lock(&cListos);
+			t_proceso* proceso = list_remove(colaListos->elements, i);
+			pthread_mutex_unlock(&cListos);
+
+			pthread_mutex_lock(&cFinalizar);
+			queue_push(colaFinalizar, (void*) proceso);
+			pthread_mutex_unlock(&cFinalizar);
+			finalizarPrograma(PID);
+			return;
+		}
+	}
+	log_error(logNucleo,"No se pudo finalizar el proceso %d",PID);
+}
+
 int estaEjecutando(int PID){
 	int i;
 	t_proceso* proceso;
@@ -1104,7 +1130,7 @@ int estaEjecutando(int PID){
 	for (i = 0; i < cantElemFin; i++) {
 
 		pthread_mutex_lock(&cFinalizar);
-		proceso = queue_peek(colaFinalizar);
+		proceso = list_get(colaFinalizar->elements, i);
 		pthread_mutex_unlock(&cFinalizar);
 		if (proceso->PID == PID){
 			return -1;
@@ -1113,7 +1139,7 @@ int estaEjecutando(int PID){
 	for (i = 0; i < cantElemListos; i++) {
 
 		pthread_mutex_lock(&cListos);
-		proceso = queue_peek(colaListos);
+		proceso = list_get(colaListos->elements, i);
 		pthread_mutex_unlock(&cListos);
 		if (proceso->PID == PID){
 			return -1;
