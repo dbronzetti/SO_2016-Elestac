@@ -318,11 +318,13 @@ void procesCPUMessages(int messageSize, t_serverData* serverData){
 			content = requestBytesFromPage(message->virtualAddress);
 
 			if(content != NULL){
+				exitcode = EXIT_SUCCESS;
 				//After getting the memory content WITHOUT issues, inform status of the operation
 				sendMessage(&serverData->socketClient, &exitcode, sizeof(exitcode));
 				//has to be sent it to upstream - on the other side the process already know the size to received
 				sendMessage(&serverData->socketClient, content, message->virtualAddress->size);
 			}else{
+				exitcode = EXIT_FAILURE;
 				//The main memory hasn't any free frames - inform status of the operation
 				sendMessage(&serverData->socketClient, &exitcode, sizeof(exitcode));
 			}
@@ -513,7 +515,8 @@ void getConfiguration(char *configFile){
 	configuration.frames_max_proc = config_get_int_value(configurationFile,"MARCO_X_PROC");
 	configuration.algorithm_replace = config_get_string_value(configurationFile,"ALGORITMO");
 	configuration.TLB_entries = config_get_int_value(configurationFile,"ENTRADAS_TLB");
-	configuration.delay = config_get_int_value(configurationFile,"RETARDO");
+	int delay = config_get_int_value(configurationFile,"RETARDO");
+	configuration.delay = delay/1000; //changing value to milliseconds
 
 }
 
@@ -838,18 +841,19 @@ void endProgram(int PID){
 void *requestBytesFromPage(t_memoryLocation *virtualAddress){
 	void *memoryContent;
 	t_memoryAdmin *memoryElement;
-	void *memoryBlockOffset = NULL;
 
-	getElementFrameNro(virtualAddress, READ, memoryElement);
+	memoryElement = getElementFrameNro(virtualAddress, READ);
 
 	if (memoryElement != NULL){ //PAGE HIT and NO errors from getFrame
 		//delay memory access
 		waitForResponse();
 
-		memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + virtualAddress->offset;
+		int memoryBlockOffset = (memoryElement->frameNumber * configuration.frames_size) + virtualAddress->offset;
 
-		pthread_mutex_lock(&memoryAccessMutex);//Checking mutex before reading
-		memcpy(memoryContent, memoryBlockOffset , virtualAddress->size);
+		memoryContent = malloc(virtualAddress->size);
+
+		pthread_mutex_lock(&memoryAccessMutex);//Checking mutex before reading memory for copying request into return variable
+		memcpy(memoryContent, memBlock + memoryBlockOffset , virtualAddress->size);
 		pthread_mutex_unlock(&memoryAccessMutex);
 	}else{
 		//The main memory hasn't any free frames - inform this to upstream process
@@ -862,18 +866,17 @@ void *requestBytesFromPage(t_memoryLocation *virtualAddress){
 int writeBytesToPage(t_memoryLocation *virtualAddress, void *buffer){
 	int exitCode = EXIT_SUCCESS;
 	t_memoryAdmin *memoryElement;
-	void *memoryBlockOffset = NULL;
 
-	getElementFrameNro(virtualAddress, WRITE, memoryElement);
+	memoryElement = getElementFrameNro(virtualAddress, WRITE);
 
 	if (memoryElement != NULL){ //PAGE HIT and NO errors from getFrame
 		//delay memory access
 		waitForResponse();
 
-		memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + virtualAddress->offset;
+		int memoryBlockOffset = (memoryElement->frameNumber * configuration.frames_size) + virtualAddress->offset;
 
 		pthread_mutex_lock(&memoryAccessMutex);//Locking mutex for writing memory
-		memcpy(memoryBlockOffset, buffer , virtualAddress->size);
+		memcpy(memBlock + memoryBlockOffset, buffer , virtualAddress->size); //here is overwriting the memory content - doesnt matter if it was wrote in updateMemoryStructure()
 		pthread_mutex_unlock(&memoryAccessMutex);//unlocking mutex for writing memory
 	}else{
 		//The main memory hasn't any free frames
@@ -945,12 +948,11 @@ void dumpMemoryxProc(t_pageTablesxProc *pageTablexProc){
 void showMemoryRows(t_memoryAdmin *pageTableElement){
 	char *content = string_new();
 
-	void *memoryBlockOffset = NULL;
-	memoryBlockOffset = &memBlock + (pageTableElement->frameNumber * configuration.frames_size) + pageTableElement->virtualAddress->offset;
+	int memoryBlockOffset = (pageTableElement->frameNumber * configuration.frames_size) + pageTableElement->virtualAddress->offset;
 
 	content = realloc(content, pageTableElement->virtualAddress->size);
 
-	memcpy(content, memoryBlockOffset, pageTableElement->virtualAddress->size);
+	memcpy(content, memBlock + memoryBlockOffset, pageTableElement->virtualAddress->size);
 
 	printf("\t Contenido en Pagina:'%d'\n\t\tContenido: '%s'.\n", pageTableElement->virtualAddress->pag, content);
 	fprintf(dumpf,"\t Contenido en Pagina:'%d'\n\t\tContenido: '%s'.\n", pageTableElement->virtualAddress->pag, content);
@@ -982,7 +984,6 @@ void checkPageModification(t_memoryAdmin *memoryElement){
 	if (memoryElement->dirtyBit == PAGE_MODIFIED){
 		int bufferSize = 0;
 		int payloadSize = 0;
-		void *memoryBlockOffset = NULL;
 		char *content = string_new();
 
 		//overwrite page content in swap (swap out)
@@ -1006,9 +1007,9 @@ void checkPageModification(t_memoryAdmin *memoryElement){
 		sendMessage(&socketSwap, buffer, bufferSize);
 
 		//Send memory content to overwrite with the virtualAddress->size - On the other side is going to be waiting it with that size sent previously
-		memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + memoryElement->virtualAddress->offset;
+		int memoryBlockOffset =  (memoryElement->frameNumber * configuration.frames_size) + memoryElement->virtualAddress->offset;
 		content = realloc(content, memoryElement->virtualAddress->size);
-		memcpy(content, memoryBlockOffset, memoryElement->virtualAddress->size);
+		memcpy(content, memBlock + memoryBlockOffset, memoryElement->virtualAddress->size);
 		sendMessage(&socketSwap, content, memoryElement->virtualAddress->size); //OJO asegurarse que el CPU siempre envie pagesize
 
 		log_info(UMCLog, "From PID '%d' - Content in page '#%d' swapped OUT",memoryElement->PID, memoryElement->virtualAddress->pag);
@@ -1024,7 +1025,6 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID){
 	void *memoryContent = NULL;
 	int bufferSize = 0;
 	int payloadSize = 0;
-	char *messageRcv = malloc(virtualAddress->size);//TODO se estaba haciendo malloc(sizeof(virtualAddress->size))
 
 	// request page content to swap
 	t_MessageUMC_Swap *message = malloc(sizeof(t_MessageUMC_Swap));
@@ -1047,14 +1047,15 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID){
 	sendMessage(&socketSwap, buffer, bufferSize);
 
 	//Receive memory content from SWAP with the virtualAddress->size - On the other side is going to be sending it with that size requested previously
+	char *messageRcv = malloc(virtualAddress->size);// corregido!
 	int receivedBytes = receiveMessage(&socketSwap, messageRcv, virtualAddress->size);
 	memoryContent = malloc(virtualAddress->size);
 	memcpy(memoryContent, messageRcv, virtualAddress->size);
 
-	//TODO tira error en el log y en el free
-	//log_info(UMCLog, "From PID '%d' - Content in page '#%d' swapped IN",PID, virtualAddress->pag);
-	//free(message->virtualAddress);
+	//TODO Se puede agregar una validacion despues del receive para que no pinche despues de hacer el memcpy
+	log_info(UMCLog, "From PID '%d' - Content in page '#%d' swapped IN",PID, virtualAddress->pag);
 
+	free(message->virtualAddress);
 	free(message);
 	free(buffer);
 	free(messageRcv);
@@ -1153,8 +1154,9 @@ void resetTLBbyActivePID(t_memoryAdmin *listElement){
 	}
 }
 
-void getElementFrameNro(t_memoryLocation *virtualAddress, enum_memoryOperations operation, t_memoryAdmin *memoryElement){
+t_memoryAdmin *getElementFrameNro(t_memoryLocation *virtualAddress, enum_memoryOperations operation){
 	enum_memoryStructure memoryStructure;
+	t_memoryAdmin *memoryElement = NULL;
 
 	if(TLBActivated){//TLB is enable
 		memoryStructure = TLB;
@@ -1173,9 +1175,13 @@ void getElementFrameNro(t_memoryLocation *virtualAddress, enum_memoryOperations 
 		pageTablexProc = (t_pageTablesxProc*) list_find(pageTablesListxProc,(void*) is_PIDPageTablePresent);
 		pthread_mutex_unlock(&memoryAccessMutex);
 
-		updateMemoryStructure(pageTablexProc, virtualAddress, memoryElement);
+		t_memoryAdmin *newMemoryElement = updateMemoryStructure(pageTablexProc, virtualAddress, memoryElement);
 
+		//Assign the memory value returned by the function into the return value
+		memoryElement = newMemoryElement;
 	}
+
+	return memoryElement;
 }
 
 t_memoryAdmin *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memoryOperations operation, t_memoryLocation *virtualAddress){
@@ -1236,13 +1242,15 @@ t_memoryAdmin *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memor
 	return pageNeeded;
 }
 
-void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *virtualAddress, t_memoryAdmin *memoryElement){
+t_memoryAdmin *updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *virtualAddress, t_memoryAdmin *memoryElement){
 	/*
 	 * 1)busco frame libre(ver algoritmo de ubicacion - puede ser cualquiera es irrelevante para paginacion pura)
 	 * 2)agrego info en TLB (si corresponde)
 	 * 3)agrego info en estructura de Main Memory
 	 * 4)pageTablexProc->assignedFrames++;
 	 */
+
+	t_memoryAdmin *newMemoryElement = NULL;
 
 	if (memoryElement != NULL){//PAGE HIT in Main Memory
 
@@ -1269,6 +1277,9 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 				executeLRUAlgorithm(memoryElement, virtualAddress);
 			}
 		}
+
+		newMemoryElement = memoryElement;
+
 	}else{//PAGE Fault in Main Memory
 
 		log_info(UMCLog, "PID '%d': PAGE Fault in Main Memory - Page #%d", pageTablexProc->PID, virtualAddress->pag);
@@ -1282,20 +1293,20 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 			void *memoryContent = requestPageToSwap(virtualAddress, pageTablexProc->PID);
 
 			//request memory for new element
-			memoryElement = malloc(sizeof(t_memoryAdmin));
+			newMemoryElement = malloc(sizeof(t_memoryAdmin));
 
 			//By DEFAULT always take the first free frame
 			pthread_mutex_lock(&memoryAccessMutex);
-			memoryElement->frameNumber = (int) list_remove(freeFramesList,0);
+			newMemoryElement->frameNumber = *(int*) list_remove(freeFramesList,0);
 			pthread_mutex_unlock(&memoryAccessMutex);
-			memoryElement->PID = pageTablexProc->PID;
-			memoryElement->presentBit = PAGE_PRESENT;
-			memoryElement->dirtyBit = PAGE_NOTMODIFIED;
-			memoryElement->virtualAddress = virtualAddress;
+			newMemoryElement->PID = pageTablexProc->PID;
+			newMemoryElement->presentBit = PAGE_PRESENT;
+			newMemoryElement->dirtyBit = PAGE_NOTMODIFIED;
+			newMemoryElement->virtualAddress = virtualAddress;
 
 			//Adding new Page table entry by process
 			pthread_mutex_lock(&memoryAccessMutex);
-			list_add(pageTablexProc->ptrPageTable,(void *)memoryElement);
+			list_add(pageTablexProc->ptrPageTable,(void *)newMemoryElement);
 			pthread_mutex_unlock(&memoryAccessMutex);
 
 			//check if process has not reached the max of frames by process
@@ -1304,11 +1315,10 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 				//The active process has free frames available
 				log_info(UMCLog, "The process '%d' still has free frames to assigned", activePID);
 
-				void *memoryBlockOffset = NULL;
-				memoryBlockOffset = &memBlock + (memoryElement->frameNumber * configuration.frames_size) + virtualAddress->offset;
+				int memoryBlockOffset = (newMemoryElement->frameNumber * configuration.frames_size) + virtualAddress->offset;
 
 				pthread_mutex_lock(&memoryAccessMutex);//Locking mutex for writing memory
-				//memcpy(memoryBlockOffset, memoryContent , virtualAddress->size);//TODO tira error aca, descomentar el memcpy
+				memcpy(memBlock + memoryBlockOffset, memoryContent , virtualAddress->size);
 				pthread_mutex_unlock(&memoryAccessMutex);//unlocking mutex for writing memory
 
 			}else{
@@ -1319,10 +1329,10 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 
 				if(TLBActivated){//TLB is enable
 					//Execute LRU algorithm
-					executeLRUAlgorithm(memoryElement, virtualAddress);
+					executeLRUAlgorithm(newMemoryElement, virtualAddress);
 				}else{
 					//execute main memory algorithm
-					executeMainMemoryAlgorithm(pageTablexProc, memoryElement, memoryContent);
+					executeMainMemoryAlgorithm(pageTablexProc, newMemoryElement, memoryContent);
 				}
 
 			}
@@ -1330,16 +1340,16 @@ void updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *
 			//The main memory still hasn't any free frames
 			log_warning(UMCLog, "The main memory is FULL!");
 			//inform this to upstream process
-			memoryElement = NULL;
+			newMemoryElement = NULL;
 			//exit function immediately
-			return;
+			return newMemoryElement;
 		}
 
 	}
 
 	//increasing frames assigned to active process
 	pageTablexProc->assignedFrames++;
-
+	return newMemoryElement;
 }
 
 void executeLRUAlgorithm(t_memoryAdmin *newElement, t_memoryLocation *virtualAddress){
@@ -1421,11 +1431,10 @@ void executeMainMemoryAlgorithm(t_pageTablesxProc *pageTablexProc, t_memoryAdmin
 	//Add new element to the end of the list
 	list_add_in_index(pageTablexProc->ptrPageTable, list_size(pageTablexProc->ptrPageTable) - 1, newElement);
 
-	void *memoryBlockOffset = NULL;
-	memoryBlockOffset = &memBlock + (newElement->frameNumber * configuration.frames_size) + newElement->virtualAddress->offset;
+	int memoryBlockOffset = (newElement->frameNumber * configuration.frames_size) + newElement->virtualAddress->offset;
 
 	//writing memory
-	memcpy(memoryBlockOffset, memoryContent , newElement->virtualAddress->size);
+	memcpy(memBlock + memoryBlockOffset, memoryContent , newElement->virtualAddress->size);
 
 	pthread_mutex_unlock(&memoryAccessMutex);
 }
