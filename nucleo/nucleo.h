@@ -157,10 +157,10 @@ void deserializarES(t_es* datos, char* bufferRecived);
 static int makeTimer (timer_t *timerID, int expireMS);
 void atenderIO(int sig, siginfo_t *si, void *uc);
 
-int *pideSemaforo(t_nombre_semaforo semaforo);
+t_valor_variable pideSemaforo(t_nombre_semaforo semaforo);
 void grabarSemaforo(t_nombre_semaforo semaforo,int valor);
 void liberaSemaforo(t_nombre_semaforo semaforo);//SIGNAL
-void bloqueoSemaforo(int processID, char* semaforo);
+void bloqueoSemaforo(int processID, t_nombre_semaforo semaforo, t_list* listaIndiceDeStack);//WAIT
 
 //Conexiones y Funciones para los mensajes
 
@@ -169,8 +169,9 @@ void startServerCPU();
 void newClients(void *parameter);
 void handShake(void *parameter);
 void processMessageReceivedConsola(void *parameter);
-void processMessageReceivedCPU(void *parameter);
-void processCPUMessages(int messageSize,int socketLibre);
+int processMessageReceivedCPU(void *parameter);
+//void processMessageReceived (void *parameter);
+int processCPUMessages(int messageSize,int socketLibre);
 
 int connectTo(enum_processes processToConnect, int *socketClient);
 void startNucleoConsole();

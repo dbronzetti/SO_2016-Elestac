@@ -1056,7 +1056,7 @@ void imprimirTexto(char *texto){
 	respuesta->processID = PCBRecibido->PID;
 
 	int payloadSize = sizeof(respuesta->operacion) + sizeof(respuesta->processID);
-	int bufferSize = sizeof(bufferSize) + payloadSize ;
+	int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
 	char* bufferRespuesta = malloc(bufferSize);
 	serializeCPU_Nucleo(respuesta, bufferRespuesta, payloadSize);
@@ -1130,14 +1130,14 @@ void waitPrimitive(t_nombre_semaforo identificador_semaforo){
 	respuesta->processID = PCBRecibido->PID;
 
 	int payloadSize = sizeof(respuesta->operacion) + sizeof(respuesta->processID);
-	int bufferSize = sizeof(bufferSize) + payloadSize ;
+	int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
 	char* bufferRespuesta = malloc(bufferSize);
 	serializeCPU_Nucleo(respuesta, bufferRespuesta, payloadSize);
 
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
-	//free(bufferRespuesta);
+	free(bufferRespuesta);
 
 	//send to Nucleo to execute WAIT function for "identificador_semaforo"
 	int semaforoLen = strlen(identificador_semaforo) + 1;
@@ -1168,7 +1168,7 @@ void signalPrimitive(t_nombre_semaforo identificador_semaforo){
 	respuesta->processID = PCBRecibido->PID;
 
 	int payloadSize = sizeof(respuesta->operacion) + sizeof(respuesta->processID);
-	int bufferSize = sizeof(bufferSize) + payloadSize ;
+	int bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
 
 	char* bufferRespuesta = malloc(bufferSize);
 	serializeCPU_Nucleo(respuesta, bufferRespuesta, payloadSize);

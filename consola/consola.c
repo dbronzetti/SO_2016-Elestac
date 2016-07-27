@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
 			printf("Comando invalido.\n");
 			break;
 		}
-		//exitCode = reconocerOperacion();//TODO reacomodar para poder ingresar un pedido de finalizar
+		exitCode = reconocerOperacion();//TODO reacomodar para poder ingresar un pedido de finalizar
 	}
 	return exitCode;
 }
@@ -232,29 +232,28 @@ void crearArchivoDeConfiguracion(char *configFile){
 }
 
 int reconocerOperacion() {
-	int tamanio;
 	int operacion = -1;
 	int exitCode = EXIT_FAILURE;
 	int receivedBytes = receiveMessage(&socketNucleo, &operacion, sizeof(int));
 	if (receivedBytes>0){
 		switch (operacion) {
 		case 1: {	//Recibo del Nucleo el tamanio y el texto a imprimir
+			int tamanio;
 			exitCode = receiveMessage(&socketNucleo, &tamanio, sizeof(int));
 			char* textoImprimir = malloc(tamanio);
-			exitCode = receiveMessage(&socketNucleo, textoImprimir,sizeof(tamanio));
+			exitCode = receiveMessage(&socketNucleo, textoImprimir, tamanio);
 			log_info(logConsola, "Texto: %s", textoImprimir);
 			free(textoImprimir);
 			break;
 		}
 		case 2: {	//Recibo del Nucleo el valor a mostrar
-			t_valor_variable* valor = malloc(sizeof(t_valor_variable));
-			exitCode = receiveMessage(&socketNucleo, valor,sizeof(t_valor_variable));
+			t_valor_variable valor ;
+			exitCode = receiveMessage(&socketNucleo, &valor,sizeof(t_valor_variable));
 			log_info(logConsola, "Valor Recibido:%i", valor);
-			free(valor);
 			break;
 		}
 		default: {
-			log_error(logConsola, "No se pudo recibir ninguna operacion valida");
+			//log_error(logConsola, "No se pudo recibir ninguna operacion valida");
 			break;
 		}
 		}
