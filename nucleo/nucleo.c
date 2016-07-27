@@ -251,9 +251,9 @@ void handShake (void *parameter){
 		}
  	}
 
-	free(messageRcv);
-	free(message);
 	free(message->message);
+	free(message);
+	free(messageRcv);
 }
 
 void processMessageReceivedConsola (void *parameter){
@@ -328,7 +328,8 @@ void processMessageReceivedConsola (void *parameter){
   }
 }
 
-void processMessageReceivedCPU (void *parameter){
+int processMessageReceivedCPU (void *parameter){
+	int exitCode = -1;
 	t_serverData *serverData = (t_serverData*) parameter;
 	log_info(logNucleo, "Socket client connected to NUCLEO: %d",serverData->socketClient);
 
@@ -351,7 +352,7 @@ void processMessageReceivedCPU (void *parameter){
 			case CPU:{
 				log_info(logNucleo, "Processing %s message received", getProcessString(fromProcess));
 				//pthread_mutex_lock(&activeProcessMutex);
-				processCPUMessages(messageSize, serverData->socketClient); //el free del messageRcv se hace adentro
+				exitCode = processCPUMessages(messageSize, serverData->socketClient); //el free del messageRcv se hace adentro
 				//free(parameter);//TODO
 				//pthread_mutex_unlock(&activeProcessMutex);
 				break;
@@ -379,6 +380,7 @@ void processMessageReceivedCPU (void *parameter){
 		close(serverData->socketClient);
 		free(serverData);
 	}
+	return exitCode;
 }
 void runScript(char* codeScript, int socketConsola){
 	//Creo el PCB del proceso.
@@ -607,19 +609,23 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 
 		//1) Recibo mensajes del CPU
 		log_info(logNucleo,"Se completa el envio de todos los mensajes al proceso CPU y se esperara una respuesta");
-		processMessageReceivedCPU(serverData);
+
+		int exitCode = -1;
+		do{
+			exitCode =	processMessageReceivedCPU(serverData);
+		}while(exitCode != -1);
 
 		//2) processCPUMessages se hace dentro de processMessageReceivedCPU
 }
 
-void processCPUMessages(int messageSize,int socketCPULibre){
+int processCPUMessages(int messageSize,int socketCPULibre){
 	log_info(logNucleo, "Processing CPU message ");
-
+	int receivedBytes =-1;
 	t_MessageCPU_Nucleo *message=malloc(sizeof(t_MessageCPU_Nucleo));
 
 	//Receive message using the size read before
 	char *messageRcv = malloc(sizeof(messageSize));
-	receiveMessage(&socketCPULibre, messageRcv, messageSize);
+	receivedBytes = receiveMessage(&socketCPULibre, messageRcv, messageSize);
 
 	//Deserializo messageRcv
 	deserializeNucleo_CPU(message, messageRcv);
@@ -652,14 +658,17 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 	}
 	case 2:{ 	//Finaliza Proceso Bien
 		finalizaProceso(socketCPULibre, message->processID,message->operacion);
+		receivedBytes = -1;
 		break;
 	}
 	case 3:{ 	//Finaliza Proceso Mal
 		finalizaProceso(socketCPULibre, message->processID,message->operacion);
+		receivedBytes = -1;
 		break;
 	}
 	case 4:{
 		log_error(logNucleo, "No se pudo obtener la solicitud a ejecutar - Error al finalizar");
+		receivedBytes = -1;
 		break;
 	}
 	case 5:{ 	//Corte por Quantum
@@ -735,17 +744,15 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 
 		log_info(logNucleo, "Se recibe el semaforo WAIT: %s, con el tamanio: %d  ",semaforo, tamanio);
 
-		if (estaEjecutando(message->processID,0) == 0){ // 0: Programa ejecutandose (no esta en ninguna cola)
-			int* valorSemaforo = pideSemaforo(semaforo);
+		int index = 0;
+		if (estaEjecutando(message->processID, &index) == 0 && index == -1){ // 0: Programa ejecutandose (no esta en ninguna cola)
+			t_valor_variable valorSemaforo = pideSemaforo(semaforo);
 			int valorAEnviar;
-			if(*valorSemaforo<=0){
+			if (valorSemaforo <= 0) {
 
 				valorAEnviar = 1;
 				log_info(logNucleo, "Recibi proceso %d mando a bloquear por semaforo: %d ", (message->processID)%6+1, semaforo);
 				sendMessage(&socketCPULibre, &valorAEnviar,sizeof(int));// 1 si se bloquea. 0 si no se bloquea
-
-				//TODO Verificar: recibir PCB del CPU para volver a planificarlo
-				//agregarlo a donde corresponda: (se hace en bloqueoSemaforo) para volver a enviarlo cuando se desbloquee el semaforo
 
 				int tamanioStack = -1;
 				receiveMessage(&socketCPULibre, &tamanioStack, sizeof(int));
@@ -759,13 +766,16 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 				t_list* listaIndiceDeStack = list_create();
 				deserializarListaStack(listaIndiceDeStack, listaStackSerializada);
 
-				bloqueoSemaforo(message->processID, semaforo);
+				//Recibir PCB (stack) del CPU para volver a planificarlo
+				//Agregarlo a donde corresponda: (se hace en bloqueoSemaforo) para volver a enviarlo cuando se desbloquee el semaforo
+
+				bloqueoSemaforo(message->processID, semaforo, listaIndiceDeStack);
 
 				//Libero la CPU que ocupaba el proceso
 				liberarCPU(socketCPULibre);
 				free(listaStackSerializada);
 			}else{
-				grabarSemaforo(semaforo,*pideSemaforo(semaforo)-1);
+				grabarSemaforo(semaforo, pideSemaforo(semaforo)-1);
 				valorAEnviar=0;
 				sendMessage(&socketCPULibre, &valorAEnviar, sizeof(int));
 			}
@@ -800,17 +810,16 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 		}
 
 		//Received value from CPU
-		t_valor_variable* valor = malloc(sizeof(t_valor_variable));
-		receiveMessage(&socketCPULibre, valor, sizeof(t_valor_variable));
+		t_valor_variable valor ;
+		receiveMessage(&socketCPULibre, &valor, sizeof(t_valor_variable));
 
 		//Enviar operacion=2 para que la Consola sepa que es un valor
 		int operacion = 2;
 		sendMessage(&socketConsola, &operacion, sizeof(int));
 
-		log_info(logNucleo, "Enviar valor '%s' a PID #%d", valor, message->processID);
-		sendMessage(&socketConsola, valor, sizeof(t_valor_variable));
+		log_info(logNucleo, "Enviar valor '%d' a PID #%d", valor, message->processID);
+		sendMessage(&socketConsola, &valor, sizeof(t_valor_variable));
 
-		free(valor);
 		break;
 	}
 	case 11:{	//Imprimir TEXTO por Consola
@@ -871,6 +880,7 @@ void processCPUMessages(int messageSize,int socketCPULibre){
 
 	free(messageRcv);
 	free(message);
+	return receivedBytes;
 }
 
 void atenderCorteQuantum(int socketCPU,int PID){
@@ -1300,15 +1310,13 @@ void actualizarPC(int PID, int ProgramCounter) {
 t_valor_variable obtenerValor(t_nombre_compartida variable) {
 	log_info(logNucleo, "Nucleo, obteniendo valor para la variable: %s", variable);
 	t_valor_variable valorVariable = -1;
-	int i = 0;
-
-	while (configNucleo.shared_vars[i] != NULL){
+	int i;
+	for (i = 0; i < strlen((char*)configNucleo.shared_vars) / sizeof(char*); i++) {
 		if (strcmp((char*)configNucleo.shared_vars[i], variable) == 0) {
 			//return (int*)configNucleo.shared_vars[i];
 			valorVariable = (t_valor_variable) configNucleo.shared_vars_values[i];
 			break;
 		}
-		i++;
 	}
 	//TENER EN CUENTA que aca esta funcionando con el \n
 	return valorVariable;
@@ -1316,30 +1324,30 @@ t_valor_variable obtenerValor(t_nombre_compartida variable) {
 
 void grabarValor(t_nombre_compartida variable, t_valor_variable valor) {
 	log_info(logNucleo, "Nucleo, grabando valor: %d para la variable: %s", valor, variable);
-	int i = 0;
-	while (configNucleo.shared_vars[i] != NULL) {
+	int i;
+	for (i = 0; i < strlen((char*)configNucleo.shared_vars) / sizeof(char*); i++) {
 		if (strcmp((char*)configNucleo.shared_vars[i], variable) == 0) {
 			//return (int*)configNucleo.shared_vars[i];
 			memcpy(&configNucleo.shared_vars_values[i], &valor, sizeof(t_valor_variable));
 			return;
 		}
-		i++;
 	}
 	log_error(logNucleo,"No se pudo grabar el valor: %d, en la variable: %s ",valor, variable);
 }
 
-int *pideSemaforo(t_nombre_semaforo semaforo) {
+t_valor_variable pideSemaforo(t_nombre_semaforo semaforo) {
 	int i = 0;
-	int *valorVariable = NULL;
+	t_valor_variable valorVariable = 0;
 
 	log_info(logNucleo,"Nucleo, obteniendo semaforo:  %s", semaforo);
 
-	while (configNucleo.sem_ids[i] != NULL) {
+	for (i = 0; i < strlen((char*)configNucleo.sem_ids) / sizeof(char*); i++) {
 		if (strcmp((char*)configNucleo.sem_ids[i], semaforo) == 0) {
 
 			//if (configNucleo.sem_ids_values[i] == -1) {return &configNucleo.sem_ids_values[i];}
 			//configNucleo.sem_ids_values[i]--;
-			return (&configNucleo.sem_ids_values[i]);
+			valorVariable = (t_valor_variable)configNucleo.sem_ids_values[i];
+			return valorVariable;
 		}
 		i++;
 	}
@@ -1348,27 +1356,23 @@ int *pideSemaforo(t_nombre_semaforo semaforo) {
 }
 
 void grabarSemaforo(t_nombre_semaforo semaforo, int valor){
-	int i = 0;
-
-	while (configNucleo.sem_ids[i] != NULL){
-
+	int i;
+	for (i = 0; i < strlen((char*)configNucleo.sem_ids) / sizeof(char*); i++) {
 		if (strcmp((char*)configNucleo.sem_ids[i], semaforo) == 0) {
 
 			//if (configNucleo.sem_ids_values[i] == -1) return &configNucleo.sem_ids_values[i];
 			configNucleo.sem_ids_values[i] = valor;
 			return;
 		}
-		i++;
 	}
 	log_error(logNucleo,"No se encontro el semaforo: %s ", semaforo);
 }
 
 
 void liberaSemaforo(t_nombre_semaforo semaforo) {
-	int i=0;
+	int i;
 	t_proceso *proceso;
-
-	while (configNucleo.sem_ids[i] != NULL){
+	for (i = 0; i < strlen((char*)configNucleo.sem_ids) / sizeof(char*); i++) {
 		if (strcmp((char*)configNucleo.sem_ids[i], semaforo) == 0) {
 
 			if(list_size(colas_semaforos[i]->elements)){
@@ -1388,27 +1392,16 @@ void liberaSemaforo(t_nombre_semaforo semaforo) {
 			}
 
 			return;
-/*
-		//Aca esta funcionando con el \n OJO
-			configNucleo.sem_ids_values[i]++;
-			printf("VALOR SEM: %d",configNucleo->sem_ids_values[i]);
-			if (proceso = queue_pop(colas_semaforos[i])) {
-				//config_nucleo->VALOR_SEM[i]--;
-				queue_push(cola_ready, proceso);
-				sem_post(&sem_ready);
-			}
-			return;
-			*/
 		}
 	}
 	log_error(logNucleo,"No se encontro el semaforo: %s ", semaforo);
 }
 
-void bloqueoSemaforo(int processID, t_nombre_semaforo semaforo){
+void bloqueoSemaforo(int processID, t_nombre_semaforo semaforo, t_list* listaIndiceDeStack){
 
 	log_info(logNucleo,"Procesando el bloqueo por el semaforo: %s, para el PID: %d ", semaforo, processID);
-	int i=0;
-	while (configNucleo.sem_ids[i] != NULL) {
+	int i;
+	for (i = 0; i < strlen((char*)configNucleo.sem_ids) / sizeof(char*); i++) {
 		if (strcmp((char*)configNucleo.sem_ids[i], semaforo) == 0) {
 			//look for PCB for getting program counter
 			t_PCB* PCB;
@@ -1416,6 +1409,9 @@ void bloqueoSemaforo(int processID, t_nombre_semaforo semaforo){
 			pthread_mutex_lock(&listadoProcesos);
 			PCB = (t_PCB*)list_get(listaProcesos,buscar);
 			pthread_mutex_unlock(&listadoProcesos);
+
+			list_destroy_and_destroy_elements(PCB->indiceDeStack, (void*) destruirRegistroIndiceDeStack);
+			PCB->indiceDeStack = listaIndiceDeStack;
 
 			t_proceso* proceso = malloc(sizeof(t_proceso));
 			proceso->PID = processID;
@@ -1428,7 +1424,6 @@ void bloqueoSemaforo(int processID, t_nombre_semaforo semaforo){
 			log_info(logNucleo,"Se bloquea el PID: %d, por semaforo: %s ",processID, semaforo);
 			return;
 		}
-		i++;
 	}
 	log_error(logNucleo,"No se encontro el semaforo: %s ", semaforo);
 }
@@ -1701,7 +1696,8 @@ void crearArchivoDeConfiguracion(char *configFile){
 	if(colas_semaforos!=0){
 		free(colas_semaforos);
 	}
-	len = (int) strlen((char*)configNucleo.sem_init);//TODO len esta retornando 0
+	len = (int) strlen((char*)configNucleo.sem_init) / sizeof(char*);//TODO len esta retornando 0
+	printf( "strlen de sem_init: %d\n", len);
 	colas_semaforos = initialize(len * sizeof(char*));
 
 	i = 0;
