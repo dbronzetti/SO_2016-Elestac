@@ -306,7 +306,9 @@ void procesCPUMessages(int messageSize, t_serverData* serverData){
 	//Deserialize messageRcv
 	deserializeUMC_CPU(message, messageRcv);
 
-	changeActiveProcess(message->PID);
+	if (activePID != message->PID){
+		changeActiveProcess(message->PID);
+	}
 
 	void *content = NULL;
 
@@ -378,7 +380,9 @@ void procesNucleoMessages(int messageSize, t_serverData* serverData){
 	//Deserialize messageRcv
 	deserializeUMC_Nucleo(message, messageRcv);
 
-	changeActiveProcess(message->PID);
+	if (activePID != message->PID){
+		changeActiveProcess(message->PID);
+	}
 
 	switch (message->operation){
 		case agregar_proceso:{
@@ -1125,7 +1129,6 @@ bool isPageNOTPresentModified(t_memoryAdmin* listElement){
 	return exitCode;
 }
 
-
 t_memoryAdmin *getLRUCandidate(){
 	t_memoryAdmin *elementCandidate = NULL;
 
@@ -1135,27 +1138,14 @@ t_memoryAdmin *getLRUCandidate(){
 	}
 
 	pthread_mutex_lock(&memoryAccessMutex);
-	//Filter by empty entries
-	t_list *TLBfilteredByPID = list_filter(TLBList, (void*) isThereEmptyEntry);
+	//Filter TLB by PID
+	t_list *TLBfilteredByPID = list_filter(TLBList,(void*) find_PIDEntry_TLB);
 
-	//If not empty elements were found
-	if (TLBfilteredByPID->elements_count == 0){
-		//Filter TLB by PID
-		TLBfilteredByPID = list_filter(TLBList,(void*) find_PIDEntry_TLB);
-	}
+	//Get memory element from last index position from active PID
+	elementCandidate = (t_memoryAdmin*) list_remove(TLBfilteredByPID, TLBfilteredByPID->elements_count - 1);
 
-	//If any element was found in previous filters
-	if (TLBfilteredByPID->elements_count > 0){
-		//Get memory element from last index position from active PID
-		elementCandidate = (t_memoryAdmin*) list_remove(TLBfilteredByPID, TLBfilteredByPID->elements_count - 1);
-
-		//Remove element found from TLB
-		elementCandidate = (t_memoryAdmin*) list_remove_by_condition(TLBList, (void*) is_PIDPagePresent);
-
-	}else{
-		//Get memory element from last index position in TLB (NO MATTER WHICH PID IS) if active PID has no entries in TLB
-		elementCandidate = (t_memoryAdmin*) list_remove(TLBList, list_size(TLBList) - 1);
-	}
+	//Remove element found from TLB
+	elementCandidate = (t_memoryAdmin*) list_remove_by_condition(TLBList, (void*) is_PIDPagePresent);
 
 	//Destroy temporary list created
 	list_destroy(TLBfilteredByPID);
@@ -1172,7 +1162,7 @@ void updateTLBPositionsbyLRU(t_memoryAdmin *elementCandidate){
 }
 
 void resetTLBbyActivePID(t_memoryAdmin *listElement){
-	//TODO analizar bien cuando es necesario pisar los elementos ante un cambio de proceso
+
 	if(listElement->PID == activePID){
 		//adding frame again to free frames list
 		int *frameNro = malloc(sizeof(int));
@@ -1295,24 +1285,14 @@ t_memoryAdmin *updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memory
 		log_info(UMCLog, "PID '%d': PAGE HIT in Main Memory - Page #%d", pageTablexProc->PID, virtualAddress->pag);
 
 		if(TLBActivated){//TLB is enable
-			t_memoryAdmin *TLBElem = NULL;
 
-			pthread_mutex_lock(&memoryAccessMutex);
-			TLBElem = (t_memoryAdmin*) list_find(TLBList, (void*) isThereEmptyEntry);
-			pthread_mutex_unlock(&memoryAccessMutex);
+			//** Find function by PID and page**//
+			bool is_PIDPagePresent(t_memoryAdmin* listElement){
+				return ((listElement->PID == memoryElement->PID) && (listElement->virtualAddress->pag == memoryElement->virtualAddress->pag));
+			}
 
-			if (TLBElem != NULL){
-				//Load new program structure in empty TLB entry
-				TLBElem->PID = memoryElement->PID;
-				TLBElem->dirtyBit = memoryElement->dirtyBit;
-				TLBElem->presentBit = memoryElement->presentBit;
-				TLBElem->virtualAddress = virtualAddress;
-				TLBElem->frameNumber = memoryElement->frameNumber;
-
-			}else{//No empty entry is present in TLB
-
-				//Execute LRU algorithm
-				executeLRUAlgorithm(memoryElement, virtualAddress);
+			if ((list_find(TLBList, (void*) is_PIDPagePresent)) != NULL){//If is NULL is the first HIT and has to be loaded in TLB
+				updatTLBElement(virtualAddress, memoryElement);
 			}
 		}
 
@@ -1325,7 +1305,7 @@ t_memoryAdmin *updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memory
 		if (list_size(freeFramesList) > 0){
 
 			//The main memory still has free frames available
-			log_info(UMCLog, "The main memory still has free frames to assign to process '%d'", activePID);
+			log_info(UMCLog, "The MAIN MEMORY still has free frames to assign to process '%d'", activePID);
 
 			//Request memory content to Swap
 			void *memoryContent = requestPageToSwap(virtualAddress, pageTablexProc->PID);
@@ -1352,12 +1332,21 @@ t_memoryAdmin *updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memory
 
 				//The active process has free frames available
 				log_info(UMCLog, "The process '%d' still has free frames to assigned", activePID);
+				log_info(UMCLog, "PID '%d' - Content in page '#%d' assigned to Frame '#%d'", activePID,newMemoryElement->virtualAddress->pag, newMemoryElement->frameNumber);
+
+				//Update TLB
+				if(TLBActivated){//TLB is enable
+					updatTLBElement(virtualAddress, newMemoryElement);
+				}
 
 				int memoryBlockOffset = (newMemoryElement->frameNumber * configuration.frames_size) + virtualAddress->offset;
 
 				pthread_mutex_lock(&memoryAccessMutex);//Locking mutex for writing memory
 				memcpy(memBlock + memoryBlockOffset, memoryContent , virtualAddress->size);
 				pthread_mutex_unlock(&memoryAccessMutex);//unlocking mutex for writing memory
+
+				//increasing frames assigned to active process ONLY
+				pageTablexProc->assignedFrames++;
 
 			}else{
 				//The active process hasn't free frames available, replacement algorithm has to be executed
@@ -1385,9 +1374,29 @@ t_memoryAdmin *updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memory
 
 	}
 
-	//increasing frames assigned to active process
-	pageTablexProc->assignedFrames++;
 	return newMemoryElement;
+}
+
+void updatTLBElement(t_memoryLocation *virtualAddress, t_memoryAdmin *memoryElement){
+	t_memoryAdmin *TLBElem = NULL;
+
+	pthread_mutex_lock(&memoryAccessMutex);
+	TLBElem = (t_memoryAdmin*) list_find(TLBList, (void*) isThereEmptyEntry);
+	pthread_mutex_unlock(&memoryAccessMutex);
+
+	if (TLBElem != NULL){
+		log_info(UMCLog, "PID '%d' - Loading page '#%d' in TLB in empty element", activePID,memoryElement->virtualAddress->pag);
+		//Load new program structure in empty TLB entry
+		TLBElem->PID = memoryElement->PID;
+		TLBElem->dirtyBit = memoryElement->dirtyBit;
+		TLBElem->presentBit = memoryElement->presentBit;
+		TLBElem->virtualAddress = virtualAddress;
+		TLBElem->frameNumber = memoryElement->frameNumber;
+	}else{//No empty entry is present in TLB
+
+		//Execute LRU algorithm
+		executeLRUAlgorithm(memoryElement, virtualAddress);
+	}
 }
 
 void executeLRUAlgorithm(t_memoryAdmin *newElement, t_memoryLocation *virtualAddress){
@@ -1395,7 +1404,8 @@ void executeLRUAlgorithm(t_memoryAdmin *newElement, t_memoryLocation *virtualAdd
 
 	//Replacement algorithm LRU
 	LRUCandidate = getLRUCandidate();
-	log_info(UMCLog, "PID: '%d' - New page needed '%d' -> LRU candidate page #%d", newElement->PID, newElement->virtualAddress->pag, LRUCandidate->virtualAddress->pag);
+	log_info(UMCLog, "PID: '%d' - New page needed '%d' in Memory -> LRU candidate page '#%d' - Frame '#%d'", newElement->PID, newElement->virtualAddress->pag, LRUCandidate->virtualAddress->pag, LRUCandidate->frameNumber);
+
 	//check page status before replacing
 	checkPageModification(LRUCandidate);
 
@@ -1407,6 +1417,7 @@ void executeLRUAlgorithm(t_memoryAdmin *newElement, t_memoryLocation *virtualAdd
 
 	//updated TLB by LRU algorithm
 	updateTLBPositionsbyLRU(LRUCandidate);
+
 }
 
 void executeMainMemoryAlgorithm(t_pageTablesxProc *pageTablexProc, t_memoryAdmin *newElement, void *memoryContent){
