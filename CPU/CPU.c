@@ -330,6 +330,7 @@ int ejecutarPrograma(){
 		instruccionEjecutar = string_substring(codigoRecibido, instruccionActual->inicioDeInstruccion, instruccionActual->longitudInstruccionEnBytes);
 
 		analizadorLinea(instruccionEjecutar, &funciones, &funciones_kernel);
+		free(instruccionEjecutar);//TODO verificar este free
 		if(!waitSemActivated){//check if the process was blocked by a wait, in that case the program counter doesn't have to be increased
 			ultimoPosicionPC++;
 		}
@@ -339,7 +340,7 @@ int ejecutarPrograma(){
 		}
 	}
 
-	free(instruccion);
+	//free(instruccion);// se esta haciendo mas arriba
 	free(codigoRecibido);
 
 	return exitCode;
@@ -1136,7 +1137,7 @@ void waitPrimitive(t_nombre_semaforo identificador_semaforo){
 
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
-	free(bufferRespuesta);
+	//free(bufferRespuesta);
 
 	//send to Nucleo to execute WAIT function for "identificador_semaforo"
 	int semaforoLen = strlen(identificador_semaforo) + 1;
