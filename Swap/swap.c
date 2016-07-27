@@ -95,7 +95,6 @@ void processingMessages(int socketClient){
 			pedidoRecibidoYDeserializado->paginaInicial = -1;
 			pedidoRecibidoYDeserializado->tamanioDelBloque = operacionARealizar->cantPages * tamanioDePagina;
 			pedidoRecibidoYDeserializado->ocupado = 1; //BLOQUE OCUPADO
-			int valorDeError;
 			int tamanio = 0;
 
 			if(verificarEspacioDisponible() >= pedidoRecibidoYDeserializado->cantDePaginas){
@@ -169,6 +168,9 @@ void processingMessages(int socketClient){
 		}
 		default: log_warning(logSwap,"La operacion recibida es invalida. \n");
 		}
+		free(operacionARealizar);
+		free(operacionARealizar->virtualAddress);
+		free(messageRcv);
 	}else{
 		log_error(logSwap,"No se recibio correctamente los datos. \n");
 	}
@@ -183,7 +185,7 @@ void destructorBloqueSwap(bloqueSwap* self){
 
 int agregarProceso(bloqueSwap* unBloque,char* codeScript){
 	/*<----------------------------------------------abroElArchivo----------------------------------------------------->*/
-	FILE* archivoSwap;
+	FILE* archivoSwap = NULL;
 	archivoSwap=fopen(nombreSwapFull,"r+");
 
 	if(archivoSwap==NULL){
@@ -233,17 +235,17 @@ int compactarArchivo(){
 	bloqueSwap* bloqueVacioCompacto=malloc(sizeof(bloqueSwap));
 	int bloqueVacioAEliminar(bloqueSwap* unBloque){
 		return (unBloque->ocupado==0);
-	};
+	}
 	for(i=0;listaSwap->elements_count>=i;i++){
 		list_remove_and_destroy_by_condition(listaSwap,(void*)bloqueVacioAEliminar,(void*)destructorBloqueSwap);
 	}
 	if(listaSwap->elements_count==1){
 		unicoBloqueLleno=(bloqueSwap*)list_get(listaSwap,0);
 		modificarArchivo(unicoBloqueLleno->paginaInicial,unicoBloqueLleno->cantDePaginas,0);
-		unicoBloqueLleno->paginaInicial=0;
+		unicoBloqueLleno->paginaInicial=0;//TODO Se pone en 0 pero no se esta usando
 		acum=bloqueLleno->cantDePaginas;
-
 	}
+	free(unicoBloqueLleno);//TODO Se hace el free porque en modificarArchivo se esta pasando por valor(sacar el free en caso de pasar el puntero)
 	if(listaSwap->elements_count>1){
 		for(i=0;i<listaSwap->elements_count;i++){
 			printf("%i\n",i);
@@ -251,30 +253,28 @@ int compactarArchivo(){
 			bloqueObtenido=(bloqueSwap*)list_get(listaSwap,i);
 			acum=acum+bloqueObtenido->cantDePaginas;
 			printf("%i   %i   %i   %i\n",bloqueObtenido->PID,bloqueObtenido->cantDePaginas,bloqueObtenido->ocupado,bloqueObtenido->paginaInicial);
+			free(bloqueObtenido);//una vez que se suma cantDePaginas no se necesita mas
 		}
+		int x=0;//adentro del for se estaba inicializando siempre
 		for(j=1;listaSwap->elements_count>j;j++){
-			int x=0;
 			bloqueLleno=(bloqueSwap*)list_get(listaSwap,x);
 			printf("cantPag:%i",bloqueLleno->cantDePaginas);
 			bloqueLlenoSiguiente=(bloqueSwap*)list_get(listaSwap,x+1);
 			bloqueLlenoSiguiente->paginaInicial=bloqueLleno->cantDePaginas+1;
 			modificarArchivo(bloqueLleno->paginaInicial,bloqueLleno->cantDePaginas,bloqueLlenoSiguiente->paginaInicial);
 			x++;
-		}}
+		}
+	}
 	if(cantidadDePaginas-acum!=0){
 		bloqueVacioCompacto->cantDePaginas=cantidadDePaginas-acum;
 		bloqueVacioCompacto->ocupado=0;
 		bloqueVacioCompacto->PID=0;
 		bloqueVacioCompacto->paginaInicial=acum;
-		list_add(listaSwap,bloqueVacioCompacto);
+		list_add(listaSwap,(void*)bloqueVacioCompacto);
 	}
-
-
 
 	return 0;
 }
-
-
 
 void crearArchivoDeSwap(){
 	int tamanioDePagina;
@@ -294,6 +294,10 @@ void crearArchivoDeSwap(){
 	string_append(&cadena,terceraParteCadena);
 	string_append_with_format(&cadena,"%i",cantidadDePaginas);
 	system(cadena);
+	//TODO
+	//free(cadena);
+	//free(segundaParteCadena);
+	//free(terceraParteCadena);
 }
 
 bool condicionLeer(bloqueSwap* unBloque,bloqueSwap* otroBloque){
@@ -305,7 +309,7 @@ bloqueSwap* buscarProcesoAEliminar(int PID){
 	int i = 0;
 	while( i < listaSwap->elements_count ){
 
-		bloqueObtenido = list_get(listaSwap,i);
+		bloqueObtenido = (bloqueSwap*) list_get(listaSwap,i);
 		if(bloqueObtenido->PID==PID){
 			break;
 		}
@@ -323,7 +327,7 @@ bloqueSwap* buscarProcesoAEliminar(int PID){
 
 char* leerPagina(bloqueSwap* bloqueDeSwap){
 	bloqueSwap* bloqueEncontrado;
-	FILE* archivoSwap;
+	FILE* archivoSwap = NULL;
 	archivoSwap=fopen(nombreSwapFull,"r+");
 	if(archivoSwap==NULL){
 		log_error(logSwap,"No se abrio correctamente el archivo. \n");
@@ -338,7 +342,7 @@ char* leerPagina(bloqueSwap* bloqueDeSwap){
 
 void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque){
 	bloqueSwap* bloqueEncontrado;
-	FILE* archivoSwap;
+	FILE* archivoSwap = NULL;
 	archivoSwap=fopen(nombreSwapFull,"r+");
 	if(archivoSwap==NULL){
 		log_error(logSwap,"No se abrio correctamente el archivo. \n");
@@ -350,9 +354,9 @@ void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque){
 
 }
 
-
+//TODO esta funcion no esta siendo usada
 void* mapearArchivoEnMemoria(int offset,int tamanio){
-	FILE* archivoSwap;
+	FILE* archivoSwap = NULL;
 	int descriptorSwap;
 	void* archivoMapeado;
 	archivoSwap=fopen(nombre_swap,"a+");
@@ -379,14 +383,12 @@ int verificarEspacioDisponible(){
 	bloqueSwap* bloqueDevuelto;
 	listaFiltrada = list_filter(listaSwap,(void*)elementosVacios);
 	for(i=0; i < listaFiltrada->elements_count; i++){
-		bloqueDevuelto = list_get(listaFiltrada,i);
+		bloqueDevuelto = (bloqueSwap*) list_get(listaFiltrada,i);
 		acum += (bloqueDevuelto->cantDePaginas);
 	}
 
 	return acum;
 }
-
-
 
 bloqueSwap* existeElBloqueNecesitado(bloqueSwap* otroBloque){
 	bool condicionDeCompactacion(bloqueSwap* unBloque){// esta funcion debe retornar bool
@@ -510,7 +512,7 @@ bloqueSwap* buscarBloqueALlenar(bloqueSwap* unBloque){
 	bloqueSwap* bloqueObtenido = NULL;
 	int i = 0;
 	while( i < listaSwap->elements_count ){
-		bloqueObtenido = list_get(listaSwap,i);
+		bloqueObtenido = (bloqueSwap*) list_get(listaSwap,i);
 		if((bloqueObtenido->cantDePaginas >= unBloque->cantDePaginas) && bloqueObtenido->ocupado==0){
 			break;
 		}
@@ -529,8 +531,8 @@ int eliminarProceso(int PID){
 	bloqueSwap* procesoAEliminar=buscarProcesoAEliminar(PID);
 	procesoAEliminar->PID=0;
 	procesoAEliminar->ocupado=0;
-	FILE* archivoSwap;
-	archivoSwap=fopen(nombre_swap,"r+");
+	FILE* archivoSwap = NULL;
+	archivoSwap=fopen(nombre_swap,"w+");//TODO verificar que cuando no se agrega un archivo por parametro se debe hacer "w+" para que lo cree
 	int cantidadDeBytes=procesoAEliminar->cantDePaginas*tamanioDePagina;
 	char* textoRelleno=malloc(cantidadDeBytes);
 	int i;
@@ -548,7 +550,7 @@ int eliminarProceso(int PID){
 
 
 int modificarArchivo(int marcoInicial,int cantDeMarcos,int nuevoMarcoInicial){
-	FILE* archivoSwap;
+	FILE* archivoSwap = NULL;
 	char* textoRelleno=malloc(tamanioDePagina*cantDeMarcos);
 	archivoSwap=fopen(nombreSwapFull,"r+");
 	if(archivoSwap==NULL){
