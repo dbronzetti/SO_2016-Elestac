@@ -342,7 +342,22 @@ void serializarStack(t_registroStack* registroStack, char* registroSerializado, 
 	memcpy(registroSerializado + *offset, &registroStack->retPos, sizeof(registroStack->retPos));
 	*offset += sizeof(registroStack->retPos);
 
-	serializeMemoryLocation(registroStack->retVar, registroSerializado, offset);
+	//Request more memory for the retVar null flag
+	int retVarnullFlag;
+	registroSerializado = realloc(registroSerializado, *offset + sizeof(retVarnullFlag));
+
+	if (registroStack->retVar != NULL){
+		retVarnullFlag = 0;// This means that the retVar has value to be serialized
+		memcpy(registroSerializado + *offset, &retVarnullFlag, sizeof(retVarnullFlag));
+		*offset += sizeof(retVarnullFlag);
+
+		serializeMemoryLocation(registroStack->retVar, registroSerializado, offset);
+	}else{
+		retVarnullFlag = -1;// This means that the retVar is NULL
+
+		memcpy(registroSerializado + *offset, &retVarnullFlag, sizeof(retVarnullFlag));
+		*offset += sizeof(retVarnullFlag);
+	}
 }
 
 void deserializarStack(t_registroStack* estructuraARecibir, char* registroStack, int *offset) {
@@ -353,7 +368,13 @@ void deserializarStack(t_registroStack* estructuraARecibir, char* registroStack,
 	memcpy(&estructuraARecibir->retPos, registroStack + *offset, sizeof(estructuraARecibir->pos));
 	*offset += sizeof(estructuraARecibir->retPos);
 
-	deserializeMemoryLocation(estructuraARecibir->retVar, registroStack, offset);
+	int retVarnullFlag;
+	memcpy(&retVarnullFlag, registroStack + *offset, sizeof(retVarnullFlag));
+	*offset += sizeof(retVarnullFlag);
+
+	if (retVarnullFlag == 0){// This means that the retVar has value to be deserialized
+		deserializeMemoryLocation(estructuraARecibir->retVar, registroStack, offset);
+	}
 
 }
 
