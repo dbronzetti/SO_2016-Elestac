@@ -535,7 +535,7 @@ void destruirRegistroIndiceEtiquetas(t_registroIndiceEtiqueta* registroEtiqueta)
 }
 
 void destroyIndiceEtiquetas(){
-	if(list_size(listaIndiceEtiquetas) > 0){
+	if(listaIndiceEtiquetas != NULL){
 		list_destroy_and_destroy_elements(listaIndiceEtiquetas,(void*)destruirRegistroIndiceEtiquetas);
 	}
 }
