@@ -698,7 +698,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 			//adding arguments if is a function call
 			list_add(ultimoRegistro->args, (void*)variableAAgregar);
 
-			posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
+			posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
 
 		}else{
 			if (ultimoPosicionPC == PCBRecibido->ProgramCounter){
@@ -706,7 +706,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 				//add vars to same list if executing the same line
 				list_add(ultimoRegistro->vars, (void*)variableAAgregar);
 
-				posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
+				posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
 			}else{
 				//add a new register to Indice Stack if is a different line
 				t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
@@ -721,7 +721,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 
 				list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
-				posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
+				posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
 
 			}
 		}
@@ -741,7 +741,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 
 		list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
-		posicionDeLaVariable= (t_puntero) &variableAAgregar->direccionValorDeVariable;
+		posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
 
 	}
 
@@ -827,7 +827,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
 	//TODO ver que no se use en ningun otro lado en el parser la funcion obtenerPosicionVariable
 	PCBRecibido->StackPointer = registroBuscado->pos;
 
-	posicionEncontrada =(int) &posicionBuscada->direccionValorDeVariable;
+	posicionEncontrada =(t_puntero) posicionBuscada->direccionValorDeVariable;
 
 	return posicionEncontrada;
 }
@@ -836,6 +836,7 @@ t_valor_variable dereferenciar(t_puntero direccion_variable){
 	log_info(logCPU," 'dereferenciar' ");
 
 	t_valor_variable varValue;
+	t_memoryLocation* virtualAddress = (t_memoryLocation*) direccion_variable;
 	int returnCode = EXIT_SUCCESS;//DEFAULT
 	int exitCode = EXIT_SUCCESS;
 	// inform new program to swap and check if it could write it.
@@ -847,8 +848,10 @@ t_valor_variable dereferenciar(t_puntero direccion_variable){
 	message->virtualAddress = malloc(sizeof(t_memoryLocation));
 	message->PID = PCBRecibido->PID;
 	message->operation = lectura_pagina;
-	message->virtualAddress = (t_memoryLocation*) direccion_variable;
+	message->virtualAddress->pag = virtualAddress->pag;
 	message->virtualAddress->pag += PCBRecibido->cantidadDePaginas;// como voy a leer una variable del stack debo sumarle la cantidad de paginas de codigo.
+	message->virtualAddress->offset = virtualAddress->offset;
+	message->virtualAddress->size = virtualAddress->size;
 
 	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(t_memoryLocation);
 	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
@@ -888,14 +891,17 @@ void asignar(t_puntero direccion_variable, t_valor_variable valor){
 	// inform new program to swap and check if it could write it.
 	int bufferSize = 0;
 	int payloadSize = 0;
+	t_memoryLocation* virtualAddress = (t_memoryLocation*) direccion_variable;
 
 	//overwrite page content in swap (swap out)
 	t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
 	message->virtualAddress = malloc(sizeof(t_memoryLocation));
 	message->PID = PCBRecibido->PID;
 	message->operation = escritura_pagina;
-	message->virtualAddress = (t_memoryLocation*) direccion_variable;
+	message->virtualAddress->pag = virtualAddress->pag;
 	message->virtualAddress->pag += PCBRecibido->cantidadDePaginas; // agrego cantidad de paginas del codigo para que me guarde en la pagina de stack que quiero
+	message->virtualAddress->offset = virtualAddress->offset;
+	message->virtualAddress->size = virtualAddress->size;
 
 	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(t_memoryLocation);
 	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
@@ -1011,11 +1017,14 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 	log_info(logCPU," 'llamarConRetorno' ");
 
 	functionCall = true; //activating functionCall for adding arguments to stack
+	t_memoryLocation* virtualAddress = (t_memoryLocation*) donde_retornar;
 
 	//Saving context and adding new entry to indiceStack
 	t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
 	registroAAgregar->retVar = malloc(sizeof(t_memoryLocation));
-	registroAAgregar->retVar = (t_memoryLocation*) donde_retornar; //Memory position where the return has to load the function output
+	registroAAgregar->retVar->pag = virtualAddress->pag; //Memory position where the return has to load the function output
+	registroAAgregar->retVar->offset = virtualAddress->offset;
+	registroAAgregar->retVar->size = virtualAddress->size;
 	registroAAgregar->retPos = ultimoPosicionPC; //At the end of the function it has to return to the current program counter
 	registroAAgregar->args = list_create();
 	registroAAgregar->vars = list_create();
