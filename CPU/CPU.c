@@ -213,6 +213,7 @@ int main(int argc, char *argv[]){
 							}
 
 							free(bufferIndiceStack);
+							break;//--> After sending PCB due to wait signal in program code waits for a new PCB
 						}
 
 					}else{
