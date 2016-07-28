@@ -190,13 +190,21 @@ int main(int argc, char *argv[]){
 
 							//Enviar PCB (indiceStack actualizado) solamente al nucleo si el proceso se bloqueo por wait
 							char* bufferIndiceStack =  malloc(sizeof(PCBRecibido->indiceDeStack->elements_count));
-							serializarListaStack(PCBRecibido->indiceDeStack, &bufferIndiceStack);
+							int indiceStackSize = serializarListaStack(PCBRecibido->indiceDeStack, &bufferIndiceStack);
+
+							if (indiceStackSize == sizeof(PCBRecibido->indiceDeStack->elements_count)){//if tamanio equal to 4 bytes then element_count is 0
+								indiceStackSize = 0;
+							}
 
 							//send tamaño de lista indice stack
-							int indiceStackSize = strlen(bufferIndiceStack);
 							sendMessage(&socketNucleo, &indiceStackSize, sizeof(int));
+
 							//send lista indice stack
-							sendMessage(&socketNucleo, bufferIndiceStack, indiceStackSize);
+							if (PCBRecibido->indiceDeStack->elements_count > 0 ){
+								//send lista indice stack
+								sendMessage(&socketNucleo, bufferIndiceStack, indiceStackSize);
+							}
+
 							free(bufferIndiceStack);
 						}
 
@@ -624,7 +632,6 @@ void finalizar(void){
 
 }
 
-
 void getReturnStackRegister(t_registroStack* registroARegresar){
 
 	bool getStackForReturning(t_registroStack* unRegistro){
@@ -787,6 +794,7 @@ t_memoryLocation* buscarEnElStackPosicionPagina(t_PCB* pcb){
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
+	log_info(logCPU," 'obtenerPosicionVariable' ");
 
 	bool condicionVariable(t_vars* unaVariable){
 		return (unaVariable->identificador==identificador_variable);
@@ -809,6 +817,8 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
 }
 
 t_valor_variable dereferenciar(t_puntero direccion_variable){
+	log_info(logCPU," 'dereferenciar' ");
+
 	t_valor_variable varValue;
 	int returnCode = EXIT_SUCCESS;//DEFAULT
 	int exitCode = EXIT_SUCCESS;
@@ -855,6 +865,8 @@ t_valor_variable dereferenciar(t_puntero direccion_variable){
 }
 
 void asignar(t_puntero direccion_variable, t_valor_variable valor){
+	log_info(logCPU," 'asignar' ");
+
 	//Envio la posicion que tengo que asignar a la umc
 
 	// inform new program to swap and check if it could write it.
@@ -961,6 +973,8 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_va
 }
 
 void irAlLabel(t_nombre_etiqueta etiqueta){
+	log_info(logCPU," 'irAlLabel' ");
+
 	t_registroIndiceEtiqueta* registroBuscado = malloc(sizeof(t_registroIndiceEtiqueta));
 
 	int condicionEtiquetas(t_registroIndiceEtiqueta registroIndiceEtiqueta){
@@ -978,6 +992,7 @@ void irAlLabel(t_nombre_etiqueta etiqueta){
 
 //AFTER THIS FUNCTION IS ALWAYS CALLED definirVariable
 void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
+	log_info(logCPU," 'llamarConRetorno' ");
 
 	functionCall = true; //activating functionCall for adding arguments to stack
 
@@ -1008,6 +1023,7 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 }
 
 void retornar(t_valor_variable retorno){
+	log_info(logCPU," 'retornar' ");
 
 	/*	1) buscar ultimo registro del IndiceDeStack --> DONE IN obtenerPosicionVariable
 	 * 	2) buscar la variable del return --> DONE IN obtenerPosicionVariable
@@ -1098,12 +1114,14 @@ void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo) {
 	datosParaPlanifdeES->ProgramCounter = ultimoPosicionPC;
 	datosParaPlanifdeES->tiempo = tiempo;
 	string_append(&dispositivo, "\0");
+	datosParaPlanifdeES->dispositivo = string_new();
 	datosParaPlanifdeES->dispositivo = dispositivo;
+	//string_append(&datosParaPlanifdeES->dispositivo, dispositivo);
 	int dispositivoLen = strlen(datosParaPlanifdeES->dispositivo) + 1;
 
 	int payloadSizeES = sizeof(datosParaPlanifdeES->tiempo) + sizeof(datosParaPlanifdeES->ProgramCounter)
 			+ sizeof(dispositivoLen) + dispositivoLen;
-	int bufferSizeES = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
+	int bufferSizeES = sizeof(bufferSizeES) + payloadSizeES ;
 
 	//Entrada Salida: Serializar y enviar al NUCLEO
 	char* bufferDatosES = malloc(bufferSizeES);
@@ -1112,18 +1130,14 @@ void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo) {
 
 	log_info(logCPU, "Proceso: '%d' en entradaSalida de %d unidades de tiempo ", PCBRecibido->PID,tiempo);
 
-	//free(bufferDatosES);//TODO error:
-	//free(): invalid next size (fast): 0x08051610 ***
-
-	//free(datosParaPlanifdeES);//TODO error:
-	//free(): invalid pointer: 0x08051628 ***
-
+	free(datosParaPlanifdeES->dispositivo);
+	free(datosParaPlanifdeES);
+	free(bufferDatosES);
 
 }
 
 void waitPrimitive(t_nombre_semaforo identificador_semaforo){
 	log_info(logCPU," 'waitPrimitive' ");
-
 	//Envia info al proceso a NUCLEO
 	t_MessageCPU_Nucleo* respuesta = malloc(sizeof(t_MessageCPU_Nucleo));
 	respuesta->operacion = 8;//8 Grabar semaforo (WAIT)
@@ -1137,10 +1151,14 @@ void waitPrimitive(t_nombre_semaforo identificador_semaforo){
 
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
+	free(respuesta);
 	free(bufferRespuesta);
 
+	char **substrings = string_split(identificador_semaforo, "\n");
+	identificador_semaforo = substrings[0];
+
 	//send to Nucleo to execute WAIT function for "identificador_semaforo"
-	int semaforoLen = strlen(identificador_semaforo) + 1;
+	int semaforoLen = strlen(identificador_semaforo) + 1 ;
 
 	// envio al Nucleo el tamanio del semaforo
 	sendMessage(&socketNucleo, &semaforoLen , sizeof(semaforoLen));
@@ -1175,8 +1193,14 @@ void signalPrimitive(t_nombre_semaforo identificador_semaforo){
 
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
 
+	free(respuesta);
+	free(bufferRespuesta);
+
+	char **substrings = string_split(identificador_semaforo, "\n");
+	identificador_semaforo = substrings[0];
+
 	//send to Nucleo to execute SIGNAL function for "identificador_semaforo"
-	int semaforoLen=strlen(identificador_semaforo)+1;
+	int semaforoLen=strlen(identificador_semaforo) + 1;
 
 	// envio al Nucleo el tamanio del semaforo
 	sendMessage(&socketNucleo, &semaforoLen , sizeof(semaforoLen));
@@ -1188,6 +1212,8 @@ void signalPrimitive(t_nombre_semaforo identificador_semaforo){
 }
 
 void llamarSinRetorno(t_nombre_etiqueta etiqueta){
+	log_info(logCPU," 'llamarSinRetorno' ");
+
  	//Cambiar de program counter segun etiqueta
 	irAlLabel(etiqueta);
 }

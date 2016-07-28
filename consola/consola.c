@@ -259,11 +259,12 @@ int reconocerOperacion() {
 		}
 	}else if (receivedBytes == 0 ){
 		//The client is down when bytes received are 0
-		log_error(logConsola, "The client went down while receiving! - Please check the client '%d' is down!", socketNucleo);
+		//log_error(logConsola, "The client went down while receiving! - Please check the client '%d' is down!", socketNucleo);
 		close(socketNucleo);
 	}else{
-		log_error(logConsola, "Error - No able to received - Error receiving from socket '%d', with error: %d",socketNucleo, errno);
+		//log_error(logConsola, "Error - No able to received - Error receiving from socket '%d', with error: %d",socketNucleo, errno);
 		close(socketNucleo);
 	}
+
 	return exitCode;
 }
