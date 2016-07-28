@@ -933,8 +933,12 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 	serializeCPU_Nucleo(respuesta, bufferRespuesta, payloadSize);
 
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+
 	free(respuesta);
 	free(bufferRespuesta);
+
+	char **substrings = string_split(variable, "\n");
+	variable = substrings[0];
 
 	//1) Envia el tamanio de la variable al proceso NUCLEO
 	int variableLen = strlen(variable) + 1;
@@ -946,7 +950,6 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 	t_valor_variable valorVariable = 0;
 
 	if ((valorDeErrorLen != -1) && (valorDeErrorVar != -1)) {
-		log_info(logCPU, "Los datos se enviaron correctamente al proceso NUCLEO");
 		receiveMessage(&socketNucleo, &valorVariable, sizeof(t_valor_variable));
 		log_info(logCPU, "se recibio correctamente el valor '%d' de la variable compartida %s",valorVariable,variable);
 	} else {
@@ -971,11 +974,15 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_va
 	serializeCPU_Nucleo(respuesta, bufferRespuesta, payloadSize);
 
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+
 	free(respuesta);
 	free(bufferRespuesta);
 
 	//1) Envia mensaje con el valor
 	sendMessage(&socketNucleo, &valor, sizeof(t_valor_variable));
+
+	char **substrings = string_split(variable, "\n");
+	variable = substrings[0];
 
 	//2) Envia el tamanio de la variable al proceso NUCLEO
 	int variableLen = strlen(variable) + 1;

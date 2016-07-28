@@ -8,5 +8,5 @@ IO_IDS=[HDD1, LPT1]
 IO_SLEEP=[500, 200]
 SEM_IDS=[b, c]
 SEM_INIT=[1, 0]
-SHARED_VARS=[!colas, !compartida]
+SHARED_VARS=[colas, compartida]
 STACK_SIZE=8
