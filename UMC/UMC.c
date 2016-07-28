@@ -308,12 +308,10 @@ void procesCPUMessages(int messageSize, t_serverData* serverData){
 
 	changeActiveProcess(message->PID);// rollbacking this because of GIT issue #312
 
-	void *content = NULL;
-
 	switch (message->operation){
 		case lectura_pagina:{
 
-			content = malloc(message->virtualAddress->size);
+			void *content = NULL;
 
 			content = requestBytesFromPage(message->virtualAddress);
 
@@ -321,6 +319,8 @@ void procesCPUMessages(int messageSize, t_serverData* serverData){
 				exitcode = EXIT_SUCCESS;
 				//After getting the memory content WITHOUT issues, inform status of the operation
 				sendMessage(&serverData->socketClient, &exitcode, sizeof(exitcode));
+				//Add \0 to the end of the message
+				memset(content + message->virtualAddress->size - 1,'\0',1);
 				//has to be sent it to upstream - on the other side the process already know the size to received
 				sendMessage(&serverData->socketClient, content, message->virtualAddress->size);
 			}else{
@@ -335,27 +335,14 @@ void procesCPUMessages(int messageSize, t_serverData* serverData){
 		}
 		case escritura_pagina:{
 
-			//Receive content size
-			messageSize = 0;//reseting size to get the content size
-			receivedBytes = 0;//reseting receivedBytes to get the content size
+			//Receive value ALWAYS IS AN INT
+			int value;
+			receivedBytes = receiveMessage(&serverData->socketClient, &value, sizeof(value));
 
-			receivedBytes = receiveMessage(&serverData->socketClient, &messageSize, sizeof(messageSize));
+			exitcode = writeBytesToPage(message->virtualAddress, &value);
 
-			//Receive content using the size read before
-			content = malloc(messageSize);
-			receivedBytes = receiveMessage(&serverData->socketClient, content, messageSize);
-
-			exitcode = writeBytesToPage(message->virtualAddress, content);
-
-			if(content != NULL){
-				//After getting the memory content WITHOUT issues, inform status of the operation
-				sendMessage(&serverData->socketClient, &exitcode, sizeof(exitcode));
-			}else{
-				//The main memory hasn't any free frames - inform status of the operation
-				sendMessage(&serverData->socketClient, &exitcode, sizeof(exitcode));
-			}
-
-			free(content);
+			//After writing the memory content inform status of the operation
+			sendMessage(&serverData->socketClient, &exitcode, sizeof(exitcode));
 
 			break;
 		}
@@ -391,7 +378,7 @@ void procesNucleoMessages(int messageSize, t_serverData* serverData){
 			log_info(UMCLog, "Program size received: %d", messageSize);
 
 			//Receive content using the size read before
-			void *content = malloc(messageSize);
+			char *content = malloc(messageSize);
 			receivedBytes = receiveMessage(&serverData->socketClient, content, messageSize);
 			string_append(&content, "\0");
 			log_info(UMCLog, "Program received:\n%s\n", content);
@@ -972,7 +959,7 @@ void deleteContentFromMemory(t_memoryAdmin *memoryElement){
 	int memOffset = memoryElement->frameNumber * configuration.frames_size + memoryElement->virtualAddress->offset;
 	memset(memBlock + memOffset,'\0', memoryElement->virtualAddress->size);
 
-	log_info(UMCLog, "From PID '%d' - Content in page '#%d' DELETED from memory",memoryElement->PID, memoryElement->virtualAddress->pag);
+	log_info(UMCLog, "PID '%d' - Content in page '#%d' DELETED from memory",memoryElement->PID, memoryElement->virtualAddress->pag);
 
 	//adding frame again to free frames list
 	int *frameNro = malloc(sizeof(int));
@@ -995,10 +982,10 @@ void checkPageModification(t_memoryAdmin *memoryElement){
 		message->virtualAddress = malloc(sizeof(t_memoryLocation));
 		message->operation = escritura_pagina;
 		message->PID = memoryElement->PID;
-		message->cantPages = -1; //DEFAULT value when the operation doesnt need it
+		message->cantPages = -1; //DEFAULT value when the operation doesn't need it
 		message->virtualAddress->pag = memoryElement->virtualAddress->pag;
 		message->virtualAddress->offset = memoryElement->virtualAddress->offset;
-		message->virtualAddress->size = memoryElement->virtualAddress->size;
+		message->virtualAddress->size = configuration.frames_size;//ALWAYS send the whole page to write into SWAP
 
 		payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) + sizeof(message->cantPages);
 		bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
@@ -1011,13 +998,13 @@ void checkPageModification(t_memoryAdmin *memoryElement){
 		sendMessage(&socketSwap, buffer, bufferSize);
 
 		//Send memory content to overwrite with the virtualAddress->size - On the other side is going to be waiting it with that size sent previously
-		int memoryBlockOffset =  (memoryElement->frameNumber * configuration.frames_size) + memoryElement->virtualAddress->offset;
-		content = realloc(content, memoryElement->virtualAddress->size);
-		memcpy(content, memBlock + memoryBlockOffset, memoryElement->virtualAddress->size);
+		int memoryBlockOffset =  (memoryElement->frameNumber * message->virtualAddress->size) + memoryElement->virtualAddress->offset;
+		content = realloc(content, message->virtualAddress->size);
+		memcpy(content, memBlock + memoryBlockOffset, message->virtualAddress->size);//ALWAYS send the whole page to write into SWAP
 
-		sendMessage(&socketSwap, content, memoryElement->virtualAddress->size); //OJO asegurarse que el CPU siempre envie pagesize
+		sendMessage(&socketSwap, content, message->virtualAddress->size);
 
-		log_info(UMCLog, "From PID '%d' - Content in page '#%d' swapped OUT",memoryElement->PID, memoryElement->virtualAddress->pag);
+		log_info(UMCLog, "PID '%d' - Content in page '#%d' SWAPPED OUT to SWAP",memoryElement->PID, memoryElement->virtualAddress->pag);
 
 		free(message->virtualAddress);
 		free(message);
@@ -1058,7 +1045,7 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID){
 	memcpy(memoryContent, messageRcv, virtualAddress->size);
 
 	//TODO Se puede agregar una validacion despues del receive para que no pinche despues de hacer el memcpy
-	log_info(UMCLog, "From PID '%d' - Content in page '#%d' swapped IN",PID, virtualAddress->pag);
+	log_info(UMCLog, "PID '%d' - Content in page '#%d' SWAPPED IN to memory",PID, virtualAddress->pag);
 
 	free(message->virtualAddress);
 	free(message);
@@ -1298,12 +1285,14 @@ t_memoryAdmin *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memor
 			case(READ):{
 				//After getting the frame needed for reading, mark memory element as present (overwrite it no matter if it was marked as present before)
 				pageNeeded->presentBit = PAGE_PRESENT;
+				log_info(UMCLog, "PID '%d': Page '#%d' marked as PRESENT in %s", activePID, virtualAddress->pag, getMemoryString(deviceLocation));
 				break;
 			}
 			case (WRITE):{
 				//After getting the frame needed for writing, mark memory element as modified and as present as well
 				pageNeeded->presentBit = PAGE_PRESENT;
 				pageNeeded->dirtyBit = PAGE_MODIFIED;
+				log_info(UMCLog, "PID '%d': Page '#%d' marked as MODFIED in %s", activePID, virtualAddress->pag, getMemoryString(deviceLocation));
 				break;
 			}
 		}

@@ -895,7 +895,7 @@ void asignar(t_puntero direccion_variable, t_valor_variable valor){
 	int payloadSize = 0;
 	t_memoryLocation* virtualAddress = (t_memoryLocation*) direccion_variable;
 
-	//overwrite page content in swap (swap out)
+	//overwrite page content
 	t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
 	message->virtualAddress = malloc(sizeof(t_memoryLocation));
 	message->PID = PCBRecibido->PID;
@@ -915,13 +915,20 @@ void asignar(t_puntero direccion_variable, t_valor_variable valor){
 	//Send information to UMC - message serialized with virtualAddress information
 	sendMessage(&socketUMC, buffer, bufferSize);
 
-	//1) First send with size of the message
-	int messageSize = sizeof(t_valor_variable);
-	sendMessage(&socketUMC, &messageSize , sizeof(t_valor_variable));//TODO ver porque el tamanio a enviar deberia ser frameSize SIEMPRE
-	//2) Second send with value with previous size sent
+	//Send with value
 	sendMessage(&socketUMC,&valor,sizeof(t_valor_variable));
 
-	free(message->virtualAddress);//TODO invalid pointer - check what happened
+	int returnCode = EXIT_SUCCESS;
+	//First answer from UMC is the exit code from the operation
+	receiveMessage(&socketUMC,&returnCode, sizeof(returnCode));
+
+	if(returnCode == EXIT_SUCCESS){
+		log_info(logCPU, "PID: '%d' - Writing value '%d' in page '#%d' went SUCCESS", PCBRecibido->PID, valor, virtualAddress->pag);
+	}else{
+		log_info(logCPU, "PID: '%d' - Writing value '%d' in page '#%d' went FAILURE", PCBRecibido->PID, valor, virtualAddress->pag);
+	}
+
+	free(message->virtualAddress);
 	free(message);
 	free(buffer);
 }
