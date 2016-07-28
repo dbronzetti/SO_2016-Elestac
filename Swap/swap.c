@@ -172,7 +172,7 @@ void processingMessages(int socketClient){
 		free(operacionARealizar->virtualAddress);
 		free(messageRcv);
 	}else{
-		log_error(logSwap,"No se recibio correctamente los datos. \n");
+		//log_error(logSwap,"No se recibio correctamente los datos. \n");
 	}
 
 	free(pedidoRecibidoYDeserializado);

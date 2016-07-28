@@ -85,9 +85,6 @@ pthread_mutex_t globalMutex;
 pthread_mutex_t activeProcessMutex;
 pthread_mutex_t mutex_config;
 
-//Semaforo Contador
-sem_t semBloqueados;
-
 //Timers
 timer_t** timers;
 

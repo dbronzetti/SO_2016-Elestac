@@ -299,6 +299,7 @@ void processMessageReceivedConsola (void *parameter){
 				char *messageRcv = malloc(messageSize);
 				receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
 
+				string_append(&messageRcv, "\0");
 				runScript(messageRcv, serverData->socketClient);
 				log_info(logNucleo,"Bytes received for code: %d",receivedBytes);
 				free(messageRcv);
@@ -395,7 +396,7 @@ void runScript(char* codeScript, int socketConsola){
 	pthread_mutex_unlock(&globalMutex);
 
 	PCB->ProgramCounter = miMetaData->instruccion_inicio;
-	int contentLen = strlen(codeScript);
+	int contentLen = strlen(codeScript) + 1 ;
 	PCB->cantidadDePaginas = (int) ceil((double) contentLen/ (double) frameSize);
 	PCB->StackPointer = 0;
 	PCB->estado = 1;
@@ -433,7 +434,7 @@ void runScript(char* codeScript, int socketConsola){
 	pthread_mutex_lock(&listadoProcesos);
 	list_add(listaProcesos,(void*)PCB);
 	pthread_mutex_unlock(&listadoProcesos);
-	log_info(logNucleo, "Proceso %d - Iniciado  Script: %s",PCB->PID, codeScript);
+	log_info(logNucleo, "Proceso %d - Iniciado  Script: \n %s \n",PCB->PID, codeScript);
 
 	//Agrego a la Cola de Listos
 	t_proceso* datosProceso = malloc(sizeof(t_proceso));
@@ -736,7 +737,6 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 	}
 	case 8:{	// WAIT - Grabar semaforo y enviar al CPU
 		log_info(logNucleo, " 'waitPrimitive' ");
-
 		//Recibo el tamanio del wait
 		int tamanio = -1;
 		receiveMessage(&socketCPULibre, &tamanio, sizeof(int));
@@ -787,6 +787,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 
 				//Libero la CPU que ocupaba el proceso
 				liberarCPU(socketCPULibre);
+
 			}else{
 				grabarSemaforo(semaforo, pideSemaforo(semaforo)-1);
 				valorAEnviar=0;
@@ -806,7 +807,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 			log_error(logNucleo, "No fue posible recibir el semaforo 'SIGNAL' ");
 			break;
 		}
-		//Recibo el semaforo wait
+		//Recibo el semaforo signal
 		t_nombre_semaforo semaforo = malloc(tamanio);
 		receiveMessage(&socketCPULibre, semaforo, tamanio);
 		log_info(logNucleo, "Proceso %d libera semaforo:%s ", message->processID, semaforo);
@@ -1439,7 +1440,6 @@ void bloqueoSemaforo(int processID, t_nombre_semaforo semaforo, t_list* listaInd
 			proceso->PID = processID;
 			proceso->ProgramCounter = PCB->ProgramCounter;
 
-			//Aca esta funcionando con el \n OJO
 			pthread_mutex_lock(&cSemaforos);
 			queue_push(colas_semaforos[i], proceso);
 			pthread_mutex_unlock(&cSemaforos);
@@ -1522,7 +1522,7 @@ void iniciarPrograma(int PID, char *codeScript) {
 	log_info(logNucleo,"Para el processID: %d, aviso al proceso UMC el inicio  el programa ", PID);
 	int bufferSize = 0;
 	int payloadSize = 0;
-	int contentLen = strlen(codeScript);
+	int contentLen = strlen(codeScript) + 1;
 	int cantPages = (int) ceil((double) contentLen /(double) frameSize);
 
 	log_info(logNucleo,"strlen del codigo del programa: %d ", contentLen);

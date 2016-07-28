@@ -397,6 +397,7 @@ void procesNucleoMessages(int messageSize, t_serverData* serverData){
 			//Receive content using the size read before
 			void *content = malloc(messageSize);
 			receivedBytes = receiveMessage(&serverData->socketClient, content, messageSize);
+			string_append(&content, "\0");
 			log_info(UMCLog, "Program received:\n%s\n", content);
 
 			initializeProgram(message->PID, message->cantPages, content);
@@ -791,7 +792,7 @@ void initializeProgram(int PID, int totalPagesRequired, char *programCode){
 	//After sending information have to be sent the program code
 	//TODO received possible error from SWAP if is OK then send code
 	//1) Send program size to swap
-	int programCodeLen = strlen(programCode);//+1 not needed it's being sent from Nucleo
+	int programCodeLen = strlen(programCode) + 1;
 	sendMessage(&socketSwap, &programCodeLen, sizeof(programCodeLen));
 
 	//2) Send program to swap
