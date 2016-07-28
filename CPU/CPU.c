@@ -279,7 +279,7 @@ int ejecutarPrograma(){
 		message->operation = lectura_pagina;
 		message->virtualAddress->pag = (int) floor(((double) offsetInstruccionesSize/ (double) frameSize));
 		message->virtualAddress->offset = 0; //Request ALWAYS the start of a page
-		message->virtualAddress->size = frameSize; //ALWAYS REQUEST TO UMC the size of a page and when it is received a memcpy with "instruccionActual->longitudInstruccionEnBytes" has to be done
+		message->virtualAddress->size = frameSize; //ALWAYS REQUEST TO UMC the size of a page WHEN READING and when it is received a memcpy with "instruccionActual->longitudInstruccionEnBytes" has to be done
 
 		payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(t_memoryLocation);
 		bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
@@ -347,6 +347,8 @@ int ejecutarPrograma(){
 		//parsing the useful code from the whole code received
 		char *instruccionEjecutar = malloc(instruccionActual->longitudInstruccionEnBytes);
 		instruccionEjecutar = string_substring(codigoRecibido, instruccionActual->inicioDeInstruccion, instruccionActual->longitudInstruccionEnBytes);
+
+		log_info(logCPU, "PID: '%d' - Current program line: '%d' - Instruction --> %s", PCBRecibido->PID, ultimoPosicionPC, instruccionEjecutar);
 
 		analizadorLinea(instruccionEjecutar, &funciones, &funciones_kernel);
 		free(instruccionEjecutar);//TODO verificar este free
@@ -851,7 +853,7 @@ t_valor_variable dereferenciar(t_puntero direccion_variable){
 	message->virtualAddress->pag = virtualAddress->pag;
 	message->virtualAddress->pag += PCBRecibido->cantidadDePaginas;// como voy a leer una variable del stack debo sumarle la cantidad de paginas de codigo.
 	message->virtualAddress->offset = virtualAddress->offset;
-	message->virtualAddress->size = virtualAddress->size;
+	message->virtualAddress->size = frameSize;//ALWAYS REQUEST TO UMC the size of a page WHEN READING and when it is received a memcpy with the size needed
 
 	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(t_memoryLocation);
 	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
@@ -872,11 +874,11 @@ t_valor_variable dereferenciar(t_puntero direccion_variable){
 	exitCode = receiveMessage(&socketUMC,&returnCode, sizeof(exitCode));
 
 	if(returnCode == EXIT_SUCCESS){
-		char* valorRecibido = malloc(sizeof(t_valor_variable));
+		char* valorRecibido = malloc(frameSize);
 		//Receiving information from UMC when the operation was successfully accomplished
-		exitCode = receiveMessage(&socketUMC, valorRecibido, sizeof(t_valor_variable));
+		exitCode = receiveMessage(&socketUMC, valorRecibido, frameSize);//receiving frame requested
 
-		memcpy(&varValue,valorRecibido,sizeof(t_valor_variable));
+		memcpy(&varValue,valorRecibido,sizeof(t_valor_variable));//copying the information needed from that page
 		free(valorRecibido);
 	}
 
@@ -901,7 +903,7 @@ void asignar(t_puntero direccion_variable, t_valor_variable valor){
 	message->virtualAddress->pag = virtualAddress->pag;
 	message->virtualAddress->pag += PCBRecibido->cantidadDePaginas; // agrego cantidad de paginas del codigo para que me guarde en la pagina de stack que quiero
 	message->virtualAddress->offset = virtualAddress->offset;
-	message->virtualAddress->size = virtualAddress->size;
+	message->virtualAddress->size = sizeof(t_valor_variable);
 
 	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(t_memoryLocation);
 	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
@@ -915,7 +917,7 @@ void asignar(t_puntero direccion_variable, t_valor_variable valor){
 
 	//1) First send with size of the message
 	int messageSize = sizeof(t_valor_variable);
-	sendMessage(&socketUMC, &messageSize , sizeof(t_valor_variable));
+	sendMessage(&socketUMC, &messageSize , sizeof(t_valor_variable));//TODO ver porque el tamanio a enviar deberia ser frameSize SIEMPRE
 	//2) Second send with value with previous size sent
 	sendMessage(&socketUMC,&valor,sizeof(t_valor_variable));
 
@@ -1004,18 +1006,20 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_va
 void irAlLabel(t_nombre_etiqueta etiqueta){
 	log_info(logCPU," 'irAlLabel' ");
 
-	t_registroIndiceEtiqueta* registroBuscado = malloc(sizeof(t_registroIndiceEtiqueta));
-
 	int condicionEtiquetas(t_registroIndiceEtiqueta registroIndiceEtiqueta){
 		return (registroIndiceEtiqueta.funcion == etiqueta);
 	}
 
-	registroBuscado = (t_registroIndiceEtiqueta*) list_find(listaIndiceEtiquetas,(void*)condicionEtiquetas);
+	if(listaIndiceEtiquetas->elements_count > 0){
+		t_registroIndiceEtiqueta* registroBuscado = malloc(sizeof(t_registroIndiceEtiqueta));
 
-	//get program counter needed
-	ultimoPosicionPC = registroBuscado->posicionDeLaEtiqueta;
+		registroBuscado = (t_registroIndiceEtiqueta*) list_find(listaIndiceEtiquetas,(void*)condicionEtiquetas);
 
-	free(registroBuscado);
+		//get program counter needed
+		ultimoPosicionPC = registroBuscado->posicionDeLaEtiqueta;
+
+		free(registroBuscado);
+	}
 
 }
 
