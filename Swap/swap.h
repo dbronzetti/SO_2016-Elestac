@@ -30,6 +30,7 @@
 #include "commons/config.h"
 #include "commons/log.h"
 #include "stdbool.h"
+#include <fcntl.h>
 
 struct bloqueDeMemoria{
 	int PID;
@@ -65,8 +66,17 @@ typedef struct {
 	int socketClient;
 } t_serverData;
 
+typedef struct __attribute__((packed)){
+	int ocupada;
+	int idProcesoQueLoOcupa;
+}pagina;
+
+pagina *paginasSWAP;
+
+void *discoParaleloNoVirtualMappeado;
 int puertoEscucha;
 int tamanioDePagina;
+int tamanioDeArchivo;
 int cantidadDePaginas;
 int retardoCompactacion;
 int retardoAcceso;
@@ -74,6 +84,7 @@ char* nombre_swap;
 char * nombreSwapFull;
 t_list* listaSwap;
 t_log* logSwap;
+
 void* mapearArchivoEnMemoria(int offset,int tamanio);
 void destructorBloqueSwap(bloqueSwap* self);
 int agregarProceso(bloqueSwap* unBloque,char* codeScript);

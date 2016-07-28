@@ -470,12 +470,12 @@ void planificarProceso() {
 	//Veo si hay CPU libre para asignarle
 	int libreCPU = buscarCPULibre();
 
-	log_info(logNucleo,"Se tomo el socket CPU '%d' para enviar un PCB", libreCPU);
-
 	if (libreCPU == -1) {
 		log_error(logNucleo,"No hay CPU libre \n");
 		return;
 	}
+	log_info(logNucleo,"Se tomo el socket CPU '%d' para enviar un PCB", libreCPU);
+
 	t_serverData *serverData = malloc(sizeof(t_serverData));
 	serverData->socketClient = libreCPU;
 
@@ -582,7 +582,7 @@ void enviarMsjCPU(t_PCB* datosPCB,t_MessageNucleo_CPU* contextoProceso, t_server
 
 		//send tamaño de lista indice stack
 		sendMessage(&serverData->socketClient, &tamanioIndiceStack, sizeof(int));
-		log_info(logNucleo,"Se envia el tamanio %d (strlen) del buffer indice de Stack al proceso CPU",tamanioIndiceStack);
+		log_info(logNucleo,"Se envia el tamanio %d del buffer indice de Stack al proceso CPU",tamanioIndiceStack);
 
 		if (datosPCB->indiceDeStack->elements_count > 0 ){
 			//send lista indice stack
@@ -702,7 +702,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 			log_error(logNucleo, "No se encontro la variable: %s id, con el tamanio: %d ",variable, variableLen);
 		}else{
 			sendMessage(&socketCPULibre, &valorVariable, sizeof(t_valor_variable));
-			log_info(logNucleo, "Se envio correctamente el valor %d de la variable %s al proceso CPU",variable);
+			log_info(logNucleo, "Se envio correctamente el valor %d de la variable %s al proceso CPU",valorVariable, variable);
 		}
 		free(variable);
 		break;
@@ -1342,7 +1342,6 @@ t_valor_variable obtenerValor(t_nombre_compartida variable) {
 			break;
 		}
 	}
-	//TENER EN CUENTA que aca esta funcionando con el \n
 	return valorVariable;
 }
 

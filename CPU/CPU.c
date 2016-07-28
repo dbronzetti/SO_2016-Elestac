@@ -279,7 +279,7 @@ int ejecutarPrograma(){
 		message->operation = lectura_pagina;
 		message->virtualAddress->pag = (int) floor(((double) offsetInstruccionesSize/ (double) frameSize));
 		message->virtualAddress->offset = 0; //Request ALWAYS the start of a page
-		message->virtualAddress->size = frameSize; //ALWAYS REQUEST TO UMC the size of a page WHEN READING and when it is received a memcpy with "instruccionActual->longitudInstruccionEnBytes" has to be done
+		message->virtualAddress->size = frameSize ; //ALWAYS REQUEST TO UMC the size of a page WHEN READING and when it is received a memcpy with "instruccionActual->longitudInstruccionEnBytes" has to be done
 
 		payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(t_memoryLocation);
 		bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
@@ -491,7 +491,8 @@ void waitRequestFromNucleo(int *socketClient, char **messageRcv){
 		receivedBytes = receiveMessage(socketClient, *messageRcv, messageSize);
 
 		//TODO ver que hace con messageRcv despues de recibirlo!!
-		log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), *socketClient, messageSize);
+		//log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), *socketClient, messageSize);
+		//error al recibir por 2da vez: corrupted double-linked list: 0x08294830
 
 	}else{
 		*messageRcv = NULL;
@@ -750,7 +751,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 	PCBRecibido->StackPointer = PCBRecibido->indiceDeStack->elements_count -1;
 
 	return posicionDeLaVariable;
-}//TODO:rompe despues de esta llave apenas termina definir variable
+}
 
 void cargarValoresNuevaPosicion(t_memoryLocation* ultimaPosicionOcupada, t_memoryLocation* variableAAgregar){
 
@@ -1013,7 +1014,12 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_va
 void irAlLabel(t_nombre_etiqueta etiqueta){
 	log_info(logCPU," 'irAlLabel' ");
 
-	int condicionEtiquetas(t_registroIndiceEtiqueta registroIndiceEtiqueta){
+	t_puntero_instruccion instruccion;
+	instruccion = metadata_buscar_etiqueta(etiqueta, PCBRecibido->indiceDeEtiquetas, PCBRecibido->indiceDeEtiquetasTamanio);
+
+	PCBRecibido->ProgramCounter = instruccion-1; //(contador/2);
+
+	/*int condicionEtiquetas(t_registroIndiceEtiqueta registroIndiceEtiqueta){
 		return (registroIndiceEtiqueta.funcion == etiqueta);
 	}
 
@@ -1026,7 +1032,7 @@ void irAlLabel(t_nombre_etiqueta etiqueta){
 		ultimoPosicionPC = registroBuscado->posicionDeLaEtiqueta;
 
 		free(registroBuscado);
-	}
+	}*/
 
 }
 

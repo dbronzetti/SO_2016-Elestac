@@ -47,13 +47,22 @@ int main(int argc, char *argv[]){
 
 	crearArchivoDeSwap();
 
+	//inicializarEstructuraPaginas
 	char* paginaAEnviar;
 	bloqueSwap* bloqueInicial=malloc(sizeof(bloqueSwap));
-	bloqueInicial->PID=0;
-	bloqueInicial->ocupado=0;
+	//bloqueInicial->PID=0;
+	//bloqueInicial->ocupado=0;
 	bloqueInicial->tamanioDelBloque=cantidadDePaginas*tamanioDePagina;
 	bloqueInicial->cantDePaginas = cantidadDePaginas;
 	bloqueInicial->paginaInicial = 0;
+
+	paginasSWAP = calloc(cantidadDePaginas, sizeof(pagina));
+	int j;
+	for (j = 0; j < cantidadDePaginas; j++) {
+		paginasSWAP[j].idProcesoQueLoOcupa = -1;
+		paginasSWAP[j].ocupada = 0;
+	}
+
 	listaSwap=list_create();
 	list_add(listaSwap,(void*)bloqueInicial);
 	startServer();
@@ -81,7 +90,6 @@ void processingMessages(int socketClient){
 		//Receive message using the size read before
 		char *messageRcv = malloc(messageSize);
 		int receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
-		log_info(logSwap, "message received: %s \n", messageRcv);
 
 		//int receivedBytes = receiveMessage(&socketClient,structUmcSwap,sizeof(operacionARealizar));
 		t_MessageUMC_Swap* operacionARealizar = malloc(sizeof(t_MessageUMC_Swap)); //FIXING missing memory location
@@ -107,6 +115,10 @@ void processingMessages(int socketClient){
 				char* codeScript = malloc(tamanio); //FIXING missing memory location
 				receiveMessage(&socketClient,codeScript,tamanio);
 				log_info(logSwap, "message received: %s \n", codeScript);
+
+				// TODO memset(codeScript, '\0', tamanioDePagina * pagina);
+
+				usleep(retardoAcceso / 1000);
 
 				if(existeElBloqueNecesitado(pedidoRecibidoYDeserializado) != NULL){
 					//MOVING BLOCK BECAUSE IN ELSE codeScript was not being received
@@ -294,11 +306,11 @@ void crearArchivoDeSwap(){
 	string_append(&cadena,terceraParteCadena);
 	string_append_with_format(&cadena,"%i",cantidadDePaginas);
 	system(cadena);
-	//TODO
-	//free(cadena);
-	//free(segundaParteCadena);
-	//free(terceraParteCadena);
+	free(cadena);
+	free(segundaParteCadena);
+	free(terceraParteCadena);
 }
+
 
 bool condicionLeer(bloqueSwap* unBloque,bloqueSwap* otroBloque){
 	return (unBloque->PID==otroBloque->PID);
@@ -324,6 +336,25 @@ bloqueSwap* buscarProcesoAEliminar(int PID){
 
 }
 
+void mapearArchivo() {
+	int fd;
+	size_t length = tamanioDeArchivo;
+	//discoParaleloNoVirtualMappeado = malloc(tamanio_archivo);
+
+	fd = open(nombreSwapFull, O_RDWR);
+	if (fd == -1) {
+		printf("Error abriendo %s para su lectura", nombreSwapFull);
+		exit(EXIT_FAILURE);
+	}
+	discoParaleloNoVirtualMappeado = mmap(0, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+	if (discoParaleloNoVirtualMappeado == MAP_FAILED) {
+		close(fd);
+		printf("Error mapeando el archivo %s \n", nombreSwapFull);
+		exit(EXIT_FAILURE);
+	}
+	printf("Mapeo perfecto  %s \n", nombreSwapFull);
+}
 
 char* leerPagina(bloqueSwap* bloqueDeSwap){
 	bloqueSwap* bloqueEncontrado;
@@ -395,6 +426,28 @@ bloqueSwap* existeElBloqueNecesitado(bloqueSwap* otroBloque){
 		return( unBloque->cantDePaginas >= otroBloque->cantDePaginas);
 	}
 	return (bloqueSwap*)list_find(listaSwap,(void*)condicionDeCompactacion);
+}
+
+int hayLugarParaNuevoProceso(int cantPagsNecesita) {
+	int contadorPaginasSeguidas = 0;
+	int i;
+	int primeraPaginaLibre = 0;
+	for (i = 0; i < cantidadDePaginas; ++i) {
+		if (paginasSWAP[i].ocupada == 0){
+			if (contadorPaginasSeguidas == 0){
+				primeraPaginaLibre = i;
+			}
+			contadorPaginasSeguidas++;
+			if (contadorPaginasSeguidas >= cantPagsNecesita){
+				return primeraPaginaLibre;
+			}
+		}else{
+			contadorPaginasSeguidas = 0;
+		}
+
+
+	}
+	return -1;
 }
 
 void crearArchivoDeConfiguracion(char* configFile){
