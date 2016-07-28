@@ -133,11 +133,11 @@ void endProgram(int PID);
 t_memoryAdmin *getElementFrameNro(t_memoryLocation *virtualAddress, enum_memoryOperations operation);
 t_memoryAdmin *searchFramebyPage(enum_memoryStructure deviceLocation, enum_memoryOperations operation, t_memoryLocation *virtualAddress);
 t_memoryAdmin *updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memoryLocation *virtualAddress, t_memoryAdmin *memoryElement);
-void updatTLBElement(t_memoryLocation *virtualAddress, t_memoryAdmin *memoryElement);
 void executeLRUAlgorithm(t_memoryAdmin *newElement, t_memoryLocation *virtualAddress);
 void executeMainMemoryAlgorithm(t_pageTablesxProc *pageTablexProc, t_memoryAdmin *newElement, void *memoryContent);
 void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID);
 void waitForResponse();
 void changeActiveProcess(int PID);
+char *getMemoryString (enum_memoryStructure memoryStructure);
 
 #endif /* UMC_H_ */
