@@ -148,10 +148,11 @@ int main(int argc, char *argv[]){
 							t_MessageCPU_Nucleo* corteQuantum = malloc( sizeof(t_MessageCPU_Nucleo));
 
 							if(SignalActivated){//Si fue captada la señal SIGUSR1 mientras se estaba ejecutando una instruccion se debe finalizar la misma y acto seguido desconectarse del Nucleo
+								log_info(logCPU,"PID: '%d' - Sending PCB due to SIGUSR1", PCBRecibido->PID);
 								corteQuantum->operacion = 72;//operacion 72 es por Desconexion del CPU
 								quantumUsed = j;
 							}else{// When j == QUANTUM
-								log_info(logCPU, "Corte por quantum cumplido - Proceso '%d'", PCBRecibido->PID);
+								log_info(logCPU, "PID: '%d' - Sending PCB due to QUANTUM OVER", PCBRecibido->PID);
 								corteQuantum->operacion = 5;//operacion 5 es por quantum
 								quantumUsed = QUANTUM;
 							}
@@ -195,6 +196,8 @@ int main(int argc, char *argv[]){
 							}
 						}else if (waitSemActivated){
 
+							log_info(logCPU,"PID: '%d' - Sending PCB after semaphore block", PCBRecibido->PID);
+
 							//Enviar PCB (indiceStack actualizado) solamente al nucleo si el proceso se bloqueo por wait
 							char* bufferIndiceStack =  malloc(sizeof(PCBRecibido->indiceDeStack->elements_count));
 							int indiceStackSize = serializarListaStack(PCBRecibido->indiceDeStack, &bufferIndiceStack);
@@ -229,7 +232,7 @@ int main(int argc, char *argv[]){
 			destruirPCB(PCBRecibido);
 
 			//Destruir listaIndiceEtiquetas
-			destroyIndiceEtiquetas();//TODO si llega hasta aca falla
+			destroyIndiceEtiquetas();
 		}
 
 	}//loop end
@@ -578,6 +581,8 @@ void serializarES(t_es *value, char* buffer, int valueSize){
 
 void finalizar(void){
 
+	log_info(logCPU, "PID: '%d' - Requesting end line program...", PCBRecibido->PID);
+
 	//Request to nucleo fin programa information by PID
 	t_MessageCPU_Nucleo* message = malloc(sizeof(t_MessageCPU_Nucleo));
 	message->operacion = 13;
@@ -596,10 +601,12 @@ void finalizar(void){
 	int finDePrograma = -1;
 	receiveMessage(&socketNucleo, &finDePrograma, sizeof(finDePrograma));
 
+	log_info(logCPU, "PID: '%d' - End line program is: '%d' - Current program line: '%d'", PCBRecibido->PID, finDePrograma, ultimoPosicionPC);
+
 	//ANALIZA SI ES EL FINAL DEL PROGRAMA
 	if(finDePrograma == ultimoPosicionPC){
 		//Fin Programa main
-		log_info(logCPU, "Proceso '%d' - Finalizado correctamente", PCBRecibido->PID);
+		log_info(logCPU, "PID: '%d' - Program FINISHED SUCCESFULLY", PCBRecibido->PID);
 
 		//Envia aviso que finaliza correctamente el proceso a NUCLEO
 		t_MessageCPU_Nucleo* respuestaFinOK = malloc(sizeof(t_MessageCPU_Nucleo));
@@ -620,6 +627,7 @@ void finalizar(void){
 
 	}else{
 		//RETORNAR A PUNTO PREVIO DE PROGRAM COUNTER Y ELIMINAR REGISTRO DE STACK CORRESPONDIENTE A LA FUNCION (BUSCAR EL REGISTRO MAS RECIENTE QUE TENGA RETPOS)
+		log_info(logCPU, "PID: '%d' - Function return from line: '%d'", PCBRecibido->PID, ultimoPosicionPC);
 
 		t_registroStack* registroARegresar = NULL;
 
@@ -1181,6 +1189,7 @@ void waitPrimitive(t_nombre_semaforo identificador_semaforo){
 
 	if(respuestaNucleo==1){
 		waitSemActivated = true;
+		log_info(logCPU,"PID: '%d' - Process is being blocked by semaphore '%s'", PCBRecibido->PID, identificador_semaforo);
 	}
 
 }
