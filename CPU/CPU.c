@@ -170,13 +170,20 @@ int main(int argc, char *argv[]){
 
 							//Enviar PCB (indiceStack actualizado) solamente
 							char* bufferIndiceStack =  malloc(sizeof(PCBRecibido->indiceDeStack->elements_count));
-							serializarListaStack(PCBRecibido->indiceDeStack, &bufferIndiceStack);
+							int indiceStackSize = serializarListaStack(PCBRecibido->indiceDeStack, &bufferIndiceStack);
+
+							if (indiceStackSize == sizeof(PCBRecibido->indiceDeStack->elements_count)){//if tamanio equal to 4 bytes then element_count is 0
+								indiceStackSize = 0;
+							}
 
 							//send tamaño de lista indice stack
-							int indiceStackSize = strlen(bufferIndiceStack);
 							sendMessage(&socketNucleo, &indiceStackSize, sizeof(int));
+
 							//send lista indice stack
-							sendMessage(&socketNucleo, bufferIndiceStack, indiceStackSize);
+							if (PCBRecibido->indiceDeStack->elements_count > 0 ){
+								//send lista indice stack
+								sendMessage(&socketNucleo, bufferIndiceStack, indiceStackSize);
+							}
 
 							free(corteQuantum);
 							free(bufferIndiceStack);
