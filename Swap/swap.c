@@ -2,7 +2,7 @@
 
 char *pathFileSwap = NULL;
 
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[]) {
 	char *logFile = NULL;
 	char *configurationFile = NULL;
 
@@ -10,49 +10,51 @@ int main(int argc, char *argv[]){
 
 	//get parameter
 	int i;
-	for( i = 0; i < argc; i++){
+	for (i = 0; i < argc; i++) {
 		//check config file parameter
-		if (strcmp(argv[i], "-c") == 0){
-			configurationFile = argv[i+1];
-			printf("Configuration File: '%s'\n",configurationFile);
+		if (strcmp(argv[i], "-c") == 0) {
+			configurationFile = argv[i + 1];
+			printf("Configuration File: '%s'\n", configurationFile);
 		}
 		//check log file parameter
-		if (strcmp(argv[i], "-l") == 0){
-			logFile = argv[i+1];
-			printf("Log File: '%s'\n",logFile);
+		if (strcmp(argv[i], "-l") == 0) {
+			logFile = argv[i + 1];
+			printf("Log File: '%s'\n", logFile);
 		}
 		//check Swap file parameter
-		if (strcmp(argv[i], "-a") == 0){
-			pathFileSwap = argv[i+1];
-			printf("Swap file: '%s'\n",pathFileSwap);
+		if (strcmp(argv[i], "-a") == 0) {
+			pathFileSwap = argv[i + 1];
+			printf("Swap file: '%s'\n", pathFileSwap);
 		}
 
 	}
 
 	//ERROR if not configuration parameter was passed
-		assert(("ERROR - NOT configuration file was passed as argument", configurationFile != NULL));//Verifies if was passed the configuration file as parameter, if DONT FAILS
+	assert(
+			("ERROR - NOT configuration file was passed as argument", configurationFile != NULL)); //Verifies if was passed the configuration file as parameter, if DONT FAILS
 
 	//ERROR if not Log parameter was passed
-		assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
+	assert(("ERROR - NOT log file was passed as argument", logFile != NULL));//Verifies if was passed the Log file as parameter, if DONT FAILS
 
 	//ERROR if not Log parameter was passed
-		assert(("ERROR - NOT swap file was passed as argument", pathFileSwap != NULL));//Verifies if was passed the swap file as parameter, if DONT FAILS
+	assert(
+			("ERROR - NOT swap file was passed as argument", pathFileSwap != NULL)); //Verifies if was passed the swap file as parameter, if DONT FAILS
 
 	logSwap = log_create(logFile, "SWAP", 0, LOG_LEVEL_TRACE);
 	crearArchivoDeConfiguracion(configurationFile);
 
 	nombreSwapFull = string_new();
-	string_append(&nombreSwapFull,pathFileSwap);
-	string_append(&nombreSwapFull,nombre_swap);
+	string_append(&nombreSwapFull, pathFileSwap);
+	string_append(&nombreSwapFull, nombre_swap);
 
 	crearArchivoDeSwap();
 
 	//inicializarEstructuraPaginas
 	char* paginaAEnviar;
-	bloqueSwap* bloqueInicial=malloc(sizeof(bloqueSwap));
-	bloqueInicial->PID=0;
-	bloqueInicial->ocupado=0;
-	bloqueInicial->tamanioDelBloque=cantidadDePaginas*tamanioDePagina;
+	bloqueSwap* bloqueInicial = malloc(sizeof(bloqueSwap));
+	bloqueInicial->PID = 0;
+	bloqueInicial->ocupado = 0;
+	bloqueInicial->tamanioDelBloque = cantidadDePaginas * tamanioDePagina;
 	bloqueInicial->cantDePaginas = cantidadDePaginas;
 	bloqueInicial->paginaInicial = 0;
 
@@ -63,13 +65,13 @@ int main(int argc, char *argv[]){
 		paginasSWAP[j].ocupada = 0;
 	}
 
-	listaSwap=list_create();
-	list_add(listaSwap,(void*)bloqueInicial);
+	listaSwap = list_create();
+	list_add(listaSwap, (void*) bloqueInicial);
 	startServer();
 	return 1;
 }
 
-void processingMessages(int socketClient){
+void processingMessages(int socketClient) {
 	char* paginaRecibida;
 	bloqueSwap* pedidoRecibidoYDeserializado = malloc(sizeof(bloqueSwap)); //FIXING missing memory location;
 
@@ -78,255 +80,284 @@ void processingMessages(int socketClient){
 	int messageSize = 0;
 
 	//Get Payload size
-	int receivedBytes = receiveMessage(&socketClient, &messageSize, sizeof(messageSize));
+	int receivedBytes = receiveMessage(&socketClient, &messageSize,
+			sizeof(messageSize));
 
-	if ( receivedBytes > 0 ){
+	if (receivedBytes > 0) {
 
 		//Receive process from which the message is going to be interpreted
 		enum_processes fromProcess;
-		receivedBytes = receiveMessage(&socketClient, &fromProcess, sizeof(fromProcess));
-		log_info(logSwap,"Bytes received from process '%s': %d\n",getProcessString(fromProcess),receivedBytes);
+		receivedBytes = receiveMessage(&socketClient, &fromProcess,
+				sizeof(fromProcess));
+		log_info(logSwap, "Bytes received from process '%s': %d\n",
+				getProcessString(fromProcess), receivedBytes);
 
 		//Receive message using the size read before
 		char *messageRcv = malloc(messageSize);
-		int receivedBytes = receiveMessage(&socketClient, messageRcv, messageSize);
+		int receivedBytes = receiveMessage(&socketClient, messageRcv,
+				messageSize);
 
 		//int receivedBytes = receiveMessage(&socketClient,structUmcSwap,sizeof(operacionARealizar));
-		t_MessageUMC_Swap* operacionARealizar = malloc(sizeof(t_MessageUMC_Swap)); //FIXING missing memory location
+		t_MessageUMC_Swap* operacionARealizar = malloc(
+				sizeof(t_MessageUMC_Swap)); //FIXING missing memory location
 		operacionARealizar->virtualAddress = malloc(sizeof(t_memoryLocation)); //FIXING missing memory location
-		deserializeSwap_UMC(operacionARealizar,messageRcv);
+		deserializeSwap_UMC(operacionARealizar, messageRcv);
 
-		switch(operacionARealizar->operation){
-		case agregar_proceso:{
-			pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
-			pedidoRecibidoYDeserializado->cantDePaginas=operacionARealizar->cantPages;
+		switch (operacionARealizar->operation) {
+		case agregar_proceso: {
+			pedidoRecibidoYDeserializado->PID = operacionARealizar->PID;
+			pedidoRecibidoYDeserializado->cantDePaginas =
+					operacionARealizar->cantPages;
 			pedidoRecibidoYDeserializado->paginaInicial = -1;
-			pedidoRecibidoYDeserializado->tamanioDelBloque = operacionARealizar->cantPages * tamanioDePagina;
+			pedidoRecibidoYDeserializado->tamanioDelBloque =
+					operacionARealizar->cantPages * tamanioDePagina;
 			pedidoRecibidoYDeserializado->ocupado = 1; //BLOQUE OCUPADO
 			int tamanio = 0;
 
-			if(verificarEspacioDisponible() >= pedidoRecibidoYDeserializado->cantDePaginas){
+			if (verificarEspacioDisponible()
+					>= pedidoRecibidoYDeserializado->cantDePaginas) {
 
 				//"Recibo el tamaño de codigo del nuevo proceso"
-				receiveMessage(&socketClient,&tamanio,sizeof(tamanio));
+				receiveMessage(&socketClient, &tamanio, sizeof(tamanio));
 				log_info(logSwap, "message size received: %d \n", tamanio);
 
 				//"Recibo el codigo"
 				char* codeScript = malloc(tamanio); //FIXING missing memory location
-				receiveMessage(&socketClient,codeScript,tamanio);
+				receiveMessage(&socketClient, codeScript, tamanio);
 				log_info(logSwap, "message received: %s \n", codeScript);
 
 				// TODO memset(codeScript, '\0', tamanioDePagina * pagina);
 
 				usleep(retardoAcceso / 1000);
 
-				if(existeElBloqueNecesitado(pedidoRecibidoYDeserializado) != NULL){
+				if (existeElBloqueNecesitado(
+						pedidoRecibidoYDeserializado) != NULL) {
 					//MOVING BLOCK BECAUSE IN ELSE codeScript was not being received
-					agregarProceso(pedidoRecibidoYDeserializado,codeScript);
-				}else{
+					agregarProceso(pedidoRecibidoYDeserializado, codeScript);
+				} else {
 					compactarArchivo();
-					agregarProceso(pedidoRecibidoYDeserializado,codeScript);
+					agregarProceso(pedidoRecibidoYDeserializado, codeScript);
 				}
 
-				free(codeScript);//adding free memory
-			}else{
-				log_error(logSwap,"No hay espacio disponible para agregar el bloque. \n");
-				int error=-1;
-				sendMessage(&socketClient, &error,sizeof(int));
+				free(codeScript); //adding free memory
+			} else {
+				log_error(logSwap,
+						"No hay espacio disponible para agregar el bloque. \n");
+				int error = -1;
+				sendMessage(&socketClient, &error, sizeof(int));
 			}
 
 			break;
 		}
-		case finalizar_proceso:{
+		case finalizar_proceso: {
 
 			//DELETING unnecessary receive
 
-			pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
+			pedidoRecibidoYDeserializado->PID = operacionARealizar->PID;
 			eliminarProceso(pedidoRecibidoYDeserializado->PID);
 			break;
 		}
 
-		case lectura_pagina:{
+		case lectura_pagina: {
 
 			leer_pagina lecturaNueva;
 			char* paginaLeida;
 			//DELETING unnecessary receive
 
 			//deserializarBloqueSwap(lecturaNueva,mensajeRecibido);
-			pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
-			pedidoRecibidoYDeserializado->paginaInicial=operacionARealizar->virtualAddress->pag;
-			paginaLeida=leerPagina(pedidoRecibidoYDeserializado);
+			pedidoRecibidoYDeserializado->PID = operacionARealizar->PID;
+			pedidoRecibidoYDeserializado->paginaInicial =
+					operacionARealizar->virtualAddress->pag;
+			paginaLeida = leerPagina(pedidoRecibidoYDeserializado);
 
-			int valorDeError = sendMessage(&socketClient,paginaLeida,tamanioDePagina);
-			if(valorDeError == EXIT_SUCCESS){// cambiando al valor apropiado la funcion nunca retorna -1
-				log_info(logSwap,"Se enviaron correctamente los datos. \n");
-			}else{
-				log_error(logSwap,"No se enviaron correctamente los datos. \n");
+			int valorDeError = sendMessage(&socketClient, paginaLeida,
+					tamanioDePagina);
+			if (valorDeError == EXIT_SUCCESS) { // cambiando al valor apropiado la funcion nunca retorna -1
+				log_info(logSwap, "Se enviaron correctamente los datos. \n");
+			} else {
+				log_error(logSwap,
+						"No se enviaron correctamente los datos. \n");
 
 			}
-			free(paginaLeida);//Adding free because it was never being freed the memory requested in leerPagina()
+			free(paginaLeida); //Adding free because it was never being freed the memory requested in leerPagina()
 			break;
 		}
-		case escritura_pagina:{
+		case escritura_pagina: {
 
-			char* paginaAEscribir=malloc(tamanioDePagina);
-			pedidoRecibidoYDeserializado->PID=operacionARealizar->PID;
-			pedidoRecibidoYDeserializado->paginaInicial=operacionARealizar->virtualAddress->pag;
-			receiveMessage(&socketClient,paginaAEscribir,operacionARealizar->virtualAddress->size);//cambio para asegurar que el receive siempre se haga bien
-			escribirPagina(paginaAEscribir,pedidoRecibidoYDeserializado);
+			char* paginaAEscribir = malloc(tamanioDePagina);
+			pedidoRecibidoYDeserializado->PID = operacionARealizar->PID;
+			pedidoRecibidoYDeserializado->paginaInicial =
+					operacionARealizar->virtualAddress->pag;
+			receiveMessage(&socketClient, paginaAEscribir,
+					operacionARealizar->virtualAddress->size); //cambio para asegurar que el receive siempre se haga bien
+			escribirPagina(paginaAEscribir, pedidoRecibidoYDeserializado);
 
-			free(paginaAEscribir);//Adding free because it was never being freed the memory requested
+			free(paginaAEscribir); //Adding free because it was never being freed the memory requested
 			break;
 		}
-		default: log_warning(logSwap,"La operacion recibida es invalida. \n");
+		default:
+			log_warning(logSwap, "La operacion recibida es invalida. \n");
 		}
 		free(operacionARealizar);
 		free(operacionARealizar->virtualAddress);
 		free(messageRcv);
-	}else{
+	} else {
 		//log_error(logSwap,"No se recibio correctamente los datos. \n");
 	}
 
 	free(pedidoRecibidoYDeserializado);
 }
 
-void destructorBloqueSwap(bloqueSwap* self){
+void destructorBloqueSwap(bloqueSwap* self) {
 	free(self);
 }
 
-
-int agregarProceso(bloqueSwap* unBloque,char* codeScript){
+int agregarProceso(bloqueSwap* unBloque, char* codeScript) {
 	/*<----------------------------------------------abroElArchivo----------------------------------------------------->*/
 	FILE* archivoSwap = NULL;
-	archivoSwap=fopen(nombreSwapFull,"r+");
+	archivoSwap = fopen(nombreSwapFull, "r+");
 
-	if(archivoSwap==NULL){
-		log_error(logSwap,"No se abrio correctamente el archivo. \n");
-	}else{
+	if (archivoSwap == NULL) {
+		log_error(logSwap, "No se abrio correctamente el archivo. \n");
+	} else {
 		bloqueSwap* elementoEncontrado;
 		bloqueSwap* nuevoBloqueVacio = malloc(sizeof(bloqueSwap)); //FIXING missing memory location
 
 		elementoEncontrado = buscarBloqueALlenar(unBloque);
-		elementoEncontrado->tamanioDelBloque = elementoEncontrado->tamanioDelBloque - unBloque->tamanioDelBloque;
+		elementoEncontrado->tamanioDelBloque =
+				elementoEncontrado->tamanioDelBloque
+						- unBloque->tamanioDelBloque;
 		unBloque->paginaInicial = elementoEncontrado->paginaInicial;
-		nuevoBloqueVacio->PID = 0;//BY DEFAULT
+		nuevoBloqueVacio->PID = 0; //BY DEFAULT
 		nuevoBloqueVacio->ocupado = 0;
-		nuevoBloqueVacio->cantDePaginas = elementoEncontrado->cantDePaginas - unBloque->cantDePaginas;
-		nuevoBloqueVacio->tamanioDelBloque = elementoEncontrado->tamanioDelBloque - unBloque->tamanioDelBloque;
-		nuevoBloqueVacio->paginaInicial = elementoEncontrado->paginaInicial + unBloque->cantDePaginas;
-		fseek(archivoSwap, elementoEncontrado->paginaInicial*tamanioDePagina, SEEK_SET);
-		fwrite(codeScript,strlen(codeScript),1,archivoSwap);
+		nuevoBloqueVacio->cantDePaginas = elementoEncontrado->cantDePaginas
+				- unBloque->cantDePaginas;
+		nuevoBloqueVacio->tamanioDelBloque =
+				elementoEncontrado->tamanioDelBloque
+						- unBloque->tamanioDelBloque;
+		nuevoBloqueVacio->paginaInicial = elementoEncontrado->paginaInicial
+				+ unBloque->cantDePaginas;
+		fseek(archivoSwap, elementoEncontrado->paginaInicial * tamanioDePagina,
+				SEEK_SET);
+		fwrite(codeScript, strlen(codeScript), 1, archivoSwap);
 
-		bool posibleBloqueAEliminar(bloqueSwap* unBloqueAEliminar){
+		bool posibleBloqueAEliminar(bloqueSwap* unBloqueAEliminar) {
 			return unBloqueAEliminar->paginaInicial == unBloque->paginaInicial;
 		}
 
-		list_remove_and_destroy_by_condition(listaSwap,(void*)posibleBloqueAEliminar,(void*)destructorBloqueSwap);
-		list_add(listaSwap,(void*)unBloque);
-		list_add(listaSwap,(void*)nuevoBloqueVacio);
+		list_remove_and_destroy_by_condition(listaSwap,
+				(void*) posibleBloqueAEliminar, (void*) destructorBloqueSwap);
+		list_add(listaSwap, (void*) unBloque);
+		list_add(listaSwap, (void*) nuevoBloqueVacio);
 
-		bool criterioDeOrden(bloqueSwap* unBloque,bloqueSwap* otroBloque){
-			return(unBloque->paginaInicial < otroBloque->paginaInicial);
+		bool criterioDeOrden(bloqueSwap* unBloque, bloqueSwap* otroBloque) {
+			return (unBloque->paginaInicial < otroBloque->paginaInicial);
 		}
 
-		list_sort(listaSwap,(void*)criterioDeOrden);
+		list_sort(listaSwap, (void*) criterioDeOrden);
 		fclose(archivoSwap);
 	}
 	return 0;
 }
 
-
-
-int compactarArchivo(){
-	int i,acum;
-	acum=0;
+int compactarArchivo() {
+	int i, acum;
+	acum = 0;
 	int j;
-	bloqueSwap* bloqueLleno;//=malloc(sizeof(bloqueSwap));
-	bloqueSwap* bloqueLlenoSiguiente;//=malloc(sizeof(bloqueSwap));
-	bloqueSwap* unicoBloqueLleno=malloc(sizeof(bloqueSwap));
-	bloqueSwap* bloqueVacioCompacto=malloc(sizeof(bloqueSwap));
-	int bloqueVacioAEliminar(bloqueSwap* unBloque){
-		return (unBloque->ocupado==0);
+	bloqueSwap* bloqueLleno; //=malloc(sizeof(bloqueSwap));
+	bloqueSwap* bloqueLlenoSiguiente; //=malloc(sizeof(bloqueSwap));
+	bloqueSwap* unicoBloqueLleno = malloc(sizeof(bloqueSwap));
+	bloqueSwap* bloqueVacioCompacto = malloc(sizeof(bloqueSwap));
+	int bloqueVacioAEliminar(bloqueSwap* unBloque) {
+		return (unBloque->ocupado == 0);
 	}
-	for(i=0;listaSwap->elements_count>=i;i++){
-		list_remove_and_destroy_by_condition(listaSwap,(void*)bloqueVacioAEliminar,(void*)destructorBloqueSwap);
+	for (i = 0; listaSwap->elements_count >= i; i++) {
+		list_remove_and_destroy_by_condition(listaSwap,
+				(void*) bloqueVacioAEliminar, (void*) destructorBloqueSwap);
 	}
-	if(listaSwap->elements_count==1){
-		unicoBloqueLleno=(bloqueSwap*)list_get(listaSwap,0);
-		modificarArchivo(unicoBloqueLleno->paginaInicial,unicoBloqueLleno->cantDePaginas,0);
-		unicoBloqueLleno->paginaInicial=0;//TODO Se pone en 0 pero no se esta usando
-		acum=bloqueLleno->cantDePaginas;
+	if (listaSwap->elements_count == 1) {
+		unicoBloqueLleno = (bloqueSwap*) list_get(listaSwap, 0);
+		modificarArchivo(unicoBloqueLleno->paginaInicial,
+				unicoBloqueLleno->cantDePaginas, 0);
+		unicoBloqueLleno->paginaInicial = 0; //TODO Se pone en 0 pero no se esta usando
+		acum = bloqueLleno->cantDePaginas;
 	}
-	free(unicoBloqueLleno);//TODO Se hace el free porque en modificarArchivo se esta pasando por valor(sacar el free en caso de pasar el puntero)
-	if(listaSwap->elements_count>1){
-		for(i=0;i<listaSwap->elements_count;i++){
-			printf("%i\n",i);
-			bloqueSwap* bloqueObtenido=malloc(sizeof(bloqueSwap));
-			bloqueObtenido=(bloqueSwap*)list_get(listaSwap,i);
-			acum=acum+bloqueObtenido->cantDePaginas;
-			printf("%i   %i   %i   %i\n",bloqueObtenido->PID,bloqueObtenido->cantDePaginas,bloqueObtenido->ocupado,bloqueObtenido->paginaInicial);
-			free(bloqueObtenido);//una vez que se suma cantDePaginas no se necesita mas
+	free(unicoBloqueLleno); //TODO Se hace el free porque en modificarArchivo se esta pasando por valor(sacar el free en caso de pasar el puntero)
+	if (listaSwap->elements_count > 1) {
+		for (i = 0; i < listaSwap->elements_count; i++) {
+			printf("%i\n", i);
+			bloqueSwap* bloqueObtenido = malloc(sizeof(bloqueSwap));
+			bloqueObtenido = (bloqueSwap*) list_get(listaSwap, i);
+			acum = acum + bloqueObtenido->cantDePaginas;
+			printf("%i   %i   %i   %i\n", bloqueObtenido->PID,
+					bloqueObtenido->cantDePaginas, bloqueObtenido->ocupado,
+					bloqueObtenido->paginaInicial);
+			free(bloqueObtenido); //una vez que se suma cantDePaginas no se necesita mas
 		}
-		int x=0;//adentro del for se estaba inicializando siempre
-		for(j=1;listaSwap->elements_count>j;j++){
-			bloqueLleno=(bloqueSwap*)list_get(listaSwap,x);
-			printf("cantPag:%i",bloqueLleno->cantDePaginas);
-			bloqueLlenoSiguiente=(bloqueSwap*)list_get(listaSwap,x+1);
-			bloqueLlenoSiguiente->paginaInicial=bloqueLleno->cantDePaginas+1;
-			modificarArchivo(bloqueLleno->paginaInicial,bloqueLleno->cantDePaginas,bloqueLlenoSiguiente->paginaInicial);
+		int x = 0; //adentro del for se estaba inicializando siempre
+		for (j = 1; listaSwap->elements_count > j; j++) {
+			bloqueLleno = (bloqueSwap*) list_get(listaSwap, x);
+			printf("cantPag:%i", bloqueLleno->cantDePaginas);
+			bloqueLlenoSiguiente = (bloqueSwap*) list_get(listaSwap, x + 1);
+			bloqueLlenoSiguiente->paginaInicial = bloqueLleno->cantDePaginas
+					+ 1;
+			modificarArchivo(bloqueLleno->paginaInicial,
+					bloqueLleno->cantDePaginas,
+					bloqueLlenoSiguiente->paginaInicial);
 			x++;
 		}
 	}
-	if(cantidadDePaginas-acum!=0){
-		bloqueVacioCompacto->cantDePaginas=cantidadDePaginas-acum;
-		bloqueVacioCompacto->ocupado=0;
-		bloqueVacioCompacto->PID=0;
-		bloqueVacioCompacto->paginaInicial=acum;
-		list_add(listaSwap,(void*)bloqueVacioCompacto);
+	if (cantidadDePaginas - acum != 0) {
+		bloqueVacioCompacto->cantDePaginas = cantidadDePaginas - acum;
+		bloqueVacioCompacto->ocupado = 0;
+		bloqueVacioCompacto->PID = 0;
+		bloqueVacioCompacto->paginaInicial = acum;
+		list_add(listaSwap, (void*) bloqueVacioCompacto);
 	}
 
 	return 0;
 }
 
-void crearArchivoDeSwap(){
-	int tamanioDePagina;
-	tamanioDePagina=256;
-	int cantidadDePaginas;
-	cantidadDePaginas=10;
+void crearArchivoDeSwap() {
 
-	char* cadena=string_new();
-	string_append(&cadena,"dd if=/dev/zero of=");
+	int tamanioDePagina;
+	tamanioDePagina = 256;
+	int cantidadDePaginas;
+	cantidadDePaginas = 10;
+
+
+	char* cadena = string_new();
+	string_append(&cadena, "dd if=/dev/zero of=");
 	string_append(&cadena, nombreSwapFull);
-	char* segundaParteCadena=string_new();
-	string_append(&segundaParteCadena," bs=");
-	string_append(&cadena,segundaParteCadena);
-	string_append_with_format(&cadena,"%i",tamanioDePagina);
-	char* terceraParteCadena=string_new();
-	string_append(&terceraParteCadena," count=");
-	string_append(&cadena,terceraParteCadena);
-	string_append_with_format(&cadena,"%i",cantidadDePaginas);
+	char* segundaParteCadena = string_new();
+	string_append(&segundaParteCadena, " bs=");
+	string_append(&cadena, segundaParteCadena);
+	string_append_with_format(&cadena, "%i", tamanioDePagina);
+	char* terceraParteCadena = string_new();
+	string_append(&terceraParteCadena, " count=");
+	string_append(&cadena, terceraParteCadena);
+	string_append_with_format(&cadena, "%i", cantidadDePaginas);
 	system(cadena);
 }
 
-
-bool condicionLeer(bloqueSwap* unBloque,bloqueSwap* otroBloque){
-	return (unBloque->PID==otroBloque->PID);
+bool condicionLeer(bloqueSwap* unBloque, bloqueSwap* otroBloque) {
+	return (unBloque->PID == otroBloque->PID);
 }
 
-bloqueSwap* buscarProcesoAEliminar(int PID){
+bloqueSwap* buscarProcesoAEliminar(int PID) {
 	bloqueSwap* bloqueObtenido = NULL;
 	int i = 0;
-	while( i < listaSwap->elements_count ){
+	while (i < listaSwap->elements_count) {
 
-		bloqueObtenido = (bloqueSwap*) list_get(listaSwap,i);
-		if(bloqueObtenido->PID==PID){
+		bloqueObtenido = (bloqueSwap*) list_get(listaSwap, i);
+		if (bloqueObtenido->PID == PID) {
 			break;
 		}
 		i++;
 	}
 
-	if (bloqueObtenido == NULL){
-		log_error(logSwap,"No se encontro un bloque para eliminar. \n");
+	if (bloqueObtenido == NULL) {
+		log_error(logSwap, "No se encontro un bloque para eliminar. \n");
 	}
 
 	return bloqueObtenido;
@@ -343,7 +374,8 @@ void mapearArchivo() {
 		printf("Error abriendo %s para su lectura", nombreSwapFull);
 		exit(EXIT_FAILURE);
 	}
-	discoParaleloNoVirtualMappeado = mmap(0, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	discoParaleloNoVirtualMappeado = mmap(0, length, PROT_READ | PROT_WRITE,
+			MAP_SHARED, fd, 0);
 
 	if (discoParaleloNoVirtualMappeado == MAP_FAILED) {
 		close(fd);
@@ -353,76 +385,81 @@ void mapearArchivo() {
 	printf("Mapeo perfecto  %s \n", nombreSwapFull);
 }
 
-char* leerPagina(bloqueSwap* bloqueDeSwap){
+char* leerPagina(bloqueSwap* bloqueDeSwap) {
 	bloqueSwap* bloqueEncontrado;
 	FILE* archivoSwap = NULL;
-	archivoSwap=fopen(nombreSwapFull,"r+");
-	if(archivoSwap==NULL){
-		log_error(logSwap,"No se abrio correctamente el archivo. \n");
+	archivoSwap = fopen(nombreSwapFull, "r+");
+	if (archivoSwap == NULL) {
+		log_error(logSwap, "No se abrio correctamente el archivo. \n");
 	}
-	char* paginaAEnviar=malloc(tamanioDePagina);
-	bloqueEncontrado=buscarProcesoAEliminar(bloqueDeSwap->PID);
-	fseek(archivoSwap,bloqueEncontrado->paginaInicial*tamanioDePagina+bloqueDeSwap->paginaInicial*tamanioDePagina,SEEK_SET);
-	fread(paginaAEnviar,tamanioDePagina,1,archivoSwap);
+	char* paginaAEnviar = malloc(tamanioDePagina);
+	bloqueEncontrado = buscarProcesoAEliminar(bloqueDeSwap->PID);
+	fseek(archivoSwap,
+			bloqueEncontrado->paginaInicial * tamanioDePagina
+					+ bloqueDeSwap->paginaInicial * tamanioDePagina, SEEK_SET);
+	fread(paginaAEnviar, tamanioDePagina, 1, archivoSwap);
 	fclose(archivoSwap);
 	return paginaAEnviar;
 }
 
-void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque){
+void escribirPagina(char* paginaAEscribir, bloqueSwap* unBloque) {
 	bloqueSwap* bloqueEncontrado;
 	FILE* archivoSwap = NULL;
-	archivoSwap=fopen(nombreSwapFull,"r+");
-	if(archivoSwap==NULL){
-		log_error(logSwap,"No se abrio correctamente el archivo. \n");
+	archivoSwap = fopen(nombreSwapFull, "r+");
+	if (archivoSwap == NULL) {
+		log_error(logSwap, "No se abrio correctamente el archivo. \n");
 	}
-	bloqueEncontrado=buscarProcesoAEliminar(unBloque->PID);
-	fseek(archivoSwap,bloqueEncontrado->paginaInicial*tamanioDePagina+unBloque->paginaInicial*tamanioDePagina,SEEK_SET);
-	fwrite(paginaAEscribir,tamanioDePagina,1,archivoSwap);
+	bloqueEncontrado = buscarProcesoAEliminar(unBloque->PID);
+	fseek(archivoSwap,
+			bloqueEncontrado->paginaInicial * tamanioDePagina
+					+ unBloque->paginaInicial * tamanioDePagina, SEEK_SET);
+	fwrite(paginaAEscribir, tamanioDePagina, 1, archivoSwap);
 	fclose(archivoSwap);
 
 }
 
 //TODO esta funcion no esta siendo usada
-void* mapearArchivoEnMemoria(int offset,int tamanio){
+void* mapearArchivoEnMemoria(int offset, int tamanio) {
 	FILE* archivoSwap = NULL;
 	int descriptorSwap;
 	void* archivoMapeado;
-	archivoSwap=fopen(nombre_swap,"a+");
-	descriptorSwap=fileno(archivoSwap);
+	archivoSwap = fopen(nombre_swap, "a+");
+	descriptorSwap = fileno(archivoSwap);
 	fflush(stdin);
 	fflush(stdout);
-	write(descriptorSwap,"/0",tamanioDePagina*cantidadDePaginas);
-	lseek(descriptorSwap,0,SEEK_SET);
+	write(descriptorSwap, "/0", tamanioDePagina * cantidadDePaginas);
+	lseek(descriptorSwap, 0, SEEK_SET);
 	fsync(descriptorSwap);
-	archivoMapeado=mmap(0,tamanio,PROT_WRITE,MAP_SHARED,descriptorSwap,offset);
+	archivoMapeado = mmap(0, tamanio, PROT_WRITE, MAP_SHARED, descriptorSwap,
+			offset);
 
 	fclose(archivoSwap);
 	return archivoMapeado;
 
 }
 
-bool elementosVacios(bloqueSwap* unElemento){ //changing to bool
+bool elementosVacios(bloqueSwap* unElemento) { //changing to bool
 	return (unElemento->ocupado == 0);
 }
-int verificarEspacioDisponible(){
+int verificarEspacioDisponible() {
 	t_list* listaFiltrada;
 	int i;
 	int acum = 0;
 	bloqueSwap* bloqueDevuelto;
-	listaFiltrada = list_filter(listaSwap,(void*)elementosVacios);
-	for(i=0; i < listaFiltrada->elements_count; i++){
-		bloqueDevuelto = (bloqueSwap*) list_get(listaFiltrada,i);
+	listaFiltrada = list_filter(listaSwap, (void*) elementosVacios);
+	for (i = 0; i < listaFiltrada->elements_count; i++) {
+		bloqueDevuelto = (bloqueSwap*) list_get(listaFiltrada, i);
 		acum += (bloqueDevuelto->cantDePaginas);
 	}
 
 	return acum;
 }
 
-bloqueSwap* existeElBloqueNecesitado(bloqueSwap* otroBloque){
-	bool condicionDeCompactacion(bloqueSwap* unBloque){// esta funcion debe retornar bool
-		return( unBloque->cantDePaginas >= otroBloque->cantDePaginas);
+bloqueSwap* existeElBloqueNecesitado(bloqueSwap* otroBloque) {
+	bool condicionDeCompactacion(bloqueSwap* unBloque) { // esta funcion debe retornar bool
+		return (unBloque->cantDePaginas >= otroBloque->cantDePaginas);
 	}
-	return (bloqueSwap*)list_find(listaSwap,(void*)condicionDeCompactacion);
+	return (bloqueSwap*) list_find(listaSwap, (void*) condicionDeCompactacion);
 }
 
 int hayLugarParaNuevoProceso(int cantPagsNecesita) {
@@ -430,41 +467,43 @@ int hayLugarParaNuevoProceso(int cantPagsNecesita) {
 	int i;
 	int primeraPaginaLibre = 0;
 	for (i = 0; i < cantidadDePaginas; ++i) {
-		if (paginasSWAP[i].ocupada == 0){
-			if (contadorPaginasSeguidas == 0){
+		if (paginasSWAP[i].ocupada == 0) {
+			if (contadorPaginasSeguidas == 0) {
 				primeraPaginaLibre = i;
 			}
 			contadorPaginasSeguidas++;
-			if (contadorPaginasSeguidas >= cantPagsNecesita){
+			if (contadorPaginasSeguidas >= cantPagsNecesita) {
 				return primeraPaginaLibre;
 			}
-		}else{
+		} else {
 			contadorPaginasSeguidas = 0;
 		}
-
 
 	}
 	return -1;
 }
 
-void crearArchivoDeConfiguracion(char* configFile){
+void crearArchivoDeConfiguracion(char* configFile) {
 	t_config* configuracionDeSwap;
-	configuracionDeSwap=config_create(configFile);
-	puertoEscucha=config_get_int_value(configuracionDeSwap,"PUERTO_ESCUCHA");
-	nombre_swap=config_get_string_value(configuracionDeSwap,"NOMBRE_SWAP");
-	cantidadDePaginas=config_get_int_value(configuracionDeSwap,"CANTIDAD_PAGINAS");
-	tamanioDePagina=config_get_int_value(configuracionDeSwap,"TAMANIO_PAGINA");
-	retardoAcceso=config_get_int_value(configuracionDeSwap,"RETARDO_ACCESO");
-	retardoCompactacion=config_get_int_value(configuracionDeSwap,"RETARDO_COMPACTACION");
+	configuracionDeSwap = config_create(configFile);
+	puertoEscucha = config_get_int_value(configuracionDeSwap, "PUERTO_ESCUCHA");
+	nombre_swap = config_get_string_value(configuracionDeSwap, "NOMBRE_SWAP");
+	cantidadDePaginas = config_get_int_value(configuracionDeSwap,
+			"CANTIDAD_PAGINAS");
+	tamanioDePagina = config_get_int_value(configuracionDeSwap,
+			"TAMANIO_PAGINA");
+	retardoAcceso = config_get_int_value(configuracionDeSwap, "RETARDO_ACCESO");
+	retardoCompactacion = config_get_int_value(configuracionDeSwap,
+			"RETARDO_COMPACTACION");
 
 }
 
-void startServer(){
+void startServer() {
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
 	t_serverData serverData;
 
 	exitCode = openServerConnection(puertoEscucha, &serverData.socketServer);
-	log_info(logSwap,"socketServer: %d\n",serverData.socketServer);
+	log_info(logSwap, "socketServer: %d\n", serverData.socketServer);
 
 	//If exitCode == 0 the server connection is opened and listening
 	if (exitCode == 0) {
@@ -472,8 +511,8 @@ void startServer(){
 
 		exitCode = listen(serverData.socketServer, SOMAXCONN);
 
-		if (exitCode < 0 ){
-			log_error(logSwap,"Failed to listen server Port.\n");
+		if (exitCode < 0) {
+			log_error(logSwap, "Failed to listen server Port.\n");
 			return;
 		}
 
@@ -482,27 +521,29 @@ void startServer(){
 
 }
 
-void newClients (void *parameter){
+void newClients(void *parameter) {
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
 	int pid;
 
 	t_serverData *serverData = (t_serverData*) parameter;
 
-	exitCode = acceptClientConnection(&serverData->socketServer, &serverData->socketClient);
+	exitCode = acceptClientConnection(&serverData->socketServer,
+			&serverData->socketClient);
 
-	if (exitCode == EXIT_FAILURE){
-		log_warning(logSwap,"There was detected an attempt of wrong connection\n");
+	if (exitCode == EXIT_FAILURE) {
+		log_warning(logSwap,
+				"There was detected an attempt of wrong connection\n");
 		close(serverData->socketClient);
-	}else{
-		log_info(logSwap,"The was received a connection in socket: %d.",serverData->socketClient);
+	} else {
+		log_info(logSwap, "The was received a connection in socket: %d.",
+				serverData->socketClient);
 		handShake(parameter);
 
-	}// END handshakes
+	} // END handshakes
 
 }
 
-
-void handShake (void *parameter){
+void handShake(void *parameter) {
 	int exitCode = EXIT_FAILURE; //DEFAULT Failure
 
 	t_serverData *serverData = (t_serverData*) parameter;
@@ -510,34 +551,40 @@ void handShake (void *parameter){
 	//Receive message size
 	int messageSize = 0;
 	char *messageRcv = malloc(sizeof(messageSize));
-	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, sizeof(messageSize));
+	int receivedBytes = receiveMessage(&serverData->socketClient, messageRcv,
+			sizeof(messageSize));
 
 	//Receive message using the size read before
 	memcpy(&messageSize, messageRcv, sizeof(messageSize));
 	//log_info(logSwap,"messageSize received: %d\n",messageSize);
-	messageRcv = realloc(messageRcv,messageSize);
-	receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
+	messageRcv = realloc(messageRcv, messageSize);
+	receivedBytes = receiveMessage(&serverData->socketClient, messageRcv,
+			messageSize);
 
 	//starting handshake with client connected
-	t_MessageGenericHandshake *message = malloc(sizeof(t_MessageGenericHandshake));
+	t_MessageGenericHandshake *message = malloc(
+			sizeof(t_MessageGenericHandshake));
 	deserializeHandShake(message, messageRcv);
 
 	//Now it's checked that the client is not down
-	if ( receivedBytes == 0 ){
-		log_error(logSwap,"The client went down while handshaking! - Please check the client '%d' is down!\n", serverData->socketClient);
+	if (receivedBytes == 0) {
+		log_error(logSwap,
+				"The client went down while handshaking! - Please check the client '%d' is down!\n",
+				serverData->socketClient);
 		close(serverData->socketClient);
-	}else{
-		switch ((int) message->process){
-		case UMC:{
-			log_info(logSwap,"Message from '%s': %s\n", getProcessString(message->process), message->message);
+	} else {
+		switch ((int) message->process) {
+		case UMC: {
+			log_info(logSwap, "Message from '%s': %s\n",
+					getProcessString(message->process), message->message);
 
 			exitCode = sendClientAcceptation(&serverData->socketClient);
 
-			if (exitCode == EXIT_SUCCESS){
+			if (exitCode == EXIT_SUCCESS) {
 
 				//start receiving requests
-				while(1){
-					processingMessages(serverData->socketClient);//FIXING socketsSwap wrong variable
+				while (1) {
+					processingMessages(serverData->socketClient); //FIXING socketsSwap wrong variable
 					//processingMessages(socketsSwap->socketClient); //socketsSwap was never loaded
 				}
 
@@ -545,8 +592,10 @@ void handShake (void *parameter){
 
 			break;
 		}
-		default:{
-			log_error(logSwap,"Process not allowed to connect - Invalid process '%s' tried to connect to UMC\n", getProcessString(message->process));
+		default: {
+			log_error(logSwap,
+					"Process not allowed to connect - Invalid process '%s' tried to connect to UMC\n",
+					getProcessString(message->process));
 			close(serverData->socketClient);
 			break;
 		}
@@ -558,65 +607,65 @@ void handShake (void *parameter){
 	free(message);
 }
 
-bloqueSwap* buscarBloqueALlenar(bloqueSwap* unBloque){
+bloqueSwap* buscarBloqueALlenar(bloqueSwap* unBloque) {
 	bloqueSwap* bloqueObtenido = NULL;
 	int i = 0;
-	while( i < listaSwap->elements_count ){
-		bloqueObtenido = (bloqueSwap*) list_get(listaSwap,i);
-		if((bloqueObtenido->cantDePaginas >= unBloque->cantDePaginas) && bloqueObtenido->ocupado==0){
+	while (i < listaSwap->elements_count) {
+		bloqueObtenido = (bloqueSwap*) list_get(listaSwap, i);
+		if ((bloqueObtenido->cantDePaginas >= unBloque->cantDePaginas)
+				&& bloqueObtenido->ocupado == 0) {
 			break;
 		}
 		i++;
 	}
 
-	if (bloqueObtenido == NULL){
-		log_warning(logSwap,"No se encontro un bloque para llenar. \n");
+	if (bloqueObtenido == NULL) {
+		log_warning(logSwap, "No se encontro un bloque para llenar. \n");
 	}
 
 	return bloqueObtenido;
 
 }
 
-int eliminarProceso(int PID){
-	bloqueSwap* procesoAEliminar=buscarProcesoAEliminar(PID);
-	procesoAEliminar->PID=0;
-	procesoAEliminar->ocupado=0;
+int eliminarProceso(int PID) {
+	bloqueSwap* procesoAEliminar = buscarProcesoAEliminar(PID);
+	procesoAEliminar->PID = 0;
+	procesoAEliminar->ocupado = 0;
 	FILE* archivoSwap = NULL;
-	archivoSwap=fopen(nombre_swap,"w+");//TODO verificar que cuando no se agrega un archivo por parametro se debe hacer "w+" para que lo cree
-	int cantidadDeBytes=procesoAEliminar->cantDePaginas*tamanioDePagina;
-	char* textoRelleno=malloc(cantidadDeBytes);
+	archivoSwap = fopen(nombre_swap, "w+");	//TODO verificar que cuando no se agrega un archivo por parametro se debe hacer "w+" para que lo cree
+	int cantidadDeBytes = procesoAEliminar->cantDePaginas * tamanioDePagina;
+	char* textoRelleno = malloc(cantidadDeBytes);
 	int i;
-	for(i=0;i<cantidadDeBytes;i++){
-		textoRelleno[i]='0';
+	for (i = 0; i < cantidadDeBytes; i++) {
+		textoRelleno[i] = '0';
 	}
-	fseek(archivoSwap,procesoAEliminar->paginaInicial*tamanioDePagina,SEEK_SET);
-	fwrite(textoRelleno,cantidadDeBytes,1,archivoSwap);
+	fseek(archivoSwap, procesoAEliminar->paginaInicial * tamanioDePagina,
+			SEEK_SET);
+	fwrite(textoRelleno, cantidadDeBytes, 1, archivoSwap);
 	fclose(archivoSwap);
 	free(textoRelleno);
-	log_info(logSwap,"texto llenado de ceros correctamente. \n");
+	log_info(logSwap, "texto llenado de ceros correctamente. \n");
 	return 1;
 }
 
-
-
-int modificarArchivo(int marcoInicial,int cantDeMarcos,int nuevoMarcoInicial){
+int modificarArchivo(int marcoInicial, int cantDeMarcos, int nuevoMarcoInicial) {
 	FILE* archivoSwap = NULL;
-	char* textoRelleno=malloc(tamanioDePagina*cantDeMarcos);
-	archivoSwap=fopen(nombreSwapFull,"r+");
-	if(archivoSwap==NULL){
-		log_error(logSwap,"no se pudo abrir el archivo. \n");
+	char* textoRelleno = malloc(tamanioDePagina * cantDeMarcos);
+	archivoSwap = fopen(nombreSwapFull, "r+");
+	if (archivoSwap == NULL) {
+		log_error(logSwap, "no se pudo abrir el archivo. \n");
 	}
 	int i;
-	for(i=0;i<cantDeMarcos*tamanioDePagina;i++){
-		textoRelleno[i]='\0';
+	for (i = 0; i < cantDeMarcos * tamanioDePagina; i++) {
+		textoRelleno[i] = '\0';
 	}
-	char* lectura=malloc(tamanioDePagina*cantDeMarcos);
-	fseek(archivoSwap,marcoInicial,SEEK_SET);
-	fread(lectura,tamanioDePagina,cantDeMarcos,archivoSwap);
-	fseek(archivoSwap,marcoInicial,SEEK_SET);
-	fwrite(textoRelleno,sizeof(textoRelleno),1,archivoSwap);
-	fseek(archivoSwap,nuevoMarcoInicial,SEEK_SET);
-	fwrite(lectura,tamanioDePagina,cantDeMarcos,archivoSwap);
+	char* lectura = malloc(tamanioDePagina * cantDeMarcos);
+	fseek(archivoSwap, marcoInicial, SEEK_SET);
+	fread(lectura, tamanioDePagina, cantDeMarcos, archivoSwap);
+	fseek(archivoSwap, marcoInicial, SEEK_SET);
+	fwrite(textoRelleno, sizeof(textoRelleno), 1, archivoSwap);
+	fseek(archivoSwap, nuevoMarcoInicial, SEEK_SET);
+	fwrite(lectura, tamanioDePagina, cantDeMarcos, archivoSwap);
 	free(textoRelleno);
 	free(lectura);
 	fclose(archivoSwap);
