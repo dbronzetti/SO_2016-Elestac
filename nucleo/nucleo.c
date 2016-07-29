@@ -632,15 +632,15 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 
 	switch (message->operacion) {
 	case 1:{ 	//Entrada Salida
-		log_info(logNucleo, "procesando EntradaSalida");
+		log_info(logNucleo, " 'entradaSalida' ");
 		t_es* infoES = malloc(sizeof(t_es));
-		char *datosEntradaSalida = malloc(sizeof(t_es));
 		//change active PID
 		activePID = message->processID;
 
 		int sizeDatosEntradaSalida = 0;
 		receiveMessage(&socketCPULibre, &sizeDatosEntradaSalida, sizeof(int));
 
+		char *datosEntradaSalida = malloc(sizeDatosEntradaSalida);
 		receiveMessage(&socketCPULibre, datosEntradaSalida, sizeDatosEntradaSalida);
 		deserializarES(infoES, datosEntradaSalida);
 
@@ -654,9 +654,8 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 		int estado = 3;
 		cambiarEstadoProceso(message->processID, estado);
 
-		EntradaSalida(infoES->dispositivo, infoES->tiempo);
+		entradaSalida(infoES->dispositivo, infoES->tiempo);
 
-		free(infoES->dispositivo);
 		free(infoES);
 		free(datosEntradaSalida);
 		break;
@@ -699,10 +698,10 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 		t_valor_variable valorVariable = obtenerValor(variable);
 
 		if (valorVariable == -1){
-			log_error(logNucleo, "No se encontro la variable: %s id, con el tamanio: %d ",variable, variableLen);
+			log_error(logNucleo, "No se encontro la variable: '%s' , con el tamanio: '%d' ",variable, variableLen);
 		}else{
 			sendMessage(&socketCPULibre, &valorVariable, sizeof(t_valor_variable));
-			log_info(logNucleo, "Se envio correctamente el valor %d de la variable %s al proceso CPU",valorVariable, variable);
+			log_info(logNucleo, "Se envio correctamente el valor '%d' de la variable '%s' al proceso CPU",valorVariable, variable);
 		}
 		free(variable);
 		break;
@@ -731,7 +730,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 		receiveMessage(&socketCPULibre, variable, variableLen);
 
 		grabarValor(variable, valor);
-		log_info(logNucleo, "Se graba el valor: %d en la variable: %s id, con el tamanio: %d  ",valor, variable, variableLen);
+		log_info(logNucleo, "Se graba el valor: %d en la variable: '%s' ",valor, variable);
 		free(variable);
 		break;
 	}
@@ -749,7 +748,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 		t_nombre_semaforo semaforo = malloc(tamanio);
 		receiveMessage(&socketCPULibre, semaforo, tamanio);
 
-		log_info(logNucleo, "Se recibe el semaforo WAIT: %s, con el tamanio: %d  ",semaforo, tamanio);
+		log_info(logNucleo, "Se recibe el semaforo WAIT: '%s', con el tamanio: '%d'  ",semaforo, tamanio);
 
 		int index = 0;
 		if (estaEjecutando(message->processID, &index) == 0 && index == -1){ // 0: Programa ejecutandose (no esta en ninguna cola)
@@ -758,7 +757,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 			if (valorSemaforo <= 0) {
 
 				valorAEnviar = 1;
-				log_info(logNucleo, "Se recibio del PID %d y se envia a bloquear por semaforo: %s ", message->processID, semaforo);
+				log_info(logNucleo, "Se recibio del PID %d y se envia a bloquear por semaforo: '%s' ", message->processID, semaforo);
 				sendMessage(&socketCPULibre, &valorAEnviar,sizeof(int));// 1 si se bloquea. 0 si no se bloquea
 
 				int tamanioStack = -1;
@@ -810,7 +809,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 		//Recibo el semaforo signal
 		t_nombre_semaforo semaforo = malloc(tamanio);
 		receiveMessage(&socketCPULibre, semaforo, tamanio);
-		log_info(logNucleo, "Proceso %d libera semaforo:%s ", message->processID, semaforo);
+		log_info(logNucleo, "Proceso '%d' libera semaforo: '%s' ", message->processID, semaforo);
 		liberaSemaforo(semaforo);
 
 		free(semaforo);
@@ -822,7 +821,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 		int socketConsola = buscarSocketConsola(message->processID);
 
 		if (socketConsola==-1){
-			log_error(logNucleo, "No se encontro Consola para el PID: %d ",message->processID);
+			log_error(logNucleo, "No se encontro Consola para el PID: #%d ",message->processID);
 			break;
 		}
 
@@ -844,7 +843,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 
 		int socketConsola = buscarSocketConsola(message->processID);
 		if (socketConsola==-1){
-			log_error(logNucleo,"No se encontro Consola para el PID: %d ",message->processID);
+			log_error(logNucleo,"No se encontro Consola para el PID: #%d ",message->processID);
 			break;
 		}
 
@@ -1191,13 +1190,14 @@ int estaEjecutando(int PID, int* index){
 	return 0;
 }
 
-void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
+void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 	int i;
 	t_bloqueado* infoBloqueado = malloc(sizeof(t_bloqueado));
-	log_info(logNucleo,"Envio %s a bloquear por IO",dispositivo);
+	//log_info(logNucleo,"Envio '%s' a bloquear por IO",dispositivo);
 	for (i = 0; i < strlen((char*)configNucleo.io_ids) / sizeof(char*); i++) {
 		if (strcmp((char*)configNucleo.io_ids[i], dispositivo) == 0) {
 			infoBloqueado->PID = activePID;
+			infoBloqueado->dispositivo = string_new();
 			infoBloqueado->dispositivo = dispositivo;
 			infoBloqueado->tiempo = tiempo;
 
@@ -1217,7 +1217,7 @@ void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 				return;
 			}
 		}
-		}
+	}
 }
 
 void atenderIO(int sig, siginfo_t *si, void *uc) {
@@ -1346,7 +1346,6 @@ t_valor_variable obtenerValor(t_nombre_compartida variable) {
 }
 
 void grabarValor(t_nombre_compartida variable, t_valor_variable valor) {
-	log_info(logNucleo, "Nucleo, grabando valor: %d para la variable: %s", valor, variable);
 	int i;
 	for (i = 0; i < strlen((char*)configNucleo.shared_vars) / sizeof(char*); i++) {
 		if (strcmp((char*)configNucleo.shared_vars[i], variable) == 0) {

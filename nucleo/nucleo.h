@@ -87,6 +87,8 @@ pthread_mutex_t mutex_config;
 
 //Timers
 timer_t** timers;
+timer_t *timerPantalla;
+siginfo_t *si;
 
 //Configuracion
 t_configFile configNucleo;
@@ -149,10 +151,10 @@ void armarIndiceDeEtiquetas(t_PCB *unBloqueControl,t_metadata_program* miMetaDat
 
 t_valor_variable obtenerValor(t_nombre_compartida variable);
 void grabarValor(t_nombre_compartida variable, t_valor_variable valor);
-void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
+void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
 void deserializarES(t_es* datos, char* bufferRecived);
 static int makeTimer (timer_t *timerID, int expireMS);
-void atenderIO(int sig, siginfo_t *si, void *uc);
+void atenderIO();
 
 t_valor_variable pideSemaforo(t_nombre_semaforo semaforo);
 void grabarSemaforo(t_nombre_semaforo semaforo,int valor);
