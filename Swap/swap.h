@@ -39,7 +39,7 @@ struct bloqueDeMemoria{
 	int tamanioDelBloque;
 	int paginaInicial;
 }typedef bloqueSwap;
-
+/*
 struct nuevoPrograma{
 	int PID;
 	int cantidadDePaginas;
@@ -59,7 +59,7 @@ struct leerPagina{
 
 struct finPrograma{
 	int PID;
-}typedef fin_programa;
+}typedef fin_programa;*/
 
 typedef struct {
 	int socketServer;
@@ -69,45 +69,40 @@ typedef struct {
 typedef struct __attribute__((packed)){
 	int ocupada;
 	int idProcesoQueLoOcupa;
-}pagina;
+}t_pagina;
 
-pagina *paginasSWAP;
+t_pagina *paginasSWAP;
 
-void *discoParaleloNoVirtualMappeado;
+void *discoVirtualMappeado;
 int puertoEscucha;
 int tamanioDePagina;
-int tamanioDeArchivo;
 int cantidadDePaginas;
 int retardoCompactacion;
 int retardoAcceso;
 char* nombre_swap;
 char * nombreSwapFull;
-t_list* listaSwap;
 t_log* logSwap;
 
-void* mapearArchivoEnMemoria(int offset,int tamanio);
-void destructorBloqueSwap(bloqueSwap* self);
-int agregarProceso(bloqueSwap* unBloque,char* codeScript);
-int compactarArchivo();
-int condicionDeCompactacion(bloqueSwap* unBloque,bloqueSwap* otroBloque);
-void crearArchivoDeSwap();
+
+void eliminarProceso(int PID);
 void handShake (void *parameter);
 void newClients (void *parameter);
 void startServer();
-void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque);
-int verificarEspacioDisponible();
-char* leerPagina(bloqueSwap* bloqueDeSwap);
-void crearArchivoDeConfiguracion();
+void crearArchivoDeConfiguracion(char* configFile);
+int verificarEspacioDisponible(int cantPagsNecesita);
+char* leerPagina(int PID, int page);
+void mapearArchivo();
+void crearArchivoDeSwap();
+void compactarArchivo();
+int getLastFreePage();
+int getNextLoadedPage();
+int checkExistenceMoreLoadedPages();
+void agregarProceso(int PID, int cantPags, int pagAPartir, char* codeScript);
+void escribirPaginaPID(int idProceso, int page, void* data);
+void escribirPagina(int page, void*dataPagina);
+long int getPageStartOffset(int page);
+int getFirstPagePID(int PID);
 void processingMessages(int socketClient);
-bloqueSwap* existeElBloqueNecesitado(bloqueSwap* otroBloque);
-bool condicionLeer(bloqueSwap* unBloque,bloqueSwap* otroBloque);
-bool elementosVacios(bloqueSwap* unElemento);
-bloqueSwap* buscarBloqueALlenar(bloqueSwap* unBloque);
-int eliminarProceso(int PID);
-bloqueSwap* buscarProcesoAEliminar(int PID);
-int modificarArchivo(int marcoInicial,int cantDeMarcos,int nuevoMarcoInicial);
-void escribirPagina(char* paginaAEscribir,bloqueSwap* unBloque);
-
 
 
 #endif /* SWAP_H_ */
