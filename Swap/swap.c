@@ -50,8 +50,8 @@ int main(int argc, char *argv[]){
 	//inicializarEstructuraPaginas
 	char* paginaAEnviar;
 	bloqueSwap* bloqueInicial=malloc(sizeof(bloqueSwap));
-	//bloqueInicial->PID=0;
-	//bloqueInicial->ocupado=0;
+	bloqueInicial->PID=0;
+	bloqueInicial->ocupado=0;
 	bloqueInicial->tamanioDelBloque=cantidadDePaginas*tamanioDePagina;
 	bloqueInicial->cantDePaginas = cantidadDePaginas;
 	bloqueInicial->paginaInicial = 0;
@@ -306,9 +306,6 @@ void crearArchivoDeSwap(){
 	string_append(&cadena,terceraParteCadena);
 	string_append_with_format(&cadena,"%i",cantidadDePaginas);
 	system(cadena);
-	free(cadena);
-	free(segundaParteCadena);
-	free(terceraParteCadena);
 }
 
 
