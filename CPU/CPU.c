@@ -698,7 +698,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 			//adding arguments if is a function call
 			list_add(ultimoRegistro->args, (void*)variableAAgregar);
 
-			posicionDeLaVariable= convertirDireccionAPuntero(variableAAgregar->direccionValorDeVariable);
+			posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
 
 		}else{
 			if (ultimoPosicionPC == PCBRecibido->ProgramCounter){
@@ -706,7 +706,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 				//add vars to same list if executing the same line
 				list_add(ultimoRegistro->vars, (void*)variableAAgregar);
 
-				posicionDeLaVariable = convertirDireccionAPuntero(variableAAgregar->direccionValorDeVariable);
+				posicionDeLaVariable = (t_puntero) variableAAgregar->direccionValorDeVariable;
 			}else{
 				//add a new register to Indice Stack if is a different line
 				t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
@@ -721,7 +721,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 
 				list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
-				posicionDeLaVariable = convertirDireccionAPuntero(variableAAgregar->direccionValorDeVariable);
+				posicionDeLaVariable = (t_puntero) variableAAgregar->direccionValorDeVariable;
 
 			}
 		}
@@ -741,7 +741,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 
 		list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
-		posicionDeLaVariable = convertirDireccionAPuntero(variableAAgregar->direccionValorDeVariable);
+		posicionDeLaVariable = (t_puntero) variableAAgregar->direccionValorDeVariable;
 
 	}
 
@@ -1072,6 +1072,19 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 	//Cambiar de program counter segun etiqueta --> Se llama directamente a llamarSinRetorno ya que realiza el cambio de etiqueta
 	llamarSinRetorno(etiqueta);
 
+}
+
+void convertirPunteroADireccion(t_puntero puntero, t_memoryLocation* direccion) {
+	if (frameSize > puntero) {
+		direccion->pag = 0;
+		direccion->offset = puntero;
+		direccion->size = 4;
+	} else {
+		direccion->pag = (puntero / frameSize);
+		direccion->offset = puntero % frameSize;
+		direccion->size = 4;
+	}
+	return;
 }
 
 void retornar(t_valor_variable retorno){
