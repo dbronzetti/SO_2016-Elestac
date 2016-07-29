@@ -85,10 +85,7 @@ pthread_mutex_t globalMutex;
 pthread_mutex_t activeProcessMutex;
 pthread_mutex_t mutex_config;
 
-//Timers
-timer_t** timers;
-timer_t *timerPantalla;
-siginfo_t *si;
+//timer_t** timers;
 
 //Configuracion
 t_configFile configNucleo;
@@ -140,7 +137,6 @@ void crearArchivoDeConfiguracion(char* configFile);
 void *initialize(int tamanio);
 void imprimirArray(char** array);
 void imprimirValores(int* array, int i, int arrayLen);
-void imprimirTimer(timer_t** timer, int i, int arrayLen);
 
 //Encabezamiento de Funciones de Stack
 
@@ -153,8 +149,7 @@ t_valor_variable obtenerValor(t_nombre_compartida variable);
 void grabarValor(t_nombre_compartida variable, t_valor_variable valor);
 void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
 void deserializarES(t_es* datos, char* bufferRecived);
-static int makeTimer (timer_t *timerID, int expireMS);
-void atenderIO();
+void atenderIO(int io);
 
 t_valor_variable pideSemaforo(t_nombre_semaforo semaforo);
 void grabarSemaforo(t_nombre_semaforo semaforo,int valor);

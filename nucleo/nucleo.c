@@ -1191,7 +1191,7 @@ int estaEjecutando(int PID, int* index){
 }
 
 void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
-	int i;
+	int i,io;
 	t_bloqueado* infoBloqueado = malloc(sizeof(t_bloqueado));
 	//log_info(logNucleo,"Envio '%s' a bloquear por IO",dispositivo);
 	for (i = 0; i < strlen((char*)configNucleo.io_ids) / sizeof(char*); i++) {
@@ -1200,14 +1200,18 @@ void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 			infoBloqueado->dispositivo = string_new();
 			infoBloqueado->dispositivo = dispositivo;
 			infoBloqueado->tiempo = tiempo;
+			io = i;
 
 			//Agrego a la cola de Bloqueados
 			if (queue_size(colas_IO[i]) == 0) {
 				pthread_mutex_lock(&cBloqueados);
 				queue_push(colas_IO[i], (void*) infoBloqueado);
 				pthread_mutex_unlock(&cBloqueados);
-
-				makeTimer(timers[i], configNucleo.io_ids_values[i] * tiempo);//TODO verificar si funciona bien con un programa
+				int ioSleep = floor((double) (configNucleo.io_ids_values[i] * tiempo / 1000));
+				sleep(ioSleep);
+				log_info(logNucleo, "... Espera (sleep) por Entrada-Salida ...");
+				atenderIO(io);
+				//makeTimer(timers[i], configNucleo.io_ids_values[i] * tiempo);//TODO verificar si funciona bien con un programa
 				return;
 			}else{
 				pthread_mutex_lock(&cBloqueados);
@@ -1220,14 +1224,8 @@ void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 	}
 }
 
-void atenderIO(int sig, siginfo_t *si, void *uc) {
-	int i = 0, io;
-	for (i = 0; i < strlen((char*)configNucleo.io_sleep) / sizeof(char*); i++) {
-		if (timers[i] == si->si_value.sival_ptr) {
-			io = i;
-		}
-	}
-	//printf("deberia entrar una vez");
+void atenderIO(int io) {
+	int i = 0;
 	t_bloqueado *proceso;
 	pthread_mutex_lock(&cBloqueados);
 	proceso = (t_bloqueado*) queue_pop(colas_IO[io]);
@@ -1235,7 +1233,7 @@ void atenderIO(int sig, siginfo_t *si, void *uc) {
 
 	//Cambio el proceso a estado ready y agrego a la cola de listos
 	log_info(logNucleo,
-			"Saco el proceso '%d' de cola IO %d y lo transfiero a cola de Listos ",
+			"Saco el proceso #%d de cola IO %d y lo transfiero a cola de Listos ",
 			proceso->PID, io);
 	int estado = 1;
 	cambiarEstadoProceso(proceso->PID, estado);
@@ -1263,10 +1261,14 @@ void atenderIO(int sig, siginfo_t *si, void *uc) {
 
 	if (queue_size(colas_IO[io]) != 0) {
 		proceso = (t_bloqueado*) list_get(colas_IO[io]->elements, queue_size(colas_IO[io]) - 1);
-		makeTimer(timers[io], configNucleo.io_ids_values[io] * proceso->tiempo);
+
+		int ioSleep = floor((double) (configNucleo.io_ids_values[i] * proceso->tiempo / 1000));
+		sleep(ioSleep);
+		//makeTimer(timers[io], configNucleo.io_ids_values[io] * proceso->tiempo);
 	}
 }
 
+/*
 static int makeTimer (timer_t *timerID, int expireMS){
 	struct sigevent evp;
 	struct itimerspec its;
@@ -1290,6 +1292,7 @@ static int makeTimer (timer_t *timerID, int expireMS){
 
 	return 1;
 }
+*/
 
 void liberarCPU(int socket) {
 	int liberar = buscarCPU(socket);
@@ -1665,19 +1668,20 @@ void crearArchivoDeConfiguracion(char *configFile){
 	int lenIO = 0;
 	int lenSem = 0;
 
-	if(timers!=0){
+	/*if(timers!=0){
 		free(timers);
-	}
+	}*/
+
 	lenIO = (int) strlen((char*)configNucleo.io_sleep) / sizeof(char*);
 	printf("strlen io_sleep: %d\n",lenIO);
-	timers = initialize(lenIO * sizeof(char*));
+	//timers = initialize(lenIO * sizeof(char*));
 	if(colas_IO!=0){
 		free(colas_IO);
 	}
 	colas_IO = initialize(lenIO * sizeof(char*));
 	//printf("*timers = ");
 	while (configNucleo.io_sleep[i] != NULL){
-		timers[i] = initialize(sizeof(timer_t));
+		//timers[i] = initialize(sizeof(timer_t));
 		//imprimirTimer(timers, i, len);
 		colas_IO[i] = initialize(sizeof(t_queue*));
 		colas_IO[i] = queue_create();
@@ -1768,17 +1772,7 @@ void imprimirValores(int* array, int i, int arrayLen){
 	}
 }
 
-void imprimirTimer(timer_t** timer, int i, int arrayLen){
-	if (i==0){
-		printf("[%li", (time_t)(*timers[i]));
-		printf(", ");
-	}else if(i == arrayLen - 1){
-		printf("%li]", (time_t)(*timers[i]));
-	}
-	else{
-		printf("%li", (time_t)(*timers[i]));
-	}
-}
+
 int connectTo(enum_processes processToConnect, int *socketClient){
 	int exitcode = EXIT_FAILURE;//DEFAULT VALUE
 	int port = 0;
