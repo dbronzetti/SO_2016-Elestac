@@ -311,20 +311,16 @@ void procesCPUMessages(int messageSize, t_serverData* serverData){
 	switch (message->operation){
 		case lectura_pagina:{
 
-			char *content = NULL;
+			void *content = NULL;
 
-			content = (char*) requestBytesFromPage(message->virtualAddress);
+			content = requestBytesFromPage(message->virtualAddress);
 
 			if(content != NULL){
 				exitcode = EXIT_SUCCESS;
 				//After getting the memory content WITHOUT issues, inform status of the operation
 				sendMessage(&serverData->socketClient, &exitcode, sizeof(exitcode));
-
 				//Add \0 to the end of the message
-				if(string_starts_with(content,"#!")){
-					memset(content + message->virtualAddress->size,'\0',1 );
-				}
-
+				memset(content + message->virtualAddress->size - 1,'\0',1);
 				//has to be sent it to upstream - on the other side the process already know the size to received
 				sendMessage(&serverData->socketClient, content, message->virtualAddress->size);
 			}else{
@@ -388,17 +384,6 @@ void procesNucleoMessages(int messageSize, t_serverData* serverData){
 			log_info(UMCLog, "Program received:\n%s\n", content);
 
 			initializeProgram(message->PID, message->cantPages, content);
-
-			//received possible error from SWAP if is OK then send code
-			int errorCode = EXIT_SUCCESS;
-			int receivedBytes = receiveMessage(&socketSwap, &errorCode, sizeof(errorCode));
-
-			if (errorCode == EXIT_SUCCESS){
-				log_info(UMCLog, "Program added successfully in SWAP");
-			}else{
-				log_info(UMCLog, "Program NOT LOADED in SWAP... Informing to Nucleo");
-				//sendMessage(&serverData->socketClient, &errorCode,sizeof(errorCode)); //TODO verificar y agregar receive in nucleo
-			}
 
 			free(content);
 			break;
@@ -788,6 +773,7 @@ void initializeProgram(int PID, int totalPagesRequired, char *programCode){
 	sendMessage(&socketSwap, buffer, bufferSize);
 
 	//After sending information have to be sent the program code
+	//TODO received possible error from SWAP if is OK then send code
 	//1) Send program size to swap
 	int programCodeLen = strlen(programCode) + 1;
 	sendMessage(&socketSwap, &programCodeLen, sizeof(programCodeLen));
@@ -798,6 +784,7 @@ void initializeProgram(int PID, int totalPagesRequired, char *programCode){
 
 	free(buffer);
 	free(message);
+
 
 }
 

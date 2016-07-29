@@ -632,15 +632,15 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 
 	switch (message->operacion) {
 	case 1:{ 	//Entrada Salida
-		log_info(logNucleo, "procesando EntradaSalida");
+		log_info(logNucleo, " 'entradaSalida' ");
 		t_es* infoES = malloc(sizeof(t_es));
-		char *datosEntradaSalida = malloc(sizeof(t_es));
 		//change active PID
 		activePID = message->processID;
 
 		int sizeDatosEntradaSalida = 0;
 		receiveMessage(&socketCPULibre, &sizeDatosEntradaSalida, sizeof(int));
 
+		char *datosEntradaSalida = malloc(sizeDatosEntradaSalida);
 		receiveMessage(&socketCPULibre, datosEntradaSalida, sizeDatosEntradaSalida);
 		deserializarES(infoES, datosEntradaSalida);
 
@@ -654,9 +654,8 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 		int estado = 3;
 		cambiarEstadoProceso(message->processID, estado);
 
-		EntradaSalida(infoES->dispositivo, infoES->tiempo);
+		entradaSalida(infoES->dispositivo, infoES->tiempo);
 
-		free(infoES->dispositivo);
 		free(infoES);
 		free(datosEntradaSalida);
 		break;
@@ -699,10 +698,10 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 		t_valor_variable valorVariable = obtenerValor(variable);
 
 		if (valorVariable == -1){
-			log_error(logNucleo, "No se encontro la variable: %s id, con el tamanio: %d ",variable, variableLen);
+			log_error(logNucleo, "No se encontro la variable: '%s' , con el tamanio: '%d' ",variable, variableLen);
 		}else{
 			sendMessage(&socketCPULibre, &valorVariable, sizeof(t_valor_variable));
-			log_info(logNucleo, "Se envio correctamente el valor %d de la variable %s al proceso CPU",valorVariable, variable);
+			log_info(logNucleo, "Se envio correctamente el valor '%d' de la variable '%s' al proceso CPU",valorVariable, variable);
 		}
 		free(variable);
 		break;
@@ -731,7 +730,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 		receiveMessage(&socketCPULibre, variable, variableLen);
 
 		grabarValor(variable, valor);
-		log_info(logNucleo, "Se graba el valor: %d en la variable: %s id, con el tamanio: %d  ",valor, variable, variableLen);
+		log_info(logNucleo, "Se graba el valor: %d en la variable: '%s' ",valor, variable);
 		free(variable);
 		break;
 	}
@@ -749,7 +748,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 		t_nombre_semaforo semaforo = malloc(tamanio);
 		receiveMessage(&socketCPULibre, semaforo, tamanio);
 
-		log_info(logNucleo, "Se recibe el semaforo WAIT: %s, con el tamanio: %d  ",semaforo, tamanio);
+		log_info(logNucleo, "Se recibe el semaforo WAIT: '%s', con el tamanio: '%d'  ",semaforo, tamanio);
 
 		int index = 0;
 		if (estaEjecutando(message->processID, &index) == 0 && index == -1){ // 0: Programa ejecutandose (no esta en ninguna cola)
@@ -758,7 +757,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 			if (valorSemaforo <= 0) {
 
 				valorAEnviar = 1;
-				log_info(logNucleo, "Se recibio del PID %d y se envia a bloquear por semaforo: %s ", message->processID, semaforo);
+				log_info(logNucleo, "Se recibio del PID %d y se envia a bloquear por semaforo: '%s' ", message->processID, semaforo);
 				sendMessage(&socketCPULibre, &valorAEnviar,sizeof(int));// 1 si se bloquea. 0 si no se bloquea
 
 				int tamanioStack = -1;
@@ -810,7 +809,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 		//Recibo el semaforo signal
 		t_nombre_semaforo semaforo = malloc(tamanio);
 		receiveMessage(&socketCPULibre, semaforo, tamanio);
-		log_info(logNucleo, "Proceso %d libera semaforo:%s ", message->processID, semaforo);
+		log_info(logNucleo, "Proceso '%d' libera semaforo: '%s' ", message->processID, semaforo);
 		liberaSemaforo(semaforo);
 
 		free(semaforo);
@@ -822,7 +821,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 		int socketConsola = buscarSocketConsola(message->processID);
 
 		if (socketConsola==-1){
-			log_error(logNucleo, "No se encontro Consola para el PID: %d ",message->processID);
+			log_error(logNucleo, "No se encontro Consola para el PID: #%d ",message->processID);
 			break;
 		}
 
@@ -844,7 +843,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 
 		int socketConsola = buscarSocketConsola(message->processID);
 		if (socketConsola==-1){
-			log_error(logNucleo,"No se encontro Consola para el PID: %d ",message->processID);
+			log_error(logNucleo,"No se encontro Consola para el PID: #%d ",message->processID);
 			break;
 		}
 
@@ -1191,23 +1190,28 @@ int estaEjecutando(int PID, int* index){
 	return 0;
 }
 
-void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
-	int i;
+void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
+	int i,io;
 	t_bloqueado* infoBloqueado = malloc(sizeof(t_bloqueado));
-	log_info(logNucleo,"Envio %s a bloquear por IO",dispositivo);
+	//log_info(logNucleo,"Envio '%s' a bloquear por IO",dispositivo);
 	for (i = 0; i < strlen((char*)configNucleo.io_ids) / sizeof(char*); i++) {
 		if (strcmp((char*)configNucleo.io_ids[i], dispositivo) == 0) {
 			infoBloqueado->PID = activePID;
+			infoBloqueado->dispositivo = string_new();
 			infoBloqueado->dispositivo = dispositivo;
 			infoBloqueado->tiempo = tiempo;
+			io = i;
 
 			//Agrego a la cola de Bloqueados
 			if (queue_size(colas_IO[i]) == 0) {
 				pthread_mutex_lock(&cBloqueados);
 				queue_push(colas_IO[i], (void*) infoBloqueado);
 				pthread_mutex_unlock(&cBloqueados);
-
-				makeTimer(timers[i], configNucleo.io_ids_values[i] * tiempo);//TODO verificar si funciona bien con un programa
+				int ioSleep = floor((double) (configNucleo.io_ids_values[i] * tiempo / 1000));
+				sleep(ioSleep);
+				log_info(logNucleo, "... Espera (sleep) por Entrada-Salida ...");
+				atenderIO(io);
+				//makeTimer(timers[i], configNucleo.io_ids_values[i] * tiempo);//TODO verificar si funciona bien con un programa
 				return;
 			}else{
 				pthread_mutex_lock(&cBloqueados);
@@ -1217,17 +1221,11 @@ void EntradaSalida(t_nombre_dispositivo dispositivo, int tiempo){
 				return;
 			}
 		}
-		}
+	}
 }
 
-void atenderIO(int sig, siginfo_t *si, void *uc) {
-	int i = 0, io;
-	for (i = 0; i < strlen((char*)configNucleo.io_sleep) / sizeof(char*); i++) {
-		if (timers[i] == si->si_value.sival_ptr) {
-			io = i;
-		}
-	}
-	//printf("deberia entrar una vez");
+void atenderIO(int io) {
+	int i = 0;
 	t_bloqueado *proceso;
 	pthread_mutex_lock(&cBloqueados);
 	proceso = (t_bloqueado*) queue_pop(colas_IO[io]);
@@ -1235,7 +1233,7 @@ void atenderIO(int sig, siginfo_t *si, void *uc) {
 
 	//Cambio el proceso a estado ready y agrego a la cola de listos
 	log_info(logNucleo,
-			"Saco el proceso '%d' de cola IO %d y lo transfiero a cola de Listos ",
+			"Saco el proceso #%d de cola IO %d y lo transfiero a cola de Listos ",
 			proceso->PID, io);
 	int estado = 1;
 	cambiarEstadoProceso(proceso->PID, estado);
@@ -1263,10 +1261,14 @@ void atenderIO(int sig, siginfo_t *si, void *uc) {
 
 	if (queue_size(colas_IO[io]) != 0) {
 		proceso = (t_bloqueado*) list_get(colas_IO[io]->elements, queue_size(colas_IO[io]) - 1);
-		makeTimer(timers[io], configNucleo.io_ids_values[io] * proceso->tiempo);
+
+		int ioSleep = floor((double) (configNucleo.io_ids_values[i] * proceso->tiempo / 1000));
+		sleep(ioSleep);
+		//makeTimer(timers[io], configNucleo.io_ids_values[io] * proceso->tiempo);
 	}
 }
 
+/*
 static int makeTimer (timer_t *timerID, int expireMS){
 	struct sigevent evp;
 	struct itimerspec its;
@@ -1290,6 +1292,7 @@ static int makeTimer (timer_t *timerID, int expireMS){
 
 	return 1;
 }
+*/
 
 void liberarCPU(int socket) {
 	int liberar = buscarCPU(socket);
@@ -1346,7 +1349,6 @@ t_valor_variable obtenerValor(t_nombre_compartida variable) {
 }
 
 void grabarValor(t_nombre_compartida variable, t_valor_variable valor) {
-	log_info(logNucleo, "Nucleo, grabando valor: %d para la variable: %s", valor, variable);
 	int i;
 	for (i = 0; i < strlen((char*)configNucleo.shared_vars) / sizeof(char*); i++) {
 		if (strcmp((char*)configNucleo.shared_vars[i], variable) == 0) {
@@ -1666,19 +1668,20 @@ void crearArchivoDeConfiguracion(char *configFile){
 	int lenIO = 0;
 	int lenSem = 0;
 
-	if(timers!=0){
+	/*if(timers!=0){
 		free(timers);
-	}
+	}*/
+
 	lenIO = (int) strlen((char*)configNucleo.io_sleep) / sizeof(char*);
 	printf("strlen io_sleep: %d\n",lenIO);
-	timers = initialize(lenIO * sizeof(char*));
+	//timers = initialize(lenIO * sizeof(char*));
 	if(colas_IO!=0){
 		free(colas_IO);
 	}
 	colas_IO = initialize(lenIO * sizeof(char*));
 	//printf("*timers = ");
 	while (configNucleo.io_sleep[i] != NULL){
-		timers[i] = initialize(sizeof(timer_t));
+		//timers[i] = initialize(sizeof(timer_t));
 		//imprimirTimer(timers, i, len);
 		colas_IO[i] = initialize(sizeof(t_queue*));
 		colas_IO[i] = queue_create();
@@ -1769,17 +1772,7 @@ void imprimirValores(int* array, int i, int arrayLen){
 	}
 }
 
-void imprimirTimer(timer_t** timer, int i, int arrayLen){
-	if (i==0){
-		printf("[%li", (time_t)(*timers[i]));
-		printf(", ");
-	}else if(i == arrayLen - 1){
-		printf("%li]", (time_t)(*timers[i]));
-	}
-	else{
-		printf("%li", (time_t)(*timers[i]));
-	}
-}
+
 int connectTo(enum_processes processToConnect, int *socketClient){
 	int exitcode = EXIT_FAILURE;//DEFAULT VALUE
 	int port = 0;

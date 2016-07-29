@@ -38,6 +38,9 @@ void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo);
 void waitPrimitive(t_nombre_semaforo identificador_semaforo);
 void signalPrimitive(t_nombre_semaforo identificador_semaforo);
 
+t_puntero convertirDireccionAPuntero(t_memoryLocation* direccion);
+
+
 /* PROTOTIPOS FUNCIONES PRIMITIVAS en parser.h
 t_puntero (*AnSISOP_definirVariable)(t_nombre_variable identificador_variable);
 t_puntero (*AnSISOP_obtenerPosicionVariable)(t_nombre_variable identificador_variable);
