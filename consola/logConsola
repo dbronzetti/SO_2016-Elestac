@@ -1,0 +1,79 @@
+[INFO] 23:20:19:57 NUCLEO/(19713:19713): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 23:22:36:0 NUCLEO/(19813:19813): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 23:23:34:678 NUCLEO/(19883:19883): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 23:27:29:811 NUCLEO/(19911:19911): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 23:28:07:946 NUCLEO/(19911:19911): Valor Recibido: 1
+[INFO] 23:33:29:742 NUCLEO/(19946:19946): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 23:34:08:217 NUCLEO/(19946:19946): Valor Recibido: 1
+[INFO] 23:40:08:89 NUCLEO/(20032:20032): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 23:40:45:994 NUCLEO/(20032:20032): Valor Recibido: 1
+[INFO] 23:45:37:535 NUCLEO/(20161:20161): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 23:54:49:791 NUCLEO/(20291:20291): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 23:57:30:559 NUCLEO/(20416:20416): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 23:58:47:57 NUCLEO/(20838:20838): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:00:01:717 NUCLEO/(20899:20899): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:01:34:441 NUCLEO/(21060:21060): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:02:21:416 NUCLEO/(21151:21151): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:03:12:718 NUCLEO/(21493:21493): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:07:43:140 NUCLEO/(21968:21968): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:08:15:744 NUCLEO/(22033:22033): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:11:33:630 NUCLEO/(22467:22467): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:14:49:534 NUCLEO/(22682:22682): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:15:44:973 NUCLEO/(22739:22739): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:23:26:374 NUCLEO/(22969:22969): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:24:50:425 NUCLEO/(23038:23038): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:31:46:852 NUCLEO/(23126:23126): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:31:51:497 NUCLEO/(23130:23130): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:33:46:102 NUCLEO/(23164:23164): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:39:26:889 NUCLEO/(23410:23410): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:39:31:333 NUCLEO/(23414:23414): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[ERROR] 00:39:37:789 NUCLEO/(23417:23417): Error - No able to received - Error receiving from socket '4', with error: 104
+
+[INFO] 00:39:52:80 NUCLEO/(23436:23436): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:41:04:89 NUCLEO/(23495:23495): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:44:05:610 NUCLEO/(23957:23957): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:48:06:251 NUCLEO/(24167:24167): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:49:56:604 NUCLEO/(24650:24650): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[ERROR] 00:54:29:335 NUCLEO/(24768:24768): I'm not able to connect to the server! - My socket is: '4'
+
+[ERROR] 00:54:29:335 NUCLEO/(24768:24768): No server available - shutting down proces!!
+
+[INFO] 00:56:10:657 NUCLEO/(24933:24933): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:56:15:308 NUCLEO/(24937:24937): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 00:59:53:841 NUCLEO/(25094:25094): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+
+[INFO] 01:01:34:284 NUCLEO/(25219:25219): Conectado a NUCLEO - Messsage: The server has accepted your connection!
+

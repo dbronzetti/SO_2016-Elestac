@@ -242,6 +242,7 @@ int reconocerOperacion() {
 			exitCode = receiveMessage(&socketNucleo, &tamanio, sizeof(int));
 			char* textoImprimir = malloc(tamanio);
 			exitCode = receiveMessage(&socketNucleo, textoImprimir, tamanio);
+			printf( "Texto: %s \n", textoImprimir);
 			log_info(logConsola, "Texto: %s", textoImprimir);
 			free(textoImprimir);
 			break;
@@ -249,7 +250,9 @@ int reconocerOperacion() {
 		case 2: {	//Recibo del Nucleo el valor a mostrar
 			t_valor_variable valor ;
 			exitCode = receiveMessage(&socketNucleo, &valor,sizeof(t_valor_variable));
-			log_info(logConsola, "Valor Recibido:%i", valor);
+			printf("Valor Recibido: %i \n", valor);
+
+			log_info(logConsola, "Valor Recibido: %i", valor);
 			break;
 		}
 		default: {
