@@ -42,12 +42,13 @@ int main(int argc, char *argv[]){
 
 
 	exitCode = connectTo(NUCLEO,&socketNucleo);
+	if(exitCode == EXIT_SUCCESS){
+		log_info(logCPU,"CPU connected to NUCLEO successfully");
+	}
 
-	PCBRecibido = malloc(sizeof(t_PCB));
 	while ((exitCode == EXIT_SUCCESS) && !(SignalActivated)){//No wait for more messages if signal was activated during processing
 
 		if(exitCode == EXIT_SUCCESS){
-			//log_info(logCPU,"CPU connected to NUCLEO successfully");
 			messageRcv = malloc(sizeof(int));//for receiving message size
 			waitRequestFromNucleo(&socketNucleo, &messageRcv);
 		}
@@ -63,6 +64,7 @@ int main(int argc, char *argv[]){
 			deserializeCPU_Nucleo(messageWithBasicPCB, messageRcv);
 
 			log_info(logCPU,"Construyendo PCB para PID #%d",messageWithBasicPCB->processID);
+			PCBRecibido = malloc(sizeof(t_PCB));
 			PCBRecibido->PID = messageWithBasicPCB->processID;
 			PCBRecibido->ProgramCounter = messageWithBasicPCB->programCounter;
 			PCBRecibido->StackPointer = messageWithBasicPCB->stackPointer;
@@ -123,6 +125,9 @@ int main(int argc, char *argv[]){
 			}else{
 				PCBRecibido->indiceDeEtiquetas = string_new();//initializing indice etiquetas if size is 0
 			}
+
+			free(messageRcv);
+			free(messageWithBasicPCB);
 
 			log_info(logCPU,"Tamanio indice de Etiquetas %d - Proceso '%d'", messageSize, PCBRecibido->PID);
 			log_info(logCPU,"El PCB del proceso '%d' fue recibido correctamente", PCBRecibido->PID);
@@ -189,7 +194,6 @@ int main(int argc, char *argv[]){
 							free(corteQuantum);
 							free(bufferIndiceStack);
 							free(bufferRespuesta);
-
 							if(SignalActivated){//Si fue captada la señal SIGUSR1 mientras se estaba ejecutando una instruccion se debe finalizar la misma y acto seguido desconectarse del Nucleo
 								log_info(logCPU,"Information from PID '%d' sent to Nucleo... Now I'm going down, but....I'LL BE BACK!!!\n", PCBRecibido->PID);
 								break;
@@ -223,11 +227,11 @@ int main(int argc, char *argv[]){
 						//Program finished by primitive
 						break;
 					}
-				}
+				}//if SUCCESS ejecutarPrograma
 
-			}
+			}// While QUANTUM
 
-			free(messageRcv);
+			log_info(logCPU,"Destroy PCB processed");
 			//Destruir PCBRecibido
 			destruirPCB(PCBRecibido);
 
@@ -236,7 +240,7 @@ int main(int argc, char *argv[]){
 		}
 
 	}//loop end
-	free(PCBRecibido);
+
 	return EXIT_SUCCESS;
 }
 
@@ -463,6 +467,8 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 }
 
 void waitRequestFromNucleo(int *socketClient, char **messageRcv){
+
+	log_info(logCPU,"Waiting new PCB from NUCLEO");
 	//Receive message size
 	int messageSize = 0;
 	//Get Payload size
@@ -479,7 +485,7 @@ void waitRequestFromNucleo(int *socketClient, char **messageRcv){
 		receivedBytes = receiveMessage(socketClient, *messageRcv, messageSize);
 
 		//TODO ver que hace con messageRcv despues de recibirlo!!
-		//log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), *socketClient, messageSize);
+		log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), *socketClient, messageSize);
 		//error al recibir por 2da vez: corrupted double-linked list: 0x08294830
 
 	}else{
