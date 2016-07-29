@@ -1039,7 +1039,7 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID){
 	message->cantPages = -1; //DEFAULT value when the operation doesnt need it
 	message->virtualAddress->pag = virtualAddress->pag;
 	message->virtualAddress->offset = virtualAddress->offset;
-	message->virtualAddress->size = virtualAddress->size;
+	message->virtualAddress->size = configuration.frames_size;//virtualAddress->size;
 
 	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(message->virtualAddress->pag) + sizeof(message->virtualAddress->offset) + sizeof(message->virtualAddress->size) + sizeof(message->cantPages);
 	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
@@ -1052,10 +1052,10 @@ void *requestPageToSwap(t_memoryLocation *virtualAddress, int PID){
 	sendMessage(&socketSwap, buffer, bufferSize);
 
 	//Receive memory content from SWAP with the virtualAddress->size - On the other side is going to be sending it with that size requested previously
-	char *messageRcv = malloc(virtualAddress->size);// corregido!
-	int receivedBytes = receiveMessage(&socketSwap, messageRcv, virtualAddress->size);
-	memoryContent = malloc(virtualAddress->size);
-	memcpy(memoryContent, messageRcv, virtualAddress->size);
+	char *messageRcv = malloc(configuration.frames_size);// corregido!
+	int receivedBytes = receiveMessage(&socketSwap, messageRcv, configuration.frames_size);
+	memoryContent = malloc(configuration.frames_size);
+	memcpy(memoryContent, messageRcv, configuration.frames_size);
 
 	//TODO Se puede agregar una validacion despues del receive para que no pinche despues de hacer el memcpy
 	log_info(UMCLog, "PID '%d' - Content in page '#%d' SWAPPED IN to memory",PID, virtualAddress->pag);
@@ -1386,7 +1386,7 @@ t_memoryAdmin *updateMemoryStructure(t_pageTablesxProc *pageTablexProc, t_memory
 				int memoryBlockOffset = (newMemoryElement->frameNumber * configuration.frames_size) + virtualAddress->offset;
 
 				pthread_mutex_lock(&memoryAccessMutex);//Locking mutex for writing memory
-				memcpy(memBlock + memoryBlockOffset, memoryContent , virtualAddress->size);
+				memcpy(memBlock + memoryBlockOffset, memoryContent , configuration.frames_size);
 				pthread_mutex_unlock(&memoryAccessMutex);//unlocking mutex for writing memory
 
 				//increasing frames assigned to active process ONLY
