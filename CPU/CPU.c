@@ -706,7 +706,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 				//add vars to same list if executing the same line
 				list_add(ultimoRegistro->vars, (void*)variableAAgregar);
 
-				posicionDeLaVariable = (t_puntero) variableAAgregar->direccionValorDeVariable;
+				posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
 			}else{
 				//add a new register to Indice Stack if is a different line
 				t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
@@ -721,7 +721,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 
 				list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
-				posicionDeLaVariable = (t_puntero) variableAAgregar->direccionValorDeVariable;
+				posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
 
 			}
 		}
@@ -741,7 +741,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 
 		list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
-		posicionDeLaVariable = (t_puntero) variableAAgregar->direccionValorDeVariable;
+		posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
 
 	}
 
