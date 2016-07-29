@@ -583,6 +583,7 @@ void serializarES(t_es *value, char* buffer, int valueSize){
 }
 
 void finalizar(void){
+	log_info(logCPU," 'finalizar' ");
 
 	log_info(logCPU, "PID: '%d' - Requesting end line program...", PCBRecibido->PID);
 
@@ -682,6 +683,8 @@ void getReturnStackRegister(t_registroStack* registroARegresar){
 }
 
 t_puntero definirVariable(t_nombre_variable identificador){
+	log_info(logCPU," 'definirVariable' ");
+
 	t_puntero posicionDeLaVariable;
 	t_memoryLocation* ultimaPosicionOcupada = NULL;
 	t_vars* variableAAgregar = malloc(sizeof(t_vars));
@@ -701,7 +704,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 			//adding arguments if is a function call
 			list_add(ultimoRegistro->args, (void*)variableAAgregar);
 
-			posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
+			posicionDeLaVariable= convertirDireccionAPuntero(variableAAgregar->direccionValorDeVariable);
 
 		}else{
 			if (ultimoPosicionPC == PCBRecibido->ProgramCounter){
@@ -709,7 +712,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 				//add vars to same list if executing the same line
 				list_add(ultimoRegistro->vars, (void*)variableAAgregar);
 
-				posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
+				posicionDeLaVariable = convertirDireccionAPuntero(variableAAgregar->direccionValorDeVariable);
 			}else{
 				//add a new register to Indice Stack if is a different line
 				t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
@@ -724,7 +727,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 
 				list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
-				posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
+				posicionDeLaVariable = convertirDireccionAPuntero(variableAAgregar->direccionValorDeVariable);
 
 			}
 		}
@@ -744,13 +747,21 @@ t_puntero definirVariable(t_nombre_variable identificador){
 
 		list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
-		posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
+		posicionDeLaVariable = convertirDireccionAPuntero(variableAAgregar->direccionValorDeVariable);
 
 	}
 
 	PCBRecibido->StackPointer = PCBRecibido->indiceDeStack->elements_count -1;
 
 	return posicionDeLaVariable;
+}
+
+t_puntero convertirDireccionAPuntero(t_memoryLocation* direccion) {
+	t_puntero direccion_real, pagina, offset;
+	pagina = (direccion->pag) * frameSize;
+	offset = direccion->offset;
+	direccion_real = pagina + offset;
+	return direccion_real;
 }
 
 void cargarValoresNuevaPosicion(t_memoryLocation* ultimaPosicionOcupada, t_memoryLocation* variableAAgregar){
@@ -1159,6 +1170,9 @@ void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo) {
 	free(bufferRespuesta);
 	free(entradaSalida);
 
+	char **substrings = string_split(dispositivo, "\n");
+	dispositivo = substrings[0];
+
 	t_es* datosParaPlanifdeES = malloc(sizeof(t_es));
 	datosParaPlanifdeES->ProgramCounter = ultimoPosicionPC;
 	datosParaPlanifdeES->tiempo = tiempo;
@@ -1177,7 +1191,7 @@ void entradaSalida(t_nombre_dispositivo dispositivo, int tiempo) {
 	serializarES(datosParaPlanifdeES, bufferDatosES,payloadSizeES);
 	sendMessage(&socketNucleo, bufferDatosES, bufferSizeES);
 
-	log_info(logCPU, "Proceso: '%d' en entradaSalida de %d unidades de tiempo ", PCBRecibido->PID,tiempo);
+	log_info(logCPU, "Proceso: #%d en entradaSalida por dispositivo '%s' de '%d' unidades de tiempo ", PCBRecibido->PID, datosParaPlanifdeES->dispositivo, datosParaPlanifdeES->tiempo);
 
 	free(datosParaPlanifdeES->dispositivo);
 	free(datosParaPlanifdeES);
@@ -1222,7 +1236,7 @@ void waitPrimitive(t_nombre_semaforo identificador_semaforo){
 
 	if(respuestaNucleo==1){
 		waitSemActivated = true;
-		log_info(logCPU,"PID: '%d' - Process is being blocked by semaphore '%s'", PCBRecibido->PID, identificador_semaforo);
+		log_info(logCPU,"PID: #%d - Process is being blocked by semaphore '%s'", PCBRecibido->PID, identificador_semaforo);
 	}
 
 }
