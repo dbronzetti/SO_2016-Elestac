@@ -246,28 +246,17 @@ int ejecutarPrograma(){
 
 	instruccionActual = list_get(PCBRecibido->indiceDeCodigo, ultimoPosicionPC);
 
-	int i;
-	int offsetInstruccionesSize = 0;
-	t_registroIndiceCodigo* instruccion = malloc(sizeof(t_registroIndiceCodigo));
-
-	//For getting the correct page in which the current instruction has to be located we need the offset from all the previous lines executed
-	//NOTE: we follow the code line because doesn't matter if there was a function call (this is because after a function call all the variables in there are deleted from memory)
-	for(i = 0; i < ultimoPosicionPC; i++){
-		instruccion = list_get(PCBRecibido->indiceDeCodigo, i);
-		offsetInstruccionesSize += instruccion->longitudInstruccionEnBytes;
-	}
-
-	free(instruccion);
-
 	char* codigoRecibido = string_new();
 
 	log_info(logCPU,"Contexto de ejecucion recibido - Process ID : %d - PC : %d", PCBRecibido->PID, ultimoPosicionPC);
 
 	//ver de pedir varias veces hasta que cumpla la longitud de instrucciones en bytes e ir concatenando el contenido
 	int returnCode = EXIT_SUCCESS;//DEFAULT
-	int remainingInstruccion = instruccionActual->inicioDeInstruccion + instruccionActual->longitudInstruccionEnBytes;
+	int bytesInstruccion = instruccionActual->inicioDeInstruccion + instruccionActual->longitudInstruccionEnBytes;
+	int pagesNeeded = (int) ceil(((double) bytesInstruccion/ (double) frameSize));
+	int pageRequested = 0;
 
-	while((returnCode == EXIT_SUCCESS) && (remainingInstruccion > 0)){
+	while((returnCode == EXIT_SUCCESS) && (pageRequested < pagesNeeded)){
 		//serializar mensaje para UMC y solicitar codigo porcion de codigo
 		int bufferSize = 0;
 		int payloadSize = 0;
@@ -277,7 +266,7 @@ int ejecutarPrograma(){
 		message->virtualAddress = malloc(sizeof(t_memoryLocation));
 		message->PID = PCBRecibido->PID;
 		message->operation = lectura_pagina;
-		message->virtualAddress->pag = (int) floor(((double) offsetInstruccionesSize/ (double) frameSize));
+		message->virtualAddress->pag = pageRequested;
 		message->virtualAddress->offset = 0; //Request ALWAYS the start of a page
 		message->virtualAddress->size = frameSize ; //ALWAYS REQUEST TO UMC the size of a page WHEN READING and when it is received a memcpy with "instruccionActual->longitudInstruccionEnBytes" has to be done
 
@@ -325,8 +314,7 @@ int ejecutarPrograma(){
 			//Append the code received from UMC to the code received previously (if is the case)
 			string_append(&codigoRecibido, bufferCode);
 
-			offsetInstruccionesSize += frameSize; //moving offset for next request
-			remainingInstruccion -= frameSize; //reducing the remaining size to be read on next request
+			pageRequested++;
 
 			free(bufferCode);
 
@@ -830,7 +818,12 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
 	//TODO ver que no se use en ningun otro lado en el parser la funcion obtenerPosicionVariable
 	PCBRecibido->StackPointer = registroBuscado->pos;
 
-	posicionEncontrada =(t_puntero) posicionBuscada->direccionValorDeVariable;
+	if (posicionBuscada != NULL){
+		posicionEncontrada =(t_puntero) posicionBuscada->direccionValorDeVariable;
+	}else{
+		log_info(logCPU,"Variable '%s' - NOT RECOGNIZED", identificador_variable);
+		posicionEncontrada = -1; //Returning error as per primitive definition
+	}
 
 	return posicionEncontrada;
 }
