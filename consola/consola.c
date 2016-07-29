@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
 
 	while (1) {
 		tamanioArchivo =-1;
-		printf(PROMPT);
+		printf(COMANDO);
 		fgets(inputTeclado, sizeof(inputTeclado), stdin);
 		char ** comando = string_split(inputTeclado, " ");
 		switch (reconocerComando(comando[0])) {
@@ -77,6 +77,11 @@ int main(int argc, char **argv) {
 			//2)Envia el codigo del programa
 			exitCode = sendMessage(&socketNucleo, codeScript,programCodeLen);
 
+			exitCode = reconocerOperacion();
+			if (string_ends_with(nombreDelArchivo,"completo.ansisop")){
+				reconocerOperacion();
+			}
+
 			break;
 		}
 		case 2: {
@@ -87,12 +92,7 @@ int main(int argc, char **argv) {
 			printf("Se envia solicitud para finalizar al proceso NUCLEO.\n");
 
 			//Recibo del Nucleo el tamanio y el texto a imprimir, y luego finalizo proceso.
-			int tamanio;
-			exitCode = receiveMessage(&socketNucleo, &tamanio, sizeof(int));
-			char* textoImprimir = malloc(tamanio);
-			exitCode = receiveMessage(&socketNucleo, textoImprimir, tamanio);
-			printf( "%s \n", textoImprimir);
-			free(textoImprimir);
+			exitCode = reconocerOperacion();
 			exit(0);	//EXIT_SUCCESS
 			break;
 		}
@@ -102,10 +102,9 @@ int main(int argc, char **argv) {
 			break;
 		}
 		default:
-			printf("Comando invalido.\n");
+			printf("Comando invalido. Intentelo nuevamente.\n");
 			break;
 		}
-		exitCode = reconocerOperacion();//TODO reacomodar para poder ingresar un pedido de finalizar
 	}
 	return exitCode;
 }
@@ -126,7 +125,7 @@ void* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
 
 	int descriptorArchivo;
 	printf("Ingrese archivo a ejecutar.\n");
-	char nombreDelArchivo[100];
+	printf(PROMPT);
 	scanf("%s", nombreDelArchivo);
 	archivo = fopen(nombreDelArchivo, "r");
 	descriptorArchivo=fileno(archivo);
@@ -242,7 +241,7 @@ int reconocerOperacion() {
 			exitCode = receiveMessage(&socketNucleo, &tamanio, sizeof(int));
 			char* textoImprimir = malloc(tamanio);
 			exitCode = receiveMessage(&socketNucleo, textoImprimir, tamanio);
-			printf( "Texto: %s \n", textoImprimir);
+			printf( " '%s' \n", textoImprimir);
 			log_info(logConsola, "Texto: %s", textoImprimir);
 			free(textoImprimir);
 			break;
@@ -255,18 +254,20 @@ int reconocerOperacion() {
 			log_info(logConsola, "Valor Recibido: %i", valor);
 			break;
 		}
+		case 3:{
+			if (string_ends_with(nombreDelArchivo,"consumidor.ansisop")){
+				receiveMessage(&socketNucleo, &num,sizeof(int));
+				while(1){
+				printf("%d\n",num++);
+				}
+			}
+			break;
+		}
 		default: {
 			//log_error(logConsola, "No se pudo recibir ninguna operacion valida");
 			break;
 		}
 		}
-	}else if (receivedBytes == 0 ){
-		//The client is down when bytes received are 0
-		//log_error(logConsola, "The client went down while receiving! - Please check the client '%d' is down!", socketNucleo);
-		close(socketNucleo);
-	}else{
-		//log_error(logConsola, "Error - No able to received - Error receiving from socket '%d', with error: %d",socketNucleo, errno);
-		close(socketNucleo);
 	}
 
 	return exitCode;

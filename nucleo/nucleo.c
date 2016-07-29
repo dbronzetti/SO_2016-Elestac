@@ -298,10 +298,10 @@ void processMessageReceivedConsola (void *parameter){
 				//Recibo el codigo del programa (messageRcv) usando el tamanio leido antes
 				char *messageRcv = malloc(messageSize);
 				receivedBytes = receiveMessage(&serverData->socketClient, messageRcv, messageSize);
+				log_info(logNucleo,"Bytes received for code: %d",receivedBytes);
 
 				string_append(&messageRcv, "\0");
 				runScript(messageRcv, serverData->socketClient);
-				log_info(logNucleo,"Bytes received for code: %d",receivedBytes);
 				free(messageRcv);
 				pthread_mutex_unlock(&activeProcessMutex);
 				break;
@@ -794,6 +794,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 			}
 		}
 		free(semaforo);
+		planificarProceso();
 		break;
 	}
 	case 9:{	// SIGNAL	- 	Libera semaforo
@@ -812,6 +813,7 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 		log_info(logNucleo, "Proceso '%d' libera semaforo: '%s' ", message->processID, semaforo);
 		liberaSemaforo(semaforo);
 
+		enviarUno(message->processID);
 		free(semaforo);
 		break;
 	}
@@ -899,6 +901,14 @@ int processCPUMessages(int messageSize,int socketCPULibre){
 	free(messageRcv);
 	free(message);
 	return receivedBytes;
+}
+
+void enviarUno(int PID){
+	int socketConsola = buscarSocketConsola(PID);
+	int op = 3 ;
+	sendMessage(&socketConsola, &op, sizeof(int));
+	int num = 1;
+	sendMessage(&socketConsola, &num, sizeof(int));
 }
 
 void atenderCorteQuantum(int socketCPU,int PID){
@@ -1583,14 +1593,21 @@ void finalizarPrograma(int PID){
 	log_info(logNucleo,"Se envia correctamente la informacion al proceso UMC para finalizar programa. ");
 
 	int socketConsola = buscarSocketConsola(PID);
+	if (socketConsola ==-1){
+		log_info(logNucleo, "No se encontro el socket para la consola de PID #%d",PID);
+		return;
+	}
+	// Envia operacion 1 para identificar un texto
+	int operacion = 1;
+	sendMessage(&socketConsola, &operacion, sizeof(operacion));
 
 	// Envia el tamanio del texto y luego el texto al proceso Consola
 	char texto[] = "Pedido de finalizacion del programa ejecutado correctamente";
 	int textoLen = strlen(texto) + 1 ;
 	sendMessage(&socketConsola, &textoLen, sizeof(textoLen));
 
-	log_info(logNucleo, "Enviar texto: '%s', con tamanio: '%d' a PID #%d", texto, textoLen, PID);
 	sendMessage(&socketConsola, texto, textoLen);
+	log_info(logNucleo, "Enviar texto: '%s', con tamanio: '%d' a PID #%d", texto, textoLen, PID);
 
 	int pos = buscarConsola(socketConsola);
 	list_remove(listaConsola,pos);

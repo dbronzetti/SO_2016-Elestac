@@ -468,7 +468,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 
 void waitRequestFromNucleo(int *socketClient, char **messageRcv){
 
-	log_info(logCPU,"Waiting new PCB from NUCLEO");
+	//log_info(logCPU,"Waiting new PCB from NUCLEO");
 	//Receive message size
 	int messageSize = 0;
 	//Get Payload size
@@ -485,7 +485,7 @@ void waitRequestFromNucleo(int *socketClient, char **messageRcv){
 		receivedBytes = receiveMessage(socketClient, *messageRcv, messageSize);
 
 		//TODO ver que hace con messageRcv despues de recibirlo!!
-		log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), *socketClient, messageSize);
+		//log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), *socketClient, messageSize);
 		//error al recibir por 2da vez: corrupted double-linked list: 0x08294830
 
 	}else{
@@ -965,6 +965,8 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 
 	char **substrings = string_split(variable, "\n");
 	variable = substrings[0];
+	substrings = string_split(variable, "\t");
+	variable = substrings[0];
 
 	//1) Envia el tamanio de la variable al proceso NUCLEO
 	int variableLen = strlen(variable) + 1;
@@ -977,7 +979,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 
 	if ((valorDeErrorLen != -1) && (valorDeErrorVar != -1)) {
 		receiveMessage(&socketNucleo, &valorVariable, sizeof(t_valor_variable));
-		log_info(logCPU, "se recibio correctamente el valor '%d' de la variable compartida %s",valorVariable,variable);
+		log_info(logCPU, "se recibio correctamente el valor '%d' de la shared var '%s'",valorVariable,variable);
 	} else {
 		log_info(logCPU, "Los datos no pudieron ser enviados al proceso NUCLEO");
 	}
@@ -1009,6 +1011,9 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_va
 
 	char **substrings = string_split(variable, "\n");
 	variable = substrings[0];
+	substrings = string_split(variable, "\t");
+	variable = substrings[0];
+
 
 	//2) Envia el tamanio de la variable al proceso NUCLEO
 	int variableLen = strlen(variable) + 1;
@@ -1024,25 +1029,13 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_va
 void irAlLabel(t_nombre_etiqueta etiqueta){
 	log_info(logCPU," 'irAlLabel' ");
 
-	t_puntero_instruccion instruccion;
-	instruccion = metadata_buscar_etiqueta(etiqueta, PCBRecibido->indiceDeEtiquetas, PCBRecibido->indiceDeEtiquetasTamanio);
+	char **substrings = string_split(etiqueta, "\n");
+	etiqueta = substrings[0];
 
-	PCBRecibido->ProgramCounter = instruccion-1; //(contador/2);
+	t_puntero_instruccion posEtiqueta;
+	posEtiqueta = metadata_buscar_etiqueta(etiqueta, PCBRecibido->indiceDeEtiquetas, PCBRecibido->indiceDeEtiquetasTamanio);
 
-	/*int condicionEtiquetas(t_registroIndiceEtiqueta registroIndiceEtiqueta){
-		return (registroIndiceEtiqueta.funcion == etiqueta);
-	}
-
-	if(listaIndiceEtiquetas->elements_count > 0){
-		t_registroIndiceEtiqueta* registroBuscado = malloc(sizeof(t_registroIndiceEtiqueta));
-
-		registroBuscado = (t_registroIndiceEtiqueta*) list_find(listaIndiceEtiquetas,(void*)condicionEtiquetas);
-
-		//get program counter needed
-		ultimoPosicionPC = registroBuscado->posicionDeLaEtiqueta;
-
-		free(registroBuscado);
-	}*/
+	ultimoPosicionPC = posEtiqueta-1;
 
 }
 

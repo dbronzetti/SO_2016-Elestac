@@ -111,6 +111,7 @@ int socketUMC = 0;
 int socketConsola = 0;
 int frameSize = 0;
 int alertFlag = 0;
+int z = 0;
 
 //Encabezamientos de Funciones Principales
 
@@ -137,6 +138,7 @@ void crearArchivoDeConfiguracion(char* configFile);
 void *initialize(int tamanio);
 void imprimirArray(char** array);
 void imprimirValores(int* array, int i, int arrayLen);
+void enviarUno(int PID);
 
 //Encabezamiento de Funciones de Stack
 

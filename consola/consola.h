@@ -7,6 +7,7 @@
 #define CONSOLA_H_
 
 #define PROMPT "anSISOP> "
+#define COMANDO "Comando> "
 
 #include <unistd.h>
 #include <pthread.h>
@@ -24,6 +25,9 @@ typedef struct {
 	int port_Nucleo;
 	char* ip_Nucleo;
 } t_configFile;
+
+char nombreDelArchivo[100];
+int num = 0;
 
 //Logger
 t_log* logConsola;
