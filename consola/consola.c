@@ -79,9 +79,14 @@ int main(int argc, char **argv) {
 
 			exitCode = reconocerOperacion();
 			if (string_ends_with(nombreDelArchivo,"completo.ansisop")){
-				reconocerOperacion();
+				for (i = 0; i < 4; i++) {
+					reconocerOperacion();
+				}
+			}else if(string_ends_with(nombreDelArchivo,"forES.ansisop")){
+				for(i=0;i<20;i++){
+					reconocerOperacion();
+				}
 			}
-
 			break;
 		}
 		case 2: {
@@ -102,7 +107,7 @@ int main(int argc, char **argv) {
 			break;
 		}
 		default:
-			printf("Comando invalido. Intentelo nuevamente.\n");
+			//printf("Comando invalido. Intentelo nuevamente.\n");
 			break;
 		}
 	}
@@ -257,9 +262,7 @@ int reconocerOperacion() {
 		case 3:{
 			if (string_ends_with(nombreDelArchivo,"consumidor.ansisop")){
 				receiveMessage(&socketNucleo, &num,sizeof(int));
-				while(1){
-				printf("%d\n",num++);
-				}
+				printf("%d\n", num++);
 			}
 			break;
 		}

@@ -698,7 +698,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 			//adding arguments if is a function call
 			list_add(ultimoRegistro->args, (void*)variableAAgregar);
 
-			posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
+			posicionDeLaVariable= convertirDireccionAPuntero(variableAAgregar->direccionValorDeVariable);
 
 		}else{
 			if (ultimoPosicionPC == PCBRecibido->ProgramCounter){
@@ -706,7 +706,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 				//add vars to same list if executing the same line
 				list_add(ultimoRegistro->vars, (void*)variableAAgregar);
 
-				posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
+				posicionDeLaVariable = convertirDireccionAPuntero(variableAAgregar->direccionValorDeVariable);
 			}else{
 				//add a new register to Indice Stack if is a different line
 				t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
@@ -721,7 +721,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 
 				list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
-				posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
+				posicionDeLaVariable = convertirDireccionAPuntero(variableAAgregar->direccionValorDeVariable);
 
 			}
 		}
@@ -741,7 +741,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 
 		list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
-		posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
+		posicionDeLaVariable = convertirDireccionAPuntero(variableAAgregar->direccionValorDeVariable);
 
 	}
 
@@ -1143,6 +1143,11 @@ void imprimirTexto(char *texto){
 	serializeCPU_Nucleo(respuesta, bufferRespuesta, payloadSize);
 
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+
+	char **substrings = string_split(texto, "\n");
+	texto = substrings[0];
+	substrings = string_split(texto, "\t");
+	texto = substrings[0];
 
 	// Envia el tamanio del texto al proceso NUCLEO
 	int textoLen = strlen(texto) + 1;
