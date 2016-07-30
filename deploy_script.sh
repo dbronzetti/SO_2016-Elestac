@@ -49,4 +49,4 @@ make
 cd $DEPLOY_FOLDER
 pwd
 
-echo "Fin deploy"
+echo "Fin deploy - ejecutar: 'cd $DEPLOY_FOLDER'"
