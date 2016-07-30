@@ -565,6 +565,8 @@ void startUMCConsole(){
 
 			if(list_size(pageTablesListxProc) != 0){
 
+				dumpf = fopen(dumpFile, "w");
+
 				if (strcmp(value, "all") == 0){
 					neededPID = -1; //ALL PIDs in memory
 				}else{
@@ -572,8 +574,6 @@ void startUMCConsole(){
 				}
 
 				if (strcmp(option, "estructuras") == 0){
-
-					dumpf = fopen(dumpFile, "w+");
 
 					if(neededPID == -1){
 						pthread_mutex_lock(&memoryAccessMutex);
@@ -598,6 +598,7 @@ void startUMCConsole(){
 						pthread_mutex_lock(&memoryAccessMutex);
 						t_pageTablesxProc *pageTablexProc = list_find(pageTablesListxProc,(void*) is_PIDPageTable);
 						list_iterate(pageTablexProc->ptrPageTable, (void*) showMemoryRows);
+
 						pthread_mutex_unlock(&memoryAccessMutex);
 					}
 
@@ -877,11 +878,18 @@ int writeBytesToPage(t_memoryLocation *virtualAddress, void *buffer){
 		//delay memory access
 		waitForResponse();
 
+		log_info(UMCLog, "PID '%d': Writing page '#%d' in Frame '%d' - Content '%d'", activePID, virtualAddress->pag, memoryElement->frameNumber, (int) buffer);
+
 		int memoryBlockOffset = (memoryElement->frameNumber * configuration.frames_size) + virtualAddress->offset;
 
 		pthread_mutex_lock(&memoryAccessMutex);//Locking mutex for writing memory
 		memcpy(memBlock + memoryBlockOffset, buffer , virtualAddress->size); //here is overwriting the memory content - doesn't matter if it was wrote in updateMemoryStructure()
 		pthread_mutex_unlock(&memoryAccessMutex);//unlocking mutex for writing memory
+
+		//Marking page as modified after writing
+		log_info(UMCLog, "PID '%d': Page '#%d' marked as MODFIED after writing", activePID, virtualAddress->pag);
+		memoryElement->dirtyBit = PAGE_MODIFIED;
+
 	}else{
 		//The main memory hasn't any free frames
 		//inform this to upstream process
@@ -909,10 +917,15 @@ void markElementNOTPResent(t_memoryAdmin *pageTableElement){
 
 //** Dumper Page Table Element **//
 void dumpPageTablexProc(t_pageTablesxProc *pageTablexProc){
-	printf("Informacion PID: '%d'.\n", pageTablexProc->PID);
-	fprintf(dumpf,"Informacion PID: '%d'.\n", pageTablexProc->PID);
+	printf("\nInformacion PID: '%d':\n", pageTablexProc->PID);
+	fprintf(dumpf,"\nInformacion PID: '%d':\n", pageTablexProc->PID);
 
-	list_iterate(pageTablexProc->ptrPageTable, (void*) showPageTableRows);
+	if (pageTablexProc->ptrPageTable->elements_count > 0){
+		list_iterate(pageTablexProc->ptrPageTable, (void*) showPageTableRows);
+	}else{
+		printf("No elements present in Memory\n");
+		fprintf(dumpf,"No elements present in Memory\n");
+	}
 }
 
 //** Show Page Table Element information **//
@@ -932,8 +945,8 @@ void showPageTableRows(t_memoryAdmin *pageTableElement){
 		string_append(&presence,"PAGE_NOT_PRESENT");
 	}
 
-	printf("\t En Frame '%d'\t--> Pagina '%d'\t--> status: '%s' and '%s'.\n", pageTableElement->frameNumber,pageTableElement->virtualAddress->pag, presence, status);
-	fprintf(dumpf,"\t En Frame '%d'\t--> Pagina '%d'\t--> status: '%s' and '%s'.\n", pageTableElement->frameNumber,pageTableElement->virtualAddress->pag, presence, status);
+	printf("\tEn Frame '%d'\t--> Pagina '%d'\t--> status: '%s' and '%s'.\n", pageTableElement->frameNumber,pageTableElement->virtualAddress->pag, presence, status);
+	fprintf(dumpf,"\tEn Frame '%d'\t--> Pagina '%d'\t--> status: '%s' and '%s'.\n", pageTableElement->frameNumber,pageTableElement->virtualAddress->pag, presence, status);
 
 	free(status);
 	free(presence);
@@ -958,8 +971,14 @@ void showMemoryRows(t_memoryAdmin *pageTableElement){
 
 	memcpy(content, memBlock + memoryBlockOffset, pageTableElement->virtualAddress->size);
 
-	printf("\t Contenido en Pagina:'%d'\n\t\tContenido: '%s'.\n", pageTableElement->virtualAddress->pag, content);
-	fprintf(dumpf,"\t Contenido en Pagina:'%d'\n\t\tContenido: '%s'.\n", pageTableElement->virtualAddress->pag, content);
+	if (pageTableElement->virtualAddress->size > 4){
+		memset(content + pageTableElement->virtualAddress->size,'\0',1 );
+		printf("\nPagina:'%d'\nContenido: '%s'\n", pageTableElement->virtualAddress->pag, content);
+		fprintf(dumpf,"\nPagina:'%d'\nContenido: '%s'\n", pageTableElement->virtualAddress->pag, content);
+	}else{
+		printf("\nPagina:'%d'\nContenido: '%d'\n", pageTableElement->virtualAddress->pag, (int)*content);
+		fprintf(dumpf,"\nPagina:'%d'\nContenido: '%d'\n", pageTableElement->virtualAddress->pag, (int)*content);
+	}
 
 	free(content);
 }
@@ -1419,7 +1438,7 @@ void executeLRUAlgorithm(t_memoryAdmin *newElement, t_memoryLocation *virtualAdd
 
 	//Replacement algorithm LRU
 	LRUCandidate = getLRUCandidate();
-	log_info(UMCLog, "PID: '%d' - New page needed '%d' in Memory -> LRU candidate page '#%d' - Frame '#%d'", newElement->PID, newElement->virtualAddress->pag, LRUCandidate->virtualAddress->pag, newElement->frameNumber);
+	log_info(UMCLog, "PID: '%d' - New page needed '%d' in Memory -> LRU candidate page '#%d'", newElement->PID, newElement->virtualAddress->pag, LRUCandidate->virtualAddress->pag);
 
 	pthread_mutex_lock(&memoryAccessMutex);
 	//check page status before replacing
