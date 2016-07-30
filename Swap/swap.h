@@ -93,6 +93,7 @@ int checkExistenceMoreLoadedPages();
 void agregarProceso(int PID, int cantPags, int pagAPartir, char* codeScript);
 void escribirPaginaPID(int idProceso, int page, void* data);
 void escribirPagina(int page, void*dataPagina);
+void borrarContenidoPagina(int page);
 long int getPageStartOffset(int page);
 int getFirstPagePID(int PID);
 void processingMessages(int socketClient);
