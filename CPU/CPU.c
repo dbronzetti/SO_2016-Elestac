@@ -469,8 +469,8 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 }
 
 void waitRequestFromNucleo(int *socketClient, char **messageRcv){
-
-	log_info(logCPU,"Waiting new PCB from NUCLEO....");
+	//TODO logs guardandose infinitas veces
+	//log_info(logCPU,"Waiting new PCB from NUCLEO....");
 	//Receive message size
 	int messageSize = 0;
 	//Get Payload size
@@ -487,7 +487,7 @@ void waitRequestFromNucleo(int *socketClient, char **messageRcv){
 		receivedBytes = receiveMessage(socketClient, *messageRcv, messageSize);
 
 		//TODO ver que hace con messageRcv despues de recibirlo!!
-		log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), *socketClient, messageSize);
+		//log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), *socketClient, messageSize);
 		//error al recibir por 2da vez: corrupted double-linked list: 0x08294830
 
 	}else{

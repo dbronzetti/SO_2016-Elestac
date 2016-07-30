@@ -10,6 +10,8 @@ int socketNucleo=0;
 int main(int argc, char **argv) {
 	char *configurationFile = NULL;
 	char *logFile = NULL;
+	pthread_t consolaThread;
+	pthread_t operacionThread;
 
 	assert(("ERROR - NOT arguments passed", argc > 1)); // Verifies if was passed at least 1 parameter, if DONT FAILS
 
@@ -39,10 +41,10 @@ int main(int argc, char **argv) {
 
 	//Creo el archivo de Log
 	logConsola = log_create(logFile, "NUCLEO", 0, LOG_LEVEL_TRACE);
+	pthread_create(&consolaThread, NULL, (void*) startConsolaConsole, NULL);
+	pthread_create(&operacionThread, NULL, (void*) reconocerOperacion, NULL);
 
-	char* codeScript = string_new();
 	int exitCode = EXIT_FAILURE;//por default EXIT_FAILURE
-	char inputTeclado[250];
 
 	exitCode = connectTo(NUCLEO, &socketNucleo);
 	if (exitCode == EXIT_SUCCESS) {
@@ -51,75 +53,106 @@ int main(int argc, char **argv) {
 		log_error(logConsola,"No server available - shutting down proces!!\n");
 		return EXIT_FAILURE;
 	}
+	pthread_join(consolaThread, NULL);
+	pthread_join(operacionThread, NULL);
 
-	int tamanioArchivo;
-	enum_processes fromProcess = CONSOLA;
-
-	while (1) {
-		tamanioArchivo =-1;
-		printf(COMANDO);
-		fgets(inputTeclado, sizeof(inputTeclado), stdin);
-		char ** comando = string_split(inputTeclado, " ");
-		switch (reconocerComando(comando[0])) {
-		case 1: {
-			printf("Comando Reconocido.\n");
-
-			codeScript = leerArchivoYGuardarEnCadena(&tamanioArchivo);
-			printf("Tamanio del archivo: %d .\n", tamanioArchivo);
-
-			string_append(&codeScript,"\0");// "\0" para terminar el string
-			int programCodeLen = tamanioArchivo + 1; //+1 por el '\0'
-
-			//1)Envia el tamanio y el fromProcess
-			sendMessage(&socketNucleo, &programCodeLen, sizeof(int));
-			sendMessage(&socketNucleo, &fromProcess, sizeof(fromProcess));
-
-			//2)Envia el codigo del programa
-			exitCode = sendMessage(&socketNucleo, codeScript,programCodeLen);
-
-			exitCode = reconocerOperacion();
-			if (string_ends_with(nombreDelArchivo,"completo.ansisop")){
-				for (i = 0; i < 4; i++) {
-					reconocerOperacion();
-				}
-			}else if(string_ends_with(nombreDelArchivo,"forES.ansisop")){
-				for(i=0;i<20;i++){
-					reconocerOperacion();
-				}
-			}
-			break;
-		}
-		case 2: {
-			printf("Comando Reconocido.\n");
-			//Envia el tamanio y el fromProcess solamente porque el programa no es necesario para finalizar
-			sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
-			sendMessage(&socketNucleo, &fromProcess, sizeof(fromProcess));
-			printf("Se envia solicitud para finalizar al proceso NUCLEO.\n");
-
-			//Recibo del Nucleo el tamanio y el texto a imprimir, y luego finalizo proceso.
-			exitCode = reconocerOperacion();
-			exit(0);	//EXIT_SUCCESS
-			break;
-		}
-		case 3: {
-			printf("Comando Reconocido.\n");
-			exit(-1);
-			break;
-		}
-		default:
-			//printf("Comando invalido. Intentelo nuevamente.\n");
-			break;
-		}
-	}
 	return exitCode;
 }
 
+void startConsolaConsole(){
+	int initFlag = 0;
+	int i;
+	char* codeScript = string_new();
+	char inputTeclado[250];
+	int tamanioArchivo;
+	enum_processes fromProcess = CONSOLA;
+
+	consoleMessageConsola();
+	printf(COMANDO);
+
+	while (1) {
+			tamanioArchivo =-1;
+			fgets(inputTeclado, sizeof(inputTeclado), stdin);
+			//system("clear");
+			char ** comando = string_split(inputTeclado, " ");
+			switch (reconocerComando(comando[0])) {
+			case 1: {
+				printf("Comando Reconocido.\n");
+				initFlag = 1;
+				codeScript = leerArchivoYGuardarEnCadena(&tamanioArchivo);
+				printf("Tamanio del archivo: %d .\n", tamanioArchivo);
+
+				string_append(&codeScript,"\0");// "\0" para terminar el string
+				int programCodeLen = tamanioArchivo + 1; //+1 por el '\0'
+
+				//1)Envia el tamanio y el fromProcess
+				sendMessage(&socketNucleo, &programCodeLen, sizeof(int));
+				sendMessage(&socketNucleo, &fromProcess, sizeof(fromProcess));
+
+				//2)Envia el codigo del programa
+				sendMessage(&socketNucleo, codeScript,programCodeLen);
+
+				//reconocerOperacion();
+				/*if (string_ends_with(nombreDelArchivo,"completo.ansisop")){
+					for (i = 0; i < 4; i++) {
+						reconocerOperacion();
+					}
+				}else if(string_ends_with(nombreDelArchivo,"forES.ansisop")){
+					for(i=0;i<20;i++){
+						reconocerOperacion();
+					}
+				}*/
+				break;
+			}
+			case 2: {
+				printf("Comando Reconocido.\n");
+				if (initFlag == 1){
+					//Envia el tamanio y el fromProcess solamente porque el programa no es necesario para finalizar
+					sendMessage(&socketNucleo, &tamanioArchivo, sizeof(int));
+					sendMessage(&socketNucleo, &fromProcess, sizeof(fromProcess));
+					printf("Se envia solicitud para finalizar al proceso NUCLEO.\n");
+
+					//Recibo del Nucleo el tamanio y el texto a imprimir, y luego finalizo proceso.
+					//reconocerOperacion();
+					exit(0);	//EXIT_SUCCESS
+				}else{
+					printf("El archivo aun no ha sido ejecutado\n");
+				}
+				break;
+			}
+			case 3: {
+				printf("Comando Reconocido.\n");
+				exit(-1);
+				break;
+			}
+			default:
+				//printf("Comando invalido. Intentelo nuevamente.\n");//TODO ver por que pasa por aca
+				break;
+			}
+	}
+	consoleMessageConsola();
+}
+
+void consoleMessageConsola(){
+	printf("\n***********************************\n");
+	printf("* Console ready for your use! *");
+	printf("\n***********************************\n\n");
+	printf("Comandos a usar:\n\n");
+
+	printf("===> Comando:\tejecutar \n");
+
+	printf("===> Comando:\tfinalizar \n");
+
+	printf("===> Comando:\tsalir \n");
+
+}
+
 int reconocerComando(char* comando) {
-	if (!strcmp("ejecutar\n", comando)) {
+	if (!strcasecmp("ejecutar\n", comando)) {
 		return 1;
-	}else if (!strcmp("finalizar\n", comando)){
+	}else if (!strcasecmp("finalizar\n", comando)){
 		return 2;
-	}else if (!strcmp("salir\n", comando)) {
+	}else if (!strcasecmp("salir\n", comando)) {
 		return 3;
 	}
 	return -1;
@@ -146,7 +179,6 @@ void* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo) {
 		count = fread(textoDeArchivo,*tamanioDeArchivo,count,archivo);
 		memset(textoDeArchivo + *tamanioDeArchivo,'\0',1);
 		//log_info(logConsola,"Tamanio adentro de la funcion: %i\n",*tamanioDeArchivo);
-
 	}
 	fclose(archivo);
 	return textoDeArchivo;
@@ -235,43 +267,41 @@ void crearArchivoDeConfiguracion(char *configFile){
 
 }
 
-int reconocerOperacion() {
-	int operacion = -1;
-	int exitCode = EXIT_FAILURE;
-	int receivedBytes = receiveMessage(&socketNucleo, &operacion, sizeof(int));
-	if (receivedBytes>0){
-		switch (operacion) {
-		case 1: {	//Recibo del Nucleo el tamanio y el texto a imprimir
-			int tamanio;
-			exitCode = receiveMessage(&socketNucleo, &tamanio, sizeof(int));
-			char* textoImprimir = malloc(tamanio);
-			exitCode = receiveMessage(&socketNucleo, textoImprimir, tamanio);
-			printf( " '%s' \n", textoImprimir);
-			log_info(logConsola, "Texto: %s", textoImprimir);
-			free(textoImprimir);
-			break;
-		}
-		case 2: {	//Recibo del Nucleo el valor a mostrar
-			t_valor_variable valor ;
-			exitCode = receiveMessage(&socketNucleo, &valor,sizeof(t_valor_variable));
-			printf("Valor Recibido: %i \n", valor);
-
-			log_info(logConsola, "Valor Recibido: %i", valor);
-			break;
-		}
-		case 3:{
-			if (string_ends_with(nombreDelArchivo,"consumidor.ansisop")){
-				receiveMessage(&socketNucleo, &num,sizeof(int));
-				printf("%d\n", num++);
+void reconocerOperacion() {
+	while(1){
+		int operacion = -1;
+		int receivedBytes = receiveMessage(&socketNucleo, &operacion, sizeof(int));
+		if (receivedBytes>0){
+			switch (operacion) {
+			case 1: {	//Recibo del Nucleo el tamanio y el texto a imprimir
+				int tamanio;
+				receiveMessage(&socketNucleo, &tamanio, sizeof(int));
+				char* textoImprimir = malloc(tamanio);
+				receiveMessage(&socketNucleo, textoImprimir, tamanio);
+				printf( "\n'%s' \n", textoImprimir);
+				log_info(logConsola, "Texto: %s", textoImprimir);
+				free(textoImprimir);
+				break;
 			}
-			break;
-		}
-		default: {
-			//log_error(logConsola, "No se pudo recibir ninguna operacion valida");
-			break;
-		}
+			case 2: {	//Recibo del Nucleo el valor a mostrar
+				t_valor_variable valor ;
+				receiveMessage(&socketNucleo, &valor,sizeof(t_valor_variable));
+				printf("\nValor Recibido: %i \n", valor);
+				log_info(logConsola, "Valor Recibido: %i", valor);
+				break;
+			}
+			case 3:{
+				if (string_ends_with(nombreDelArchivo,"consumidor.ansisop")){
+					receiveMessage(&socketNucleo, &num,sizeof(int));
+					printf("\n%d\n", num++);
+				}
+				break;
+			}
+			default: {
+				//log_error(logConsola, "No se pudo recibir ninguna operacion valida");
+				break;
+			}
+			}
 		}
 	}
-
-	return exitCode;
 }

@@ -1602,7 +1602,7 @@ void finalizarPrograma(int PID){
 	sendMessage(&socketConsola, &operacion, sizeof(operacion));
 
 	// Envia el tamanio del texto y luego el texto al proceso Consola
-	char texto[] = "Pedido de finalizacion del programa ejecutado correctamente";
+	char texto[] = "Se completa la finalizacion del programa exitosamente";
 	int textoLen = strlen(texto) + 1 ;
 	sendMessage(&socketConsola, &textoLen, sizeof(textoLen));
 
