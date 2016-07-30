@@ -14,14 +14,14 @@ cd $DEPLOY_FOLDER/libraries
 git clone https://github.com/sisoputnfrba/so-commons-library.git
 
 # INSTALANDO SO-COMMONS
-cd so-commons-library/
+cd $DEPLOY_FOLDER/libraries/so-commons-library/
 make
 sudo make install 
 #checkear instalacion commons
 #ls -d /usr/include/commons
 
 #INSTALANDO Parser
-cd ../parser
+cd $DEPLOY_FOLDER/libraries/ansisop-parser/parser
 make clean
 make all
 #checkear si esta la libreria
