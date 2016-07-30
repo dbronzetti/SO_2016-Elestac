@@ -77,25 +77,25 @@ int receiveMessage(int *socketClient, void *messageRcv, int bufferSize);
 void serializeHandShake(t_MessageGenericHandshake *value, char *buffer, int valueSize);
 void deserializeHandShake(t_MessageGenericHandshake *value, char *bufferReceived);
 
-void serializarRegistroStack(t_registroStack* registroASerializar, char* registroSerializado, int *offset);
+char *serializarRegistroStack(t_registroStack* registroASerializar, char* registroSerializado, int *offset);
 void deserializarRegistroStack(t_registroStack* registroRecibido, char* registroSerializado, int *offset);
 
 int serializarListaStack(t_list* listaASerializar, char** listaSerializada);
 void deserializarListaStack(t_list* listaARecibir, char* listaSerializada);
 
-void serializarVars(t_vars* miRegistro, char* value, int *offset);
+char *serializarVars(t_vars* miRegistro, char* value, int *offset);
 void deserializarVars(t_vars* unaVariable, char* variablesRecibidas, int *offset);
 
-void serializeMemoryLocation(t_memoryLocation* unaPosicion, char* value, int *offset);
+char *serializeMemoryLocation(t_memoryLocation* unaPosicion, char* value, int *offset);
 void deserializeMemoryLocation(t_memoryLocation* unaPosicion, char* posicionRecibida, int *offset);
 
-void serializarListasVars(t_list* listaASerializar, char* listaSerializada, int *offset);
+char *serializarListasVars(t_list* listaASerializar, char* listaSerializada, int *offset);
 void deserializarListasVars(t_list* listaVars,char* listaSerializada, int *offset);
 
-void serializarStack(t_registroStack* registroStack, char* registroSerializado, int *offset);
+char *serializarStack(t_registroStack* registroStack, char* registroSerializado, int *offset);
 void deserializarStack(t_registroStack* estructuraARecibir, char* registroStack, int *offset);
 
-void serializeListaArgs(t_list* listaASerializar, char* listaSerializada, int *offset);
+char *serializeListaArgs(t_list* listaASerializar, char* listaSerializada, int *offset);
 void deserializeListasArgs(t_list* listaArgs,char* listaSerializada, int *offset);
 
 void serializarIndiceDeCodigo(t_registroIndiceCodigo* registroEnviar, char* registroSerializado);
