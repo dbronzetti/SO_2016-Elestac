@@ -312,9 +312,11 @@ int ejecutarPrograma(){
 		}else if ((returnCode == EXIT_SUCCESS) && (receivedBytes > 0)){
 
 			char *bufferCode = malloc(frameSize);
+			memset(bufferCode,'\0',frameSize );
 			//Receiving information from UMC when the operation was successfully accomplished
 			receivedBytes = receiveMessage(&socketUMC, bufferCode, frameSize);
 
+			memset(bufferCode + frameSize,'\0',1 );
 			//Append the code received from UMC to the code received previously (if is the case)
 			string_append(&codigoRecibido, bufferCode);
 
@@ -468,7 +470,7 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 
 void waitRequestFromNucleo(int *socketClient, char **messageRcv){
 
-	//log_info(logCPU,"Waiting new PCB from NUCLEO");
+	log_info(logCPU,"Waiting new PCB from NUCLEO....");
 	//Receive message size
 	int messageSize = 0;
 	//Get Payload size
@@ -485,7 +487,7 @@ void waitRequestFromNucleo(int *socketClient, char **messageRcv){
 		receivedBytes = receiveMessage(socketClient, *messageRcv, messageSize);
 
 		//TODO ver que hace con messageRcv despues de recibirlo!!
-		//log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), *socketClient, messageSize);
+		log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), *socketClient, messageSize);
 		//error al recibir por 2da vez: corrupted double-linked list: 0x08294830
 
 	}else{
@@ -707,6 +709,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 				list_add(ultimoRegistro->vars, (void*)variableAAgregar);
 
 				posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
+
 			}else{
 				//add a new register to Indice Stack if is a different line
 				t_registroStack* registroAAgregar = malloc(sizeof(t_registroStack));
@@ -722,7 +725,6 @@ t_puntero definirVariable(t_nombre_variable identificador){
 				list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
 				posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
-
 			}
 		}
 
@@ -744,6 +746,50 @@ t_puntero definirVariable(t_nombre_variable identificador){
 		posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
 
 	}
+
+	log_info(logCPU,"Variable '%c' - Pagina '%d', Offset '%d', Size '%d' ", identificador, variableAAgregar->direccionValorDeVariable->pag + PCBRecibido->cantidadDePaginas, variableAAgregar->direccionValorDeVariable->offset, variableAAgregar->direccionValorDeVariable->size); //+ PCBRecibido->cantidadDePaginas due to are Stack pages!
+
+	//Envio la posicion que tengo que definir la variable a la umc
+	int bufferSize = 0;
+	int payloadSize = 0;
+
+	//overwrite page content
+	t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
+	message->virtualAddress = malloc(sizeof(t_memoryLocation));
+	message->PID = PCBRecibido->PID;
+	message->operation = escritura_pagina;
+	message->virtualAddress->pag = variableAAgregar->direccionValorDeVariable->pag;
+	message->virtualAddress->pag += PCBRecibido->cantidadDePaginas; // agrego cantidad de paginas del codigo para que me guarde en la pagina de stack que quiero
+	message->virtualAddress->offset = variableAAgregar->direccionValorDeVariable->offset;
+	message->virtualAddress->size = sizeof(t_valor_variable);
+
+	payloadSize = sizeof(message->operation) + sizeof(message->PID) + sizeof(t_memoryLocation);
+	bufferSize = sizeof(bufferSize) + sizeof(enum_processes) + payloadSize ;
+
+	char *buffer = malloc(bufferSize);
+
+	serializeCPU_UMC(message, buffer, payloadSize);
+
+	//Send information to UMC - message serialized with virtualAddress information
+	sendMessage(&socketUMC, buffer, bufferSize);
+
+	int valor = -1; //DEFAULT VALUE
+	//Send with value
+	sendMessage(&socketUMC,&valor,sizeof(t_valor_variable));
+
+	int returnCode = EXIT_SUCCESS;
+	//First answer from UMC is the exit code from the operation
+	receiveMessage(&socketUMC,&returnCode, sizeof(returnCode));
+
+	if(returnCode == EXIT_SUCCESS){
+		log_info(logCPU,"Variable '%c' SAVED in UMC SUCCESSFULLY", identificador);
+	}else{
+		log_info(logCPU,"Variable '%c' SAVED in UMC FAILED", identificador);
+	}
+
+	free(message->virtualAddress);
+	free(message);
+	free(buffer);
 
 	PCBRecibido->StackPointer = PCBRecibido->indiceDeStack->elements_count -1;
 
@@ -837,8 +883,9 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable){
 
 	if (posicionBuscada != NULL){
 		posicionEncontrada =(t_puntero) posicionBuscada->direccionValorDeVariable;
+		log_info(logCPU,"Variable '%c' - Pagina '%d', Offset '%d', Size '%d' ", identificador_variable, posicionBuscada->direccionValorDeVariable->pag + PCBRecibido->cantidadDePaginas, posicionBuscada->direccionValorDeVariable->offset, posicionBuscada->direccionValorDeVariable->size); //+ PCBRecibido->cantidadDePaginas due to are Stack pages!
 	}else{
-		log_info(logCPU,"Variable '%s' - NOT RECOGNIZED", identificador_variable);
+		log_info(logCPU,"Variable '%c' - NOT RECOGNIZED", identificador_variable);
 		posicionEncontrada = -1; //Returning error as per primitive definition
 	}
 
@@ -855,6 +902,8 @@ t_valor_variable dereferenciar(t_puntero direccion_variable){
 	// inform new program to swap and check if it could write it.
 	int bufferSize = 0;
 	int payloadSize = 0;
+
+	log_info(logCPU,"Dereferencing --> Pagina '%d', Offset '%d', Size '%d'", virtualAddress->pag + PCBRecibido->cantidadDePaginas, virtualAddress->offset, virtualAddress->size);//+ PCBRecibido->cantidadDePaginas due to are Stack pages!
 
 	//overwrite page content in swap (swap out)
 	t_MessageCPU_UMC *message = malloc(sizeof(t_MessageCPU_UMC));
@@ -890,6 +939,9 @@ t_valor_variable dereferenciar(t_puntero direccion_variable){
 		exitCode = receiveMessage(&socketUMC, valorRecibido, frameSize);//receiving frame requested
 
 		memcpy(&varValue,valorRecibido,sizeof(t_valor_variable));//copying the information needed from that page
+
+		log_info(logCPU,"Value received for dereferencing '%d'", varValue);
+
 		free(valorRecibido);
 	}
 
@@ -934,9 +986,9 @@ void asignar(t_puntero direccion_variable, t_valor_variable valor){
 	receiveMessage(&socketUMC,&returnCode, sizeof(returnCode));
 
 	if(returnCode == EXIT_SUCCESS){
-		log_info(logCPU, "PID: '%d' - Writing value '%d' in page '#%d' went SUCCESS", PCBRecibido->PID, valor, virtualAddress->pag);
+		log_info(logCPU, "PID: '%d' - Writing value '%d' in page '#%d' went SUCCESS", PCBRecibido->PID, valor, virtualAddress->pag + PCBRecibido->cantidadDePaginas); //+ PCBRecibido->cantidadDePaginas due to are Stack pages!
 	}else{
-		log_info(logCPU, "PID: '%d' - Writing value '%d' in page '#%d' went FAILURE", PCBRecibido->PID, valor, virtualAddress->pag);
+		log_info(logCPU, "PID: '%d' - Writing value '%d' in page '#%d' went FAILURE", PCBRecibido->PID, valor, virtualAddress->pag + PCBRecibido->cantidadDePaginas); //+ PCBRecibido->cantidadDePaginas due to are Stack pages!
 	}
 
 	free(message->virtualAddress);
@@ -1042,6 +1094,7 @@ void irAlLabel(t_nombre_etiqueta etiqueta){
 //AFTER THIS FUNCTION IS ALWAYS CALLED definirVariable
 void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 	log_info(logCPU," 'llamarConRetorno' ");
+	log_info(logCPU,"Returning to label: '%s'", etiqueta);
 
 	functionCall = true; //activating functionCall for adding arguments to stack
 	t_memoryLocation* virtualAddress = (t_memoryLocation*) donde_retornar;
