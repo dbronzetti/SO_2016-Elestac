@@ -476,8 +476,8 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 }
 
 void waitRequestFromNucleo(int *socketClient, char **messageRcv){
-	//TODO logs guardandose infinitas veces
-	//log_info(logCPU,"Waiting new PCB from NUCLEO....");
+
+	log_info(logCPU,"Waiting new PCB from NUCLEO....");
 	//Receive message size
 	int messageSize = 0;
 	//Get Payload size
@@ -493,9 +493,7 @@ void waitRequestFromNucleo(int *socketClient, char **messageRcv){
 		*messageRcv = realloc(*messageRcv,messageSize);
 		receivedBytes = receiveMessage(socketClient, *messageRcv, messageSize);
 
-		//TODO ver que hace con messageRcv despues de recibirlo!!
-		//log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), *socketClient, messageSize);
-		//error al recibir por 2da vez: corrupted double-linked list: 0x08294830
+		log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), *socketClient, messageSize);
 
 	}else{
 		*messageRcv = NULL;
@@ -707,7 +705,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 			//adding arguments if is a function call
 			list_add(ultimoRegistro->args, (void*)variableAAgregar);
 
-			posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
+			posicionDeLaVariable = (t_puntero) variableAAgregar->direccionValorDeVariable;
 
 		}else{
 			if (ultimoPosicionPC == PCBRecibido->ProgramCounter){
@@ -715,7 +713,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 				//add vars to same list if executing the same line
 				list_add(ultimoRegistro->vars, (void*)variableAAgregar);
 
-				posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
+				posicionDeLaVariable = (t_puntero) variableAAgregar->direccionValorDeVariable;
 
 			}else{
 				//add a new register to Indice Stack if is a different line
@@ -731,7 +729,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 
 				list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
-				posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
+				posicionDeLaVariable = (t_puntero) variableAAgregar->direccionValorDeVariable;
 			}
 		}
 
@@ -1132,19 +1130,6 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 	//Cambiar de program counter segun etiqueta --> Se llama directamente a llamarSinRetorno ya que realiza el cambio de etiqueta
 	llamarSinRetorno(etiqueta);
 
-}
-
-void convertirPunteroADireccion(t_puntero puntero, t_memoryLocation* direccion) {
-	if (frameSize > puntero) {
-		direccion->pag = 0;
-		direccion->offset = puntero;
-		direccion->size = 4;
-	} else {
-		direccion->pag = (puntero / frameSize);
-		direccion->offset = puntero % frameSize;
-		direccion->size = 4;
-	}
-	return;
 }
 
 void retornar(t_valor_variable retorno){
