@@ -175,7 +175,8 @@ int main(int argc, char *argv[]){
 							sendMessage(&socketNucleo, &quantumUsed, sizeof(quantumUsed));
 
 							//Enviar PCB (indiceStack actualizado) solamente
-							char* bufferIndiceStack =  malloc(sizeof(PCBRecibido->indiceDeStack->elements_count));
+							char* bufferIndiceStack;
+
 							int indiceStackSize = serializarListaStack(PCBRecibido->indiceDeStack, &bufferIndiceStack);
 
 							if (indiceStackSize == sizeof(PCBRecibido->indiceDeStack->elements_count)){//if tamanio equal to 4 bytes then element_count is 0
@@ -186,7 +187,7 @@ int main(int argc, char *argv[]){
 							sendMessage(&socketNucleo, &indiceStackSize, sizeof(int));
 
 							//send lista indice stack
-							if (PCBRecibido->indiceDeStack->elements_count > 0 ){
+							if (indiceStackSize > 0 ){
 								//send lista indice stack
 								sendMessage(&socketNucleo, bufferIndiceStack, indiceStackSize);
 							}
@@ -194,10 +195,12 @@ int main(int argc, char *argv[]){
 							free(corteQuantum);
 							free(bufferIndiceStack);
 							free(bufferRespuesta);
+
 							if(SignalActivated){//Si fue captada la señal SIGUSR1 mientras se estaba ejecutando una instruccion se debe finalizar la misma y acto seguido desconectarse del Nucleo
 								log_info(logCPU,"Information from PID '%d' sent to Nucleo... Now I'm going down, but....I'LL BE BACK!!!\n", PCBRecibido->PID);
 								break;
 							}
+
 						}else if (waitSemActivated){
 
 							log_info(logCPU,"PID: '%d' - Sending PCB after semaphore block", PCBRecibido->PID);
@@ -227,16 +230,20 @@ int main(int argc, char *argv[]){
 						//Program finished by primitive
 						break;
 					}
+
 				}//if SUCCESS ejecutarPrograma
 
 			}// While QUANTUM
 
-			log_info(logCPU,"Destroy PCB processed");
+			log_info(logCPU,"Destroy PCB processed...");
+
 			//Destruir PCBRecibido
 			destruirPCB(PCBRecibido);
 
 			//Destruir listaIndiceEtiquetas
 			destroyIndiceEtiquetas();
+		}else{
+			exitCode = EXIT_FAILURE;// Nucleo went down!
 		}
 
 	}//loop end
