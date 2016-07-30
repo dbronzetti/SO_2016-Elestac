@@ -1073,7 +1073,7 @@ int buscarCPULibre() {
 	log_info(logNucleo, "size de listaCPU: %d",list_size(listaCPU));
 	for (i = 0; i < cantCPU; i++) {
 		pthread_mutex_lock(&listadoCPU);
-		datosCPU = (t_datosCPU*) list_get(listaCPU, 0);
+		datosCPU = (t_datosCPU*) list_get(listaCPU, i);
 		pthread_mutex_unlock(&listadoCPU);
 
 		if (datosCPU->estadoCPU == 0) {
