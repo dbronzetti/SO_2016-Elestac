@@ -39,6 +39,7 @@ void waitPrimitive(t_nombre_semaforo identificador_semaforo);
 void signalPrimitive(t_nombre_semaforo identificador_semaforo);
 
 t_puntero convertirDireccionAPuntero(t_memoryLocation* direccion);
+void convertirPunteroADireccion(t_puntero puntero, t_memoryLocation* direccion);
 
 
 /* PROTOTIPOS FUNCIONES PRIMITIVAS en parser.h

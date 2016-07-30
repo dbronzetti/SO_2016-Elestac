@@ -17,6 +17,7 @@
 #include <stdbool.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <pthread.h>
 #include "commons/log.h"
 #include "commons/config.h"
 #include "sockets.h"
@@ -41,6 +42,9 @@ void* leerArchivoYGuardarEnCadena(int* tamanioDeArchivo);
 int reconocerComando(char* comando);
 void crearArchivoDeConfiguracion(char *configFile);
 int connectTo(enum_processes processToConnect, int *socketClient);
-int reconocerOperacion();
+void reconocerOperacion();
+void startConsolaConsole();
+void consoleMessageConsola();
+
 
 #endif /* CONSOLA_H_ */

@@ -958,8 +958,8 @@ void showMemoryRows(t_memoryAdmin *pageTableElement){
 
 	memcpy(content, memBlock + memoryBlockOffset, pageTableElement->virtualAddress->size);
 
-	printf("\nContenido en Pagina:'%d'\nContenido: '%s'\n\n", pageTableElement->virtualAddress->pag, content);
-	fprintf(dumpf,"\nContenido en Pagina:'%d'\nContenido: '%s'\n\n", pageTableElement->virtualAddress->pag, content);
+	printf("\t Contenido en Pagina:'%d'\n\t\tContenido: '%s'.\n", pageTableElement->virtualAddress->pag, content);
+	fprintf(dumpf,"\t Contenido en Pagina:'%d'\n\t\tContenido: '%s'.\n", pageTableElement->virtualAddress->pag, content);
 
 	free(content);
 }
@@ -1506,11 +1506,11 @@ void executeMainMemoryAlgorithm(t_pageTablesxProc *pageTablexProc, t_memoryAdmin
 
 	pthread_mutex_lock(&memoryAccessMutex);
 
-	//Removing candidate from page table list
-	list_remove_and_destroy_by_condition(pageTablexProc->ptrPageTable, (void*) find_ClockCandidateToRemove, (void*) destroyElementTLB); //---> detroyElement checks pages modification before deleting
-
 	//Removing the frame added to free frames list when the candidate was destroyed
 	list_remove_and_destroy_by_condition(freeFramesList, (void*) find_freeFrameToRemove, (void*) free);
+
+	//Removing candidate from page table list
+	list_remove_and_destroy_by_condition(pageTablexProc->ptrPageTable, (void*) find_ClockCandidateToRemove, (void*) destroyElementTLB); //---> detroyElement checks pages modification before deleting
 
 	//Add new element to the end of the list
 	list_add_in_index(pageTablexProc->ptrPageTable, pageTablexProc->ptrPageTable->elements_count - 1, newElement); //--> This ensures the CLOCK pointer always in head position for next seek

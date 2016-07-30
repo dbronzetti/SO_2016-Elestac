@@ -476,8 +476,8 @@ int connectTo(enum_processes processToConnect, int *socketClient){
 }
 
 void waitRequestFromNucleo(int *socketClient, char **messageRcv){
-
-	log_info(logCPU,"Waiting new PCB from NUCLEO....");
+	//TODO logs guardandose infinitas veces
+	//log_info(logCPU,"Waiting new PCB from NUCLEO....");
 	//Receive message size
 	int messageSize = 0;
 	//Get Payload size
@@ -494,7 +494,7 @@ void waitRequestFromNucleo(int *socketClient, char **messageRcv){
 		receivedBytes = receiveMessage(socketClient, *messageRcv, messageSize);
 
 		//TODO ver que hace con messageRcv despues de recibirlo!!
-		log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), *socketClient, messageSize);
+		//log_info(logCPU, "Message size received from process '%s' in socket cliente '%d': %d",getProcessString(fromProcess), *socketClient, messageSize);
 		//error al recibir por 2da vez: corrupted double-linked list: 0x08294830
 
 	}else{
@@ -750,7 +750,7 @@ t_puntero definirVariable(t_nombre_variable identificador){
 
 		list_add(PCBRecibido->indiceDeStack,registroAAgregar);
 
-		posicionDeLaVariable= (t_puntero) variableAAgregar->direccionValorDeVariable;
+		posicionDeLaVariable = (t_puntero) variableAAgregar->direccionValorDeVariable;
 
 	}
 
@@ -1134,6 +1134,19 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 
 }
 
+void convertirPunteroADireccion(t_puntero puntero, t_memoryLocation* direccion) {
+	if (frameSize > puntero) {
+		direccion->pag = 0;
+		direccion->offset = puntero;
+		direccion->size = 4;
+	} else {
+		direccion->pag = (puntero / frameSize);
+		direccion->offset = puntero % frameSize;
+		direccion->size = 4;
+	}
+	return;
+}
+
 void retornar(t_valor_variable retorno){
 	log_info(logCPU," 'retornar' ");
 
@@ -1190,6 +1203,11 @@ void imprimirTexto(char *texto){
 	serializeCPU_Nucleo(respuesta, bufferRespuesta, payloadSize);
 
 	sendMessage(&socketNucleo, bufferRespuesta, bufferSize);
+
+	char **substrings = string_split(texto, "\n");
+	texto = substrings[0];
+	substrings = string_split(texto, "\t");
+	texto = substrings[0];
 
 	// Envia el tamanio del texto al proceso NUCLEO
 	int textoLen = strlen(texto) + 1;
