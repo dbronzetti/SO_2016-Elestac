@@ -7,7 +7,7 @@ mkdir -p $DEPLOY_FOLDER
 cd $DEPLOY_FOLDER
 
 #DOWNLOADING TP
-git clone https://github.com/sisoputnfrba/tp-2016-1c-YoNoFui.git .
+git clone https://github.com/dbronzetti/SO_2016-Elestac.git .
 
 #DOWNLOADING SO-COMMONS
 cd $DEPLOY_FOLDER/libraries
